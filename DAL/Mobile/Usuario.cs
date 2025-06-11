@@ -199,4 +199,12 @@ namespace DAL.Models
         public string Descripcion { get; set; }
 
     }
+
+    public class MListaTipoPersonasDTO
+    {
+        public int Status { get; set; }
+        public string Mensaje { get; set; }
+        public List<MListaTipoPersonas> TipoPersonas { get; set; }
+
+    }
 }

@@ -1176,5 +1176,46 @@ namespace SmartClick.Controllers
                 throw;
             }
         }
+
+
+        [HttpGet]
+        [Route("TraeTipoPersonas")]
+        [EnableCors("CorsPolicy")]
+        [AllowAnonymous]
+        public MListaTipoPersonasDTO TraeTipoPersonas()
+        {
+            MListaTipoPersonasDTO uat = new MListaTipoPersonasDTO();
+            try
+            {
+                var tipoPersona = _context.TiposPersonas.Select(x => new MListaTipoPersonas()
+                {
+                    Id = x.Id,
+                    Descripcion = x.nombre
+                }).ToList();
+
+                if (tipoPersona!=null)
+                {
+                    uat.TipoPersonas = tipoPersona;
+                    uat.Status = 200;
+                    uat.Mensaje = "Correcto";
+                }
+                else
+                {
+                    uat.Status = 204;
+                    uat.Mensaje = "No se encontraron Tipos de Personas.";
+                }
+
+                return uat;
+            }
+            catch (Exception e)
+            {
+                uat.Status = 500;
+                uat.Mensaje = "Error - "+e.Message;
+                return uat;
+            }
+
+
+        }
+
     }
 }
