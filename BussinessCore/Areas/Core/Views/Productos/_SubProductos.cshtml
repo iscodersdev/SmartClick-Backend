@@ -1,0 +1,41 @@
+﻿@using DAL.Models
+@model List<DAL.Models.Core.SubProducto>
+
+<box color="Info">
+    <box-header title="Lista de SubProductos">
+        <div class="input-group input-group-sm pull-right" style="max-width: 300px;">
+            <a onclick="crearSubProducto('@ViewBag.ProductoId')" class="btn btn-success btn-sm">
+                <i class="fa fa-plus"><span class="hidden-xs">Agregar SubProducto</span></i>
+            </a>
+        </div>
+    </box-header>
+    <box-body table="true">
+        <input type="hidden" value="@ViewBag.ProductoId" name="PersonaId" />
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>
+                        Nombre
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.NombreSubProducto)
+                        </td>
+                        <td>
+                            <a onclick="editSubProducto(@item.Id)" title="Edita" class="btn btn-primary btn-xs"><i class="fa fa-edit"></i></a>
+                            <a onclick="deleteSubProducto(@item.Id)" title="Borrar" class="btn btn-danger btn-xs"><i class="fa fa-trash-o"></i></a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </box-body>
+</box>
+<modal title="Agregar SubProducto" function="crearSubProducto" load-url="/Core/Productos/_CreateSubProducto/" size="Large"></modal>
+<modal title="Editar SubProducto" function="editSubProducto" load-url="/Core/Productos/_UpdateSubProducto/" size="Large"></modal>
+<modal title="Borrar SubProducto" function="deleteSubProducto" load-url="/Core/Productos/_DeleteSubProducto/" size="Large"></modal>
