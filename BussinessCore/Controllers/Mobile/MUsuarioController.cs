@@ -468,7 +468,7 @@ namespace SmartClick.Controllers
                 uat.Mensaje = "Persona Sin Correo Declarado";
                 return uat;
             }
-            sHTML += $"Estimado: {cliente.Persona.Apellido},{cliente.Persona.Nombres}, para Poder Recuperar Su Contraseña <a href = 'http://web.SmartClick.com.ar/Identity/Account/ResetPassword?code=" + pass + "'> Haga Click Aqui</a>.";
+            sHTML += $"Estimado: {cliente.Persona.Apellido},{cliente.Persona.Nombres}, para Poder Recuperar Su Contraseña <a href = 'https://portalsmartclick.com.ar/Identity/Account/ResetPassword?code=" + pass + "'> Haga Click Aqui</a>.";
             //common.EnviarMail("acevedoruben@hotmail.com", "SmartClick - Recuperacion de Contraseña", sHTML, "");
             common.EnviarMail(cliente.Usuario.UserName, "SmartClick - Recuperacion de Contraseña", sHTML, "");
             uat.Status = 200;
