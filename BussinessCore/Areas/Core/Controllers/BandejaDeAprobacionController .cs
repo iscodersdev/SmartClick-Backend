@@ -56,8 +56,9 @@ namespace SmartClickCore.Areas.Core.Controllers
             if (Hasta is null)
                 Hasta = DateTime.Now;
 
-            var prestamos = _context.Prestamos.Where(x => x.Cliente.Persona.TipoPersona.Organismo.Id!=1 
+            var prestamos = _context.Prestamos.Where(x => x.Cliente.Persona.TipoPersona.Organismo.Id==1 
                                                     && x.Cliente.Persona.TipoPersona.Organismo.Activo == true 
+                                                    && x.Canal != null
                                                     && Convert.ToDateTime(x.FechaSolicitado).Date >= Desde
                                                     && Convert.ToDateTime(x.FechaSolicitado).Date <= Hasta)
                 .OrderBy(x => x.Cliente.Persona.Apellido)
@@ -69,7 +70,8 @@ namespace SmartClickCore.Areas.Core.Controllers
                     Id = x.Id,
                     MontoPrestado = x.Capital,
                     Saldo = x.Saldo,
-                    Apellido=x.Cliente.Persona.Apellido,
+                    Canal = x.Canal,
+                    Apellido =x.Cliente.Persona.Apellido,
                     Nombre=x.Cliente.Persona.Nombres,
                     DNI=x.Cliente.Persona.NroDocumento.ToString(),
                     ClienteId=x.Cliente.Id,
@@ -211,6 +213,17 @@ namespace SmartClickCore.Areas.Core.Controllers
             @ViewBag.PDF = "data:application/pdf;base64," + Convert.ToBase64String(common.Reporting(nombreReporte, parametros, "PDF", _context));
 
             return PartialView();
+        }
+
+        public IActionResult _VerFotos(int Id)
+        {
+            PrestamoDTO editaprestamo = new PrestamoDTO();
+            Prestamos prestamo = _context.Prestamos.Where(x => x.Id == Id).FirstOrDefault();
+            editaprestamo.DNIAnverso = common.ImagenaString(prestamo.Cliente.FotoDNIAnverso);
+            editaprestamo.FotoDNIReverso = common.ImagenaString(prestamo.Cliente.FotoDNIReverso);
+            editaprestamo.FotoSosteniendoDNI = common.ImagenaString(prestamo.Cliente.FotoSosteniendoDNI);
+
+            return PartialView(editaprestamo);
         }
 
         [HttpGet]

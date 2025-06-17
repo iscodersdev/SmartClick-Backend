@@ -1537,6 +1537,9 @@ namespace SmartClick.Controllers
 
             uat.Status = 200;
             uat.Mensaje = "Lineas Ok";
+           
+            if(uat.Disponible == 0)
+            { 
             MTraeDsiponibleCGEDTO disponible = new MTraeDsiponibleCGEDTO();
             disponible.UAT = LoginCGE(_context.Empresas.Find(1));
             disponible.DNI = Convert.ToInt32(uat.DNI);
@@ -1549,6 +1552,7 @@ namespace SmartClick.Controllers
                     var readTask = response.Content.ReadAsAsync<MTraeDsiponibleCGEDTO>();
                     readTask.Wait();
                     disponible = readTask.Result;
+                   uat.Mensaje = disponible.Mensaje;
                 }
                 else
                 {
@@ -1557,6 +1561,8 @@ namespace SmartClick.Controllers
             }
             //Disponible
             uat.Disponible = disponible.Disponible;
+            }
+
 
             // LInea de Prestamo
             if (uat.LineaId == 0)
@@ -1567,7 +1573,7 @@ namespace SmartClick.Controllers
            var limiteCuota = _context.TiposPersonas.Find(uatbot.TipoPersonaId).LimiteCuotas ;
             if (uat.Ampliado)
             {
-                disponible.Disponible += _context.TiposPersonas.Find(uatbot.TipoPersonaId).MontoAmpliacion;
+                uat.Disponible += _context.TiposPersonas.Find(uatbot.TipoPersonaId).MontoAmpliacion;
                 limiteCuota = _context.TiposPersonas.Find(uatbot.TipoPersonaId).TopeCantCuotasAmpliacion;
             }
             var topePrestamo = _context.TiposPersonas.Find(uatbot.TipoPersonaId).TopePrestamo;
@@ -1575,13 +1581,13 @@ namespace SmartClick.Controllers
             if (uat.ImporteDeseado > 0)
             {
 
-                var LineaCercana = _context.LineasPrestamosPlanes.Where(x => x.Linea.Id == uat.LineaId && (x.MontoPrestado / 1000 == Math.Round(x.MontoPrestado / 1000) ) && x.MontoCuota <= (disponible.Disponible - x.MargenDisponible) && x.MontoPrestado <= topePrestamo && x.CantidadCuotas <= limiteCuota && (x.MontoPrestado >= uat.ImporteDeseado ) && x.Activo == true).OrderBy(x => x.MontoPrestado).Take(1);
+                var LineaCercana = _context.LineasPrestamosPlanes.Where(x => x.Linea.Id == uat.LineaId && (x.MontoPrestado / 1000 == Math.Round(x.MontoPrestado / 1000) ) && x.MontoCuota <= (uat.Disponible - x.MargenDisponible) && x.MontoPrestado <= topePrestamo && x.CantidadCuotas <= limiteCuota && (x.MontoPrestado >= uat.ImporteDeseado ) && x.Activo == true).OrderBy(x => x.MontoPrestado).Take(1);
 
                 uat.ImporteDeseado = LineaCercana.First().MontoPrestado;
             }
 
             // Planes de Prestamos
-            var planes = _context.LineasPrestamosPlanes.Where(x => x.Linea.Id == uat.LineaId && (x.MontoPrestado / 1000 == Math.Round(x.MontoPrestado / 1000) || uat.ImporteDeseado > 0) && x.MontoCuota <= (disponible.Disponible - x.MargenDisponible) && x.MontoPrestado <= topePrestamo && x.CantidadCuotas <= limiteCuota && (x.MontoPrestado <= uat.ImporteDeseado || uat.ImporteDeseado == 0) && x.Activo == true).OrderByDescending(x => x.MontoPrestado).ThenByDescending(x => x.CantidadCuotas).Take(5);
+            var planes = _context.LineasPrestamosPlanes.Where(x => x.Linea.Id == uat.LineaId && (x.MontoPrestado / 1000 == Math.Round(x.MontoPrestado / 1000) || uat.ImporteDeseado > 0) && x.MontoCuota <= (uat.Disponible - x.MargenDisponible) && x.MontoPrestado <= topePrestamo && x.CantidadCuotas <= limiteCuota && (x.MontoPrestado <= uat.ImporteDeseado || uat.ImporteDeseado == 0) && x.Activo == true).OrderByDescending(x => x.MontoPrestado).ThenByDescending(x => x.CantidadCuotas).Take(5);
             if (planes.Count() == 0)
             {
                 uat.Status = 500;
@@ -1614,7 +1620,7 @@ namespace SmartClick.Controllers
             }
             //uat.CantidadPlanes = planes.Count();
             uat.PlanesDisponibles = lista;
-            uat.Mensaje = disponible.Mensaje;
+          
             return uat;
         }
 
@@ -1747,7 +1753,19 @@ namespace SmartClick.Controllers
                         prestamo.PrestamoCGEId = solicitud.PrestamoCGEId;
                         _context.Prestamos.Update(prestamo);
                         _context.SaveChanges();
-                     
+
+                        string html = "";
+                        html = "<br/>Estimado: " + prestamo.Cliente.Empresa.RazonSocial + "<br/><br/>";
+                        html += "Nos Agrada Comunicarle que ha recibido en su bandeja de Haberes 2.0 la siguiente solicitud de descuento por Decreto 14/12 segun detalle:<br/><br/>";
+                        html += "<b>Persona:</b> " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim() + " DNI: " + prestamo.Cliente.Persona.NroDocumento + "<br/>";
+                        html += "<b>Importe Solicitado:</b> " + prestamo.Capital.ToString() + "<br/>";
+                        html += "<b>Cantidad de Cuotas:</b> " + prestamo.CantidadCuotas.ToString() + "<br/>";
+                        html += "<b>Monto de Cuota:</b> " + prestamo.MontoCuota.ToString() + "<br/><br/>";
+                        html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
+                        common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                        common.EnviarMail("rolando.d.ponce@hotmail.com", "Solicitud de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+
+
                     }
                     else
                     {

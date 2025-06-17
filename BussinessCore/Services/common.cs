@@ -53,6 +53,18 @@ namespace SmartClickCore
             return rand.Next(min, max);
         }
 
+        public static string ImagenaString(byte[] imagen)
+        {
+            if (imagen == null)
+            {
+                return "https://static.thenounproject.com/png/340719-200.png";
+            }
+            else
+            {
+                return "data:image/gif;base64," + Convert.ToBase64String(imagen);
+            }
+        }
+
         public static string NumeroALetrasNew(decimal value)
         {
             var culturaArgentina = CultureInfo.GetCultureInfo("es-AR");

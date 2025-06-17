@@ -100,6 +100,7 @@ namespace SmartClickCore
                 })
                 ;
 
+            services.AddHostedService<Worker>();
             services.Configure<IdentityOptions>(options =>
             {
                 options.Password.RequireDigit = false;

@@ -31,8 +31,10 @@ namespace DAL.Models
         public decimal CFT {  get; set; }
         public bool Ampliado { get; set; }
         public decimal MontoCuotaAmpliado { get; set; }
-
-}
+        public string DNIAnverso { get; set; }
+        public string FotoDNIReverso { get; set; }
+        public string FotoSosteniendoDNI { get; set; }
+    }
     public class MTraePrestamosRenglonesDTO
     {
         public string UAT { get; set; }
@@ -437,6 +439,7 @@ namespace DAL.Models
         public string DNI { get; set; }
         public int ClienteId { get; set; }
         public int EstadoPrestamoId { get; set; }
+        public string Canal { get; set; }
 
     }
 
