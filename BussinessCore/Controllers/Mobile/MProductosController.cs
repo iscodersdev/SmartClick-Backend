@@ -14,6 +14,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using SmartClickCore.API.Controllers;
 using DAL.Models.Core;
+using MailKit.Search;
 
 namespace SmartClick.Controllers
 {
@@ -233,6 +234,39 @@ namespace SmartClick.Controllers
             }).ToList();
 
             return uat;
+        }
+
+        [HttpPost]
+        [Route("TraeProductosFiltrados")]
+        [EnableCors("CorsPolicy")]
+        [AllowAnonymous]
+        public MTraeProductosFiltradosDTO TraeProductosFiltrados([FromBody] MTraeProductosFiltradosDTO uat)
+        {
+            try
+            {
+                var Uat = _context.UAT.FirstOrDefault(x => x.Token == uat.UAT);
+                if (Uat == null)
+                {
+                    uat.Status = 500;
+                    uat.Mensaje = "UAT Invalida";
+                    return uat;
+                }
+                uat.Status = 200;
+                uat.Mensaje = "Listado Productos";
+
+                uat.Productos = _context.Productos
+                .Where(x => x.Activo && x.Precio > 0 && x.Descripcion.Contains(uat.Producto))
+                .Select(x => new MProductosDTO { Descripcion = x.Descripcion, DescripcionAmpliada = x.DescripcionAmpliada, Foto = x.Foto, Foto1 = x.Foto1, Foto2 = x.Foto2, Foto3 = x.Foto3, Foto4 = x.Foto4, Foto5 = x.Foto5, Id = x.Id, Precio = x.Precio })
+                .ToList();
+
+                return uat;
+            }
+            catch (Exception e)
+            {
+                uat.Status = 500;
+                uat.Mensaje = "Error - "+e.Message;
+                return uat;
+            }
         }
 
 
