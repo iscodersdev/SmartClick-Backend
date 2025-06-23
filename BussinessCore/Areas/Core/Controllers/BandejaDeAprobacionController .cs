@@ -82,10 +82,10 @@ namespace SmartClickCore.Areas.Core.Controllers
         }
         public IActionResult _DescargaExcel(DateTime? Desde, DateTime? Hasta)
         {
-            if (Desde is null)
-                Desde = Convert.ToDateTime(DateTime.Now.Year.ToString() + "-01-01");
-            if (Hasta is null)
-                Hasta = DateTime.Now;
+            //if (Desde is null)
+            //    Desde = Convert.ToDateTime(DateTime.Now.Year.ToString() + "-01-01");
+            //if (Hasta is null)
+            //    Hasta = DateTime.Now;
 
             var usuario = _context.Usuarios.FirstOrDefault(x => x.UserName == User.Identity.Name);
             var memoryStream = new MemoryStream(System.IO.File.ReadAllBytes("wwwroot/Plantillas/PlantillaPrestamosApp.xlsx"));
@@ -94,9 +94,24 @@ namespace SmartClickCore.Areas.Core.Controllers
                 decimal total = 0;
                 var workSheet = package.Workbook.Worksheets[1];
                 //var renglones = _context.Prestamos.Where(x => usuario.Administradores == true && Convert.ToDateTime(x.FechaSolicitado).Date >= Desde && Convert.ToDateTime(x.FechaSolicitado).Date <= Hasta && x.FechaAnulacion == null && (x.FirmaOlografica != null || x.FirmaOlograficaConfirmacion != null)).Select(x => new PrestamosReportesDTO { CantidadCuotas = x.CantidadCuotas, Capital = x.Capital, Categoria = x.Cliente.CategoriaLaboral, Cliente = x.Cliente.Persona.Apellido + ", " + x.Cliente.Persona.Nombres, Fecha = Convert.ToDateTime(x.FechaSolicitado).ToString("yyyy-MM-dd HH:mm"), Id = x.Id, MontoCuota = x.MontoCuota, Tipo = x.Linea.Nombre, Estado = x.EstadoActual.Nombre, EstadoId = x.EstadoActual.Id, DNI = x.Cliente.Persona.NroDocumento.ToString(), Celular = x.Cliente.Celular, eMail = x.Cliente.Usuario.UserName });
-                var renglones = _context.Prestamos.Where(x=> Convert.ToDateTime(x.FechaSolicitado).Date >= Desde && Convert.ToDateTime(x.FechaSolicitado).Date <= Hasta && x.FechaAnulacion == null && (x.FirmaOlografica != null || x.FirmaOlograficaConfirmacion != null)).Select(x => new PrestamosReportesDTO { CantidadCuotas = x.CantidadCuotas, Capital = x.Capital, Categoria = x.Cliente.CategoriaLaboral, Cliente = x.Cliente.Persona.Apellido + ", " + x.Cliente.Persona.Nombres, Fecha = Convert.ToDateTime(x.FechaSolicitado).ToString("yyyy-MM-dd HH:mm"), Id = x.Id, MontoCuota = x.MontoCuota, Tipo = x.Linea.Nombre, Estado = x.EstadoActual.Nombre, EstadoId = x.EstadoActual.Id, DNI = x.Cliente.Persona.NroDocumento.ToString(), Celular = x.Cliente.Celular, eMail = x.Cliente.Usuario.UserName });
+                
+                //var renglones = _context.Prestamos.Where(x=> Convert.ToDateTime(x.FechaSolicitado).Date >= Desde && Convert.ToDateTime(x.FechaSolicitado).Date <= Hasta && x.FechaAnulacion == null && (x.FirmaOlografica != null || x.FirmaOlograficaConfirmacion != null))
+                //    .Select(x => new PrestamosReportesDTO { CantidadCuotas = x.CantidadCuotas, Capital = x.Capital, Categoria = x.Cliente.CategoriaLaboral, Cliente = x.Cliente.Persona.Apellido + ", " + x.Cliente.Persona.Nombres, Fecha = Convert.ToDateTime(x.FechaSolicitado).ToString("yyyy-MM-dd HH:mm"), Id = x.Id, MontoCuota = x.MontoCuota, Tipo = x.Linea.Nombre, Estado = x.EstadoActual.Nombre, EstadoId = x.EstadoActual.Id, DNI = x.Cliente.Persona.NroDocumento.ToString(), Celular = x.Cliente.Celular, eMail = x.Cliente.Usuario.UserName });
+
+
+                var renglones = _context.Prestamos.Where(x => x.Canal=="BOT" && (x.FirmaOlografica != null || x.FirmaOlograficaConfirmacion != null));
+                if (Desde != null)
+                    renglones.Where(x => Convert.ToDateTime(x.FechaSolicitado).Date >= Desde);
+                if (Hasta != null)
+                    renglones.Where(x => Convert.ToDateTime(x.FechaSolicitado).Date <= Hasta);
+
+
+                var renglonFiltrado = renglones.Select(x => new PrestamosReportesDTO { CantidadCuotas = x.CantidadCuotas, Capital = x.Capital, Categoria = x.Cliente.CategoriaLaboral, Cliente = x.Cliente.Persona.Apellido + ", " + x.Cliente.Persona.Nombres, Fecha = Convert.ToDateTime(x.FechaSolicitado).ToString("yyyy-MM-dd HH:mm"), Id = x.Id, MontoCuota = x.MontoCuota, Tipo = x.Linea.Nombre, Estado = x.EstadoActual.Nombre, EstadoId = x.EstadoActual.Id, DNI = x.Cliente.Persona.NroDocumento.ToString(), Celular = x.Cliente.Celular, eMail = x.Cliente.Usuario.UserName });
+
+
+
                 int linea = 2;
-                foreach (var renglon in renglones)
+                foreach (var renglon in renglonFiltrado)
                 {
                     workSheet.Cells[linea, 1].Value = renglon.Fecha;
                     workSheet.Cells[linea, 2].Value = renglon.Cliente;
