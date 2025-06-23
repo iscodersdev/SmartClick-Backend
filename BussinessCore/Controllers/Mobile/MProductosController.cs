@@ -139,6 +139,39 @@ namespace SmartClick.Controllers
             return uat;
         }
 
+        [HttpPost]
+        [Route("TraeProductosPaginados")]
+        [EnableCors("CorsPolicy")]
+        [AllowAnonymous]
+        public MTraeProductosPaginadosDTO TraeProductosPaginados([FromBody] MTraeProductosPaginadosDTO uat)
+        {
+            var Uat = _context.UAT.FirstOrDefault(x => x.Token == uat.UAT);
+            if (Uat == null)
+            {
+                uat.Status = 500;
+                uat.Mensaje = "UAT Invalida";
+                return uat;
+            }
+            uat.Status = 200;
+            uat.Mensaje = "Listado Productos";
+
+            if(uat.Desde>0 && uat.Hasta>0)
+            {
+                var queryBase = _context.Productos
+                    .Where(x => x.Activo && x.Precio > 0)
+                    .Select(x => new MProductosDTO { Descripcion = x.Descripcion, DescripcionAmpliada = x.DescripcionAmpliada, Foto = x.Foto, Foto1 = x.Foto1, Foto2 = x.Foto2, Foto3 = x.Foto3, Foto4 = x.Foto4, Foto5 = x.Foto5, Id = x.Id, Precio = x.Precio })
+                    .Skip(uat.Desde).Take(uat.Hasta);
+                    uat.Productos = queryBase.ToList();
+            }
+            else
+            {
+                var queryBase = _context.Productos
+                    .Where(x => x.Activo && x.Precio > 0)
+                    .Select(x => new MProductosDTO { Descripcion = x.Descripcion, DescripcionAmpliada = x.DescripcionAmpliada, Foto = x.Foto, Foto1 = x.Foto1, Foto2 = x.Foto2, Foto3 = x.Foto3, Foto4 = x.Foto4, Foto5 = x.Foto5, Id = x.Id, Precio = x.Precio });
+                    uat.Productos = queryBase.ToList();
+            }
+            return uat;
+        }
 
         [HttpPost]
         [Route("TraeSubProductos")]

@@ -56,6 +56,16 @@ namespace DAL.Models
         public string Mensaje { get; set; }
         public  int ProveedoresId { get; set; }
         public List<MProductosDTO> Productos { get; set; }
+    }    
+    
+    public class MTraeProductosPaginadosDTO
+    {
+        public string UAT { get; set; }
+        public int Status { get; set; }
+        public string Mensaje { get; set; }
+        public int Desde { get; set; }
+        public int Hasta { get; set; }
+        public List<MProductosDTO> Productos { get; set; }
     }
 
     public class MTraeProductosFiltradosDTO
