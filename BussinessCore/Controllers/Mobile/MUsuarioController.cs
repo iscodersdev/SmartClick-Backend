@@ -162,6 +162,7 @@ namespace SmartClick.Controllers
                 Login.Instagram = cliente.Empresa.Instagram;
                 Login.CelularEmpresa = cliente.Empresa.Telefono;
                 Login.BloquearPrestamos = cliente.BloquearPrestamos;
+                Login.TipoPersonaId = cliente.Persona.TipoPersona.Id;
                 if (cliente.Empresa != null)
                 {
                     Login.LogoMutual = cliente.Empresa.LogoMutual;
