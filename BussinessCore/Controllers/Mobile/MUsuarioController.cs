@@ -130,7 +130,10 @@ namespace SmartClick.Controllers
                 }
                 Login.Apellido = cliente.Persona.Apellido;
                 Login.Nombres = cliente.Persona.Nombres;
-                Login.TipoPersonaId = cliente.Persona.TipoPersona.Id;
+                if (cliente.Persona.TipoPersona.Organismo.Id == 1)
+                {
+                    Login.EsEjercito = true;
+                }
                 Login.Status = 200;
                 Login.UAT = SmartClickCore.common.Encrypt(DateTime.Now.ToString("ffffssmmHHddMMyyyy") + cliente.Id.ToString(), "SmartClick");
                 if (cliente.TipoCliente == null)
