@@ -150,6 +150,7 @@ namespace SmartClick.Controllers
             uat.Renglones = lista;
             return uat;
         }
+
         [HttpPost]
         [Route("TraeLineasPrestamos")]
         [EnableCors("CorsPolicy")]
@@ -219,7 +220,10 @@ namespace SmartClick.Controllers
                     if (uat.Ampliado)
                     {
                         var minimo = _context.LineasPrestamosPlanes.Where(x => x.MontoCuota <= (disponible.Disponible - x.MargenDisponible) && x.Linea.Id == linea.LineaPrestamo.Id && (x.MontoPrestado / x.Linea.Intervalo == Math.Round(x.MontoPrestado / x.Linea.Intervalo)) && x.Activo == true).OrderBy(x => x.MontoPrestado).FirstOrDefault();
-                        nuevo.MontoMinimo = minimo.MontoPrestado;
+                        if (minimo!=null)
+                        {
+                            nuevo.MontoMinimo = minimo.MontoPrestado;
+                        }
                     }
                     else
                     {
