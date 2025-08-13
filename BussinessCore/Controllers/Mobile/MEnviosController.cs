@@ -30,10 +30,10 @@ namespace BussinessCore.API.Controllers.Billetera
         {
             _notificacionAPIService = notificacionAPIService;
         }
-        public MEnviosController(SmartClickContext context) : base(context)
-        {
+        //public MEnviosController(SmartClickContext context) : base(context)
+        //{
             
-        }
+        //}
 
         [HttpPost("EnvioBilletera")]
         public async Task<IActionResult> EnvioBilletera([FromBody] EnvioBilleteraDTO envioBilleteraDTO)

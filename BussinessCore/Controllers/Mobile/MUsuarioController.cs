@@ -119,8 +119,6 @@ namespace SmartClick.Controllers
             var result = _signInManager.PasswordSignInAsync(Login.Mail, Login.Password, Login.Recordarme, lockoutOnFailure: true);
             if (result.Result.Succeeded)
             {
-
-                //var cliente = _context.Clientes.FirstOrDefault(x => x.Usuario.UserName == Login.Mail && x.FechaBaja == null && (x.Empresa.Id == Login.EmpresaId || Login.EmpresaId == 0));
                 var cliente = _context.Clientes.FirstOrDefault(x => x.Usuario.UserName == Login.Mail && x.FechaBaja == null );
                 if (cliente == null)
                 {
@@ -128,14 +126,31 @@ namespace SmartClick.Controllers
                     Login.Mensaje = "eMail o Password Incorrectos";
                     return Login;
                 }
+        
+                // Validar que cliente.Persona no sea null
+                if (cliente.Persona == null)
+                {
+                    Login.Status = 500;
+                    Login.Mensaje = "Datos de persona no encontrados";
+                    return Login;
+                }
+        
                 Login.Apellido = cliente.Persona.Apellido;
                 Login.Nombres = cliente.Persona.Nombres;
-                if (cliente.Persona.TipoPersona.Organismo.Id == 1)
+        
+                // Usar operador de navegación condicional para evitar NullReferenceException
+                if (cliente.Persona.TipoPersona?.Organismo?.Id == 1)
                 {
                     Login.EsEjercito = true;
                 }
+                else
+                {
+                    Login.EsEjercito = false; // Por defecto es civil
+                }
+        
                 Login.Status = 200;
                 Login.UAT = SmartClickCore.common.Encrypt(DateTime.Now.ToString("ffffssmmHHddMMyyyy") + cliente.Id.ToString(), "SmartClick");
+        
                 if (cliente.TipoCliente == null)
                 {
                     Login.Categoria = "No Asociado Aun";
@@ -144,14 +159,17 @@ namespace SmartClick.Controllers
                 {
                     Login.Categoria = cliente.TipoCliente.Nombre;
                 }
+        
                 Login.Foto = cliente.Persona.Foto;
                 Login.Mail = cliente.Usuario.Email;
+        
                 if (Login.Mail != null)
                 {
                     string asteriscos = "***********************************************************************";
                     string[] correoinicial = Login.Mail.Split("@");
                     Login.MailOculto = Login.Mail.Substring(0, 2) + asteriscos.Substring(0, correoinicial[0].Length - 2) + "@" + correoinicial[1];
                 }
+        
                 Login.NumeroDocumento = Int64.Parse(cliente.Persona.NroDocumento);
                 Login.FondoMutual = cliente.Empresa.FondoMobile;
                 Login.Celular = cliente.Celular;
@@ -162,11 +180,18 @@ namespace SmartClick.Controllers
                 Login.Instagram = cliente.Empresa.Instagram;
                 Login.CelularEmpresa = cliente.Empresa.Telefono;
                 Login.BloquearPrestamos = cliente.BloquearPrestamos;
-                Login.TipoPersonaId = cliente.Persona.TipoPersona.Id;
+        
+                // Validar TipoPersona antes de acceder a su Id
+                if (cliente.Persona.TipoPersona != null)
+                {
+                    Login.TipoPersonaId = cliente.Persona.TipoPersona.Id;
+                }
+        
                 if (cliente.Empresa != null)
                 {
                     Login.LogoMutual = cliente.Empresa.LogoMutual;
                 }
+        
                 if (cliente.NumeroCliente == null)
                 {
                     Login.NumeroCliente = "No cliente";
@@ -175,11 +200,13 @@ namespace SmartClick.Controllers
                 {
                     Login.NumeroCliente = cliente.NumeroCliente;
                 }
+        
                 Login.PrimerIngreso = false;
                 if (cliente.Usuario.DeviceId != Login.DeviceId)
                 {
                     Login.PrimerIngreso = true;
                 }
+        
                 cliente.Usuario.DeviceId = Login.DeviceId;
                 _context.Clientes.Update(cliente);
 
@@ -193,7 +220,6 @@ namespace SmartClick.Controllers
                 {
                     uat.Persona = persona;
                 }
-                
 
                 _context.UAT.Add(uat);
                 _context.SaveChanges();
@@ -901,7 +927,6 @@ namespace SmartClick.Controllers
             {
                 user = new Usuario()
                 {
-
                     UserName = Registro.Mail,
                     Email = Registro.Mail
                 };

@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = DAL
-build_property.ProjectDir = D:\SmartClick\DAL\
+build_property.ProjectDir = C:\Users\dullk\source\repos\SmartClick-Backend\DAL\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

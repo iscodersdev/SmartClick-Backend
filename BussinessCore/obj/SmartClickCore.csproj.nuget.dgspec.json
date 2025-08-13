@@ -1,42 +1,43 @@
 {
   "format": 1,
   "restore": {
-    "D:\\SmartClick\\BussinessCore\\SmartClickCore.csproj": {}
+    "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj": {}
   },
   "projects": {
-    "D:\\SmartClick\\BussinessCore\\SmartClickCore.csproj": {
+    "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\SmartClick\\BussinessCore\\SmartClickCore.csproj",
+        "projectUniqueName": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
         "projectName": "SmartClickCore",
-        "projectPath": "D:\\SmartClick\\BussinessCore\\SmartClickCore.csproj",
-        "packagesPath": "C:\\Users\\jorge\\.nuget\\packages\\",
-        "outputPath": "D:\\SmartClick\\BussinessCore\\obj\\",
+        "projectPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
+        "packagesPath": "C:\\Users\\dullk\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet\\",
           "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
         ],
         "configFilePaths": [
-          "C:\\Users\\jorge\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\dullk\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Xamarin.Offline.config"
         ],
         "originalTargetFrameworks": [
           "netcoreapp2.2"
         ],
         "sources": {
-          "C:\\": {},
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "http://cps-ea.mil.ar/nugetcps/nuget": {},
-          "https://api.nuget.org/v3/index.json": {}
+          "https://api.nuget.org/v3/index.json": {},
+          "https://www.nuget.org/api/v2": {}
         },
         "frameworks": {
           "netcoreapp2.2": {
             "targetAlias": "netcoreapp2.2",
             "projectReferences": {
-              "D:\\SmartClick\\DAL\\DAL.csproj": {
-                "projectPath": "D:\\SmartClick\\DAL\\DAL.csproj"
+              "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\DAL.csproj": {
+                "projectPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\DAL.csproj"
               }
             }
           }
@@ -51,7 +52,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.200"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "netcoreapp2.2": {
@@ -194,36 +195,37 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301\\RuntimeIdentifierGraph.json"
         }
       }
     },
-    "D:\\SmartClick\\DAL\\DAL.csproj": {
+    "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\DAL.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\SmartClick\\DAL\\DAL.csproj",
+        "projectUniqueName": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\DAL.csproj",
         "projectName": "DAL",
-        "projectPath": "D:\\SmartClick\\DAL\\DAL.csproj",
-        "packagesPath": "C:\\Users\\jorge\\.nuget\\packages\\",
-        "outputPath": "D:\\SmartClick\\DAL\\obj\\",
+        "projectPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\DAL.csproj",
+        "packagesPath": "C:\\Users\\dullk\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet\\",
           "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
         ],
         "configFilePaths": [
-          "C:\\Users\\jorge\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\dullk\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Xamarin.Offline.config"
         ],
         "originalTargetFrameworks": [
           "netcoreapp2.2"
         ],
         "sources": {
-          "C:\\": {},
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "http://cps-ea.mil.ar/nugetcps/nuget": {},
-          "https://api.nuget.org/v3/index.json": {}
+          "https://api.nuget.org/v3/index.json": {},
+          "https://www.nuget.org/api/v2": {}
         },
         "frameworks": {
           "netcoreapp2.2": {
@@ -241,7 +243,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.200"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "netcoreapp2.2": {
@@ -273,7 +275,7 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301\\RuntimeIdentifierGraph.json"
         }
       }
     }

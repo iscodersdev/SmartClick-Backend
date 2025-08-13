@@ -53,7 +53,9 @@ namespace SmartClickCore
                 options.AddPolicy("AllowSpecificOrigin",
             builder =>
             {
-                builder.WithOrigins("https://signature-hero.lovable.app")
+                builder.WithOrigins("https://signature-hero.lovable.app",
+                    "https://siempreclick.netlify.app"
+                    )
                        .AllowAnyHeader()
                        .AllowAnyMethod();
             });
@@ -80,6 +82,10 @@ namespace SmartClickCore
             services.AddTransient<CGEService>();
             services.AddTransient<NotificacionAPIService>();
             services.AddTransient<PlenarioService>();
+            
+            // Registro de servicios PSP - CORREGIDO
+            services.AddHttpClient<IPSPService, PSPService>();
+            // Eliminar esta línea: services.AddTransient<IPSPService, PSPService>();
 
             services.AddSession();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
