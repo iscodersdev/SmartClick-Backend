@@ -128,9 +128,10 @@ namespace SmartClick.Controllers
                     Login.Mensaje = "eMail o Password Incorrectos";
                     return Login;
                 }
+                Login.EsEjercito = false;
                 Login.Apellido = cliente.Persona.Apellido;
                 Login.Nombres = cliente.Persona.Nombres;
-                if (cliente.Persona.TipoPersona.Organismo.Id == 1)
+                if (cliente.Persona.TipoPersona.Organismo.APIEjercito == true)
                 {
                     Login.EsEjercito = true;
                 }
