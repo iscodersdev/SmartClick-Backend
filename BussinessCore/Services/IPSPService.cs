@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using DAL.DTOs.PSP;
+using System.Collections.Generic;
 
 namespace BusinessCore.Services
 {
@@ -29,5 +30,30 @@ namespace BusinessCore.Services
         /// Verifica si está en modo de prueba/mock
         /// </summary>
         bool IsTestMode();
+
+        /// <summary>
+        /// Crea un nuevo usuario en el PSP
+        /// </summary>
+        Task<CreateUserResponseDTO> CreateUserAsync(CreateUserRequestDTO request);
+
+        /// <summary>
+        /// Crea una entidad asociada al usuario autenticado (SelfRegistration)
+        /// </summary>
+        Task<SelfRegistrationResponseDTO> SelfRegistrationAsync(SelfRegistrationRequestDTO request, string userToken);
+
+        /// <summary>
+        /// Sube archivos de validación para una entidad (DNI, selfie, etc.)
+        /// </summary>
+        Task<UploadFilesResponseDTO> UploadFilesAsync(string identifier, string userToken, Dictionary<string, byte[]> files);
+
+        /// <summary>
+        /// Obtiene la lista de provincias disponibles
+        /// </summary>
+        Task<ProvincesResponseDTO> GetProvincesAsync();
+
+        /// <summary>
+        /// Obtiene la lista de ciudades de una provincia específica
+        /// </summary>
+        Task<CitiesResponseDTO> GetCitiesAsync(int provinceId);
     }
 }

@@ -43,6 +43,8 @@ namespace SmartClickCore
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
+           
+
             services.AddCors(options =>
             {
                 options.AddPolicy("CorsPolicy",
@@ -54,11 +56,14 @@ namespace SmartClickCore
             builder =>
             {
                 builder.WithOrigins("https://signature-hero.lovable.app",
-                    "https://siempreclick.netlify.app"
+                                    "https://siempreclick.netlify.app",
+                                    "https://preview--smartclick-web-start.lovable.app"
                     )
                        .AllowAnyHeader()
-                       .AllowAnyMethod();
+                       .AllowAnyMethod()
+                       .AllowCredentials();
             });
+
 
             });
             services.AddDbContext<SmartClickContext>(options =>
@@ -149,7 +154,8 @@ namespace SmartClickCore
             }
 
   
-            app.UseCors("CorsPolicy");
+            //app.UseCors("CorsPolicy");
+            app.UseCors("AllowSpecificOrigin");
             app.UseStaticFiles();
             app.UseSession();
             app.UseCommonsLibraryScripts();

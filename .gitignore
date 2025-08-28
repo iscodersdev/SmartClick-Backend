@@ -1,0 +1,7 @@
+# Ignorar archivos y carpetas de Visual Studio 
+.vs/ 
+obj/ 
+bin/ 
+# Ignorar otros archivos temporales 
+*.log 
+*.tmp 

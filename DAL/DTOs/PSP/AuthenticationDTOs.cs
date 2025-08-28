@@ -119,4 +119,195 @@ namespace DAL.DTOs.PSP
         public int? EntityId { get; set; }
         public int? PersonId { get; set; }
     }
+
+    // *** DTOs PARA CREAR USUARIO ***
+    public class CreateUserRequestDTO
+    {
+        public string userType { get; set; } = "5";           // Tipo de usuario
+        public string userName { get; set; }                  // Nombre de usuario único
+        public string documentType { get; set; } = "CUIL";    // Tipo de documento
+        public string documentNumber { get; set; }            // Número de documento
+        public string firstName { get; set; }                 // Nombre
+        public string lastName { get; set; }                  // Apellido
+        public string email { get; set; }                     // Email
+        public string phoneNumber { get; set; }               // Teléfono
+        public string address { get; set; }                   // Dirección
+        public string departmentId { get; set; } = "19";      // ID departamento
+        public string cityId { get; set; } = "17934";         // ID ciudad
+        public bool Active { get; set; } = true;              // Usuario activo
+        public List<int> roles { get; set; } = new List<int> { 9 }; // Roles (9 = viewer)
+        public string password { get; set; }                  // Contraseña
+        public string passwordConfirm { get; set; }           // Confirmación contraseña
+    }
+
+    public class CreateUserResponseDTO
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public int? UserId { get; set; }
+        public string UserToken { get; set; }  // Token del usuario creado
+        public string Error { get; set; }
+    }
+
+    // *** DTOs PARA SELF REGISTRATION ***
+    public class SelfRegistrationRequestDTO
+    {
+        public int entityTypeId { get; set; } = 5;               // Tipo de entidad
+        public int parentId { get; set; } = 1601;                // ID padre
+        public bool isPhysicalPerson { get; set; } = false;      // Es persona física
+        public bool taxPayer { get; set; } = false;              // Es contribuyente
+        public bool isPyME { get; set; } = false;                // Es PyME
+        public DateTime? PyMEEffectiveDate { get; set; }         // Fecha efectiva PyME
+        public string tributaryIdentifierType { get; set; } = "CUIT"; // Tipo identificador
+        public string tributaryIdentifier { get; set; }          // CUIT/CUIL
+        public string name { get; set; }                         // Nombre entidad
+        public string phoneCode { get; set; } = "549";           // Código teléfono
+        public string phone { get; set; }                        // Teléfono
+        public string address { get; set; }                      // Dirección
+        public string floor { get; set; }                        // Piso
+        public string department { get; set; }                   // Departamento
+        public int cityId { get; set; } = 3;                     // ID ciudad
+        public string postalCode { get; set; }                   // Código postal
+        public string email { get; set; }                        // Email
+        public bool isRevalidation { get; set; } = true;         // Es revalidación
+        public bool IsSameAddress { get; set; } = true;          // Misma dirección
+        public string activityPostalCode { get; set; }           // CP actividad
+        public int activityCityId { get; set; } = 3;             // Ciudad actividad
+        public string activityAddress { get; set; }              // Dirección actividad
+        public string activityFloor { get; set; }                // Piso actividad
+        public string activityDepartment { get; set; }           // Depto actividad
+        public string FantasyName { get; set; }                  // Nombre fantasía
+        public string cuf { get; set; }                          // CUF
+        public string CovenantCode { get; set; }                 // Código convenio
+    }
+
+    public class SelfRegistrationResponseDTO
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public string Identifier { get; set; }  // ID para subir archivos después
+        public int? EntityId { get; set; }
+        public string Error { get; set; }
+    }
+
+    // *** DTOs PARA ENDPOINTS CON UAT (FALTABAN ESTOS) ***
+
+    // DTO para CrearUsuario con UAT
+    public class CreateUserWithUATRequestDTO : CreateUserRequestDTO
+    {
+        public string UAT { get; set; }  // Token de autenticación del usuario administrador
+    }
+
+    public class CreateUserWithUATResponseDTO : PSPBaseResponseDTO
+    {
+        public int? UserId { get; set; }
+        public string UserToken { get; set; }  // Token del usuario creado
+    }
+
+    // DTO para SelfRegistration con UAT
+    public class SelfRegistrationWithUATRequestDTO : SelfRegistrationRequestDTO
+    {
+        public string UAT { get; set; }        // Token de autenticación del usuario administrador
+        public string UserToken { get; set; }  // Token del usuario que ejecuta SelfRegistration
+    }
+
+    public class SelfRegistrationWithUATResponseDTO : PSPBaseResponseDTO
+    {
+        public string Identifier { get; set; }  // ID para subir archivos después
+        public int? EntityId { get; set; }
+    }
+
+    // *** DTOs PARA UPLOAD FILES ***
+
+    // DTO para subir archivos
+    public class UploadFilesRequestDTO
+    {
+        public string Identifier { get; set; }       // ID obtenido de SelfRegistration
+        public string UserToken { get; set; }        // Token del usuario
+        public Dictionary<string, byte[]> Files { get; set; } = new Dictionary<string, byte[]>();
+    }
+
+    // DTO para subir archivos con UAT (para endpoint)
+    public class UploadFilesWithUATRequestDTO
+    {
+        public string UAT { get; set; }              // Token administrador
+        public string Identifier { get; set; }       // ID obtenido de SelfRegistration  
+        public string UserToken { get; set; }        // Token del usuario
+        // Los archivos se manejan como IFormFile en el controlador
+    }
+
+    // DTO para respuesta de upload files
+    public class UploadFilesResponseDTO
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public List<string> UploadedFiles { get; set; } = new List<string>();
+        public string Error { get; set; }
+    }
+
+    // DTO para respuesta de upload files con UAT (para endpoint)
+    public class UploadFilesWithUATResponseDTO : PSPBaseResponseDTO
+    {
+        public List<string> UploadedFiles { get; set; } = new List<string>();
+    }
+
+    // DTO para provincia
+    public class ProvinceDTO
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string code { get; set; }
+    }
+
+    // DTO para ciudad
+    public class CityDTO
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public int provinceId { get; set; }
+        public string postalCode { get; set; }
+    }
+
+    // DTO para respuesta de provincias
+    public class ProvincesResponseDTO
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public List<ProvinceDTO> Provinces { get; set; } = new List<ProvinceDTO>();
+        public string Error { get; set; }
+    }
+
+    // DTO para respuesta de ciudades
+    public class CitiesResponseDTO
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public List<CityDTO> Cities { get; set; } = new List<CityDTO>();
+        public string Error { get; set; }
+    }
+
+    // DTOs para endpoints con UAT
+    public class ProvincesWithUATResponseDTO : PSPBaseResponseDTO
+    {
+        public List<ProvinceDTO> Provinces { get; set; } = new List<ProvinceDTO>();
+    }
+
+    public class CitiesWithUATResponseDTO : PSPBaseResponseDTO
+    {
+        public List<CityDTO> Cities { get; set; } = new List<CityDTO>();
+    }
+
+    // *** DTOs PARA CREAR ENTIDAD Y USUARIO CON UAT ***
+    public class CreateEntityAndUserWithUATRequestDTO
+    {
+        public string UAT { get; set; }  // Token de autenticación del usuario administrador
+        public EntityDTO entity { get; set; }
+        public PersonDTO person { get; set; }
+    }
+
+    public class CreateEntityAndUserWithUATResponseDTO : PSPBaseResponseDTO
+    {
+        public int? EntityId { get; set; }
+        public int? PersonId { get; set; }
+    }
 }

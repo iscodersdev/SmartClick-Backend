@@ -7,8 +7,11 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using DAL.DTOs.PSP;
 using System.Collections.Generic;
+using System.Linq;
+using System.IO;
 
-namespace BusinessCore.Services
+// ? CAMBIAR ESTA LÍNEA:
+namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "BusinessCore.Services"
 {
     public class PSPService : IPSPService
     {
@@ -120,21 +123,19 @@ namespace BusinessCore.Services
             }
         }
 
-        public async Task<CreateEntityUserResponseDTO> CreateEntityAndUserAsync(CreateEntityUserRequestDTO request)
+        // *** NUEVO MÉTODO: CREAR USUARIO ***
+        // *** MÉTODO CORREGIDO: CREAR USUARIO ***
+        public async Task<CreateUserResponseDTO> CreateUserAsync(CreateUserRequestDTO request)
         {
             if (_testMode)
             {
-                _logger.LogInformation("?? MODO PRUEBA: Simulando creación de entidad");
-                _logger.LogInformation($"?? Datos simulados - CUIT: {request.entity.tributaryIdentifier}, Nombre: {request.entity.name}");
-                
-                await Task.Delay(500);
-                
-                return new CreateEntityUserResponseDTO 
+                _logger.LogInformation("?? MODO PRUEBA: Simulando creación de usuario");
+                return new CreateUserResponseDTO 
                 { 
                     Success = true, 
-                    Message = "?? SIMULACIÓN: Entidad y usuario creados exitosamente (NO se guardó en PSP real)",
-                    EntityId = 99999,
-                    PersonId = 88888
+                    Message = "?? SIMULACIÓN: Usuario creado exitosamente (modo prueba)",
+                    UserId = 77777,
+                    UserToken = "mock_user_token_98765"
                 };
             }
 
@@ -143,7 +144,8 @@ namespace BusinessCore.Services
                 var tokenResponse = await GetAccessTokenAsync();
                 if (string.IsNullOrEmpty(tokenResponse.access_token))
                 {
-                    return new CreateEntityUserResponseDTO 
+                    _logger.LogError("No se pudo obtener token para crear usuario");
+                    return new CreateUserResponseDTO 
                     { 
                         Success = false, 
                         Error = "No se pudo obtener token de acceso" 
@@ -154,43 +156,201 @@ namespace BusinessCore.Services
                 var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
 
                 _httpClient.DefaultRequestHeaders.Clear();
-                _httpClient.DefaultRequestHeaders.Add("Authorization", $"bearer {tokenResponse.access_token}");
-                
-                // SOLO agregar X-client_id si tenemos ClientId válido
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
-                {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
-                }
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
 
-                _logger.LogWarning("?? EJECUTANDO CONTRA PSP REAL - Esto creará datos reales!");
-                
-                var response = await _httpClient.PostAsync($"{_baseUrl}/multicuenta/api/v1/Entities/Persons/New", content);
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/Account", content);
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation($"PSP Response Content: {responseContent}");
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogInformation($"Entidad creada exitosamente en PSP: {responseContent}");
-                    
-                    return new CreateEntityUserResponseDTO 
-                    { 
-                        Success = true, 
-                        Message = "Entidad y usuario creados exitosamente" 
-                    };
+                    var pspResponse = JsonConvert.DeserializeObject<CreateUserResponseDTO>(responseContent);
+                    _logger.LogInformation($"Usuario creado exitosamente: UserId={pspResponse.UserId}, UserToken={pspResponse.UserToken}");
+                    return pspResponse;
                 }
                 else
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError($"Error creando entidad en PSP: {response.StatusCode} - {errorContent}");
-                    return new CreateEntityUserResponseDTO 
+                    _logger.LogError($"Error creando usuario en PSP: {response.StatusCode} - {responseContent}");
+                    return new CreateUserResponseDTO 
                     { 
                         Success = false, 
-                        Error = $"Error del PSP: {response.StatusCode}" 
+                        Error = $"Error del PSP: {response.StatusCode}",
+                        Message = responseContent
                     };
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Excepción al crear entidad en PSP");
+                _logger.LogError(ex, "Excepción al crear usuario en PSP");
+                return new CreateUserResponseDTO 
+                { 
+                    Success = false, 
+                    Error = ex.Message,
+                    Message = "Error interno del sistema"
+                };
+            }
+        }
+
+        // Agregar este método después de CreateUserAsync
+
+        /// <summary>
+        /// Crea una entidad asociada al usuario autenticado (SelfRegistration)
+        /// </summary>
+        public async Task<SelfRegistrationResponseDTO> SelfRegistrationAsync(SelfRegistrationRequestDTO request, string userToken)
+        {
+            // PASO 1: Manejo del modo de prueba
+            if (_testMode)
+            {
+                _logger.LogInformation("?? MODO PRUEBA: Simulando SelfRegistration");
+                _logger.LogInformation($"?? Entidad simulada - CUIT: {request.tributaryIdentifier}, Nombre: {request.name}");
+                
+                await Task.Delay(400); // Simular latencia de red
+                
+                return new SelfRegistrationResponseDTO 
+                { 
+                    Success = true, 
+                    Message = "?? SIMULACIÓN: Entidad creada exitosamente (modo prueba)",
+                    Identifier = "mock-identifier-12345-abcdef",
+                    EntityId = 66666
+                };
+            }
+
+            try
+            {
+                // PASO 2: Validar que tenemos un token de usuario
+                if (string.IsNullOrEmpty(userToken))
+                {
+                    _logger.LogError("No se proporcionó token de usuario para SelfRegistration");
+                    return new SelfRegistrationResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = "Token de usuario requerido" 
+                    };
+                }
+
+                // PASO 3: Preparar el request JSON
+                var jsonRequest = JsonConvert.SerializeObject(request);
+                var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+
+                // PASO 4: Configurar headers HTTP con el token del USUARIO (no del sistema)
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
+                
+                // Header adicional si tenemos ClientId válido
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                }
+
+                _logger.LogInformation($"Ejecutando SelfRegistration en PSP - CUIT: {request.tributaryIdentifier}");
+
+                // PASO 5: Realizar la llamada HTTP
+                var response = await _httpClient.PostAsync($"{_baseUrl}/multicuenta/api/v1/Accounts/SelfRegistration", content);
+
+                // PASO 6: Procesar la respuesta
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation($"SelfRegistration completado exitosamente en PSP: {responseContent}");
+                    
+                    // TODO: Deserializar la respuesta real para obtener el Identifier
+                    // Por ahora devolvemos una respuesta genérica exitosa
+                    return new SelfRegistrationResponseDTO 
+                    { 
+                        Success = true, 
+                        Message = "Entidad creada exitosamente mediante SelfRegistration",
+                        // Identifier y EntityId se deberían extraer de responseContent
+                    };
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"Error en SelfRegistration del PSP: {response.StatusCode} - {errorContent}");
+                    
+                    return new SelfRegistrationResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = $"Error del PSP: {response.StatusCode}",
+                        Message = errorContent
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Excepción en SelfRegistration - CUIT: {request.tributaryIdentifier}");
+                return new SelfRegistrationResponseDTO 
+                { 
+                    Success = false, 
+                    Error = ex.Message,
+                    Message = "Error interno del sistema"
+                };
+            }
+        }
+
+        public async Task<CreateEntityUserResponseDTO> CreateEntityAndUserAsync(CreateEntityUserRequestDTO request)
+        {
+            try
+            {
+                // Obtener token del sistema primero
+                var tokenResponse = await GetAccessTokenAsync();
+                if (string.IsNullOrEmpty(tokenResponse.access_token))
+                {
+                    return new CreateEntityUserResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = "No se pudo obtener token de acceso" 
+                    };
+                }
+
+                // Preparar el JSON request
+                var jsonRequest = JsonConvert.SerializeObject(request);
+                var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+
+                // Configurar headers HTTP
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"bearer {tokenResponse.access_token}");
+                
+                // Agregar X-client_id si está configurado
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                }
+
+                _logger.LogInformation($"Creando entidad y usuario en PSP REAL - CUIT: {request.entity.tributaryIdentifier}, UserName: {request.person.userName}");
+
+                // Realizar la llamada HTTP al PSP
+                var response = await _httpClient.PostAsync($"{_baseUrl}/multicuenta/api/v1/Entities/Persons/New", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation($"Entidad y usuario creados exitosamente en PSP: {responseContent}");
+            
+                    // TODO: Deserializar la respuesta real para obtener EntityId y PersonId
+                    // Por ahora devolvemos una respuesta exitosa genérica
+                    return new CreateEntityUserResponseDTO 
+                    { 
+                        Success = true, 
+                        Message = "Entidad y usuario creados exitosamente"
+                    };
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"Error creando entidad y usuario en PSP: {response.StatusCode} - {errorContent}");
+            
+                    return new CreateEntityUserResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = $"Error del PSP: {response.StatusCode}",
+                        Message = errorContent
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Excepción al crear entidad y usuario - CUIT: {request.entity?.tributaryIdentifier}");
                 return new CreateEntityUserResponseDTO 
                 { 
                     Success = false, 
@@ -262,6 +422,276 @@ namespace BusinessCore.Services
             }
         }
 
+        // Agregar este método para el nuevo requerimiento de subir archivos
+
+        /// <summary>
+        /// Sube archivos de validación para una entidad (DNI, selfie, etc.)
+        /// </summary>
+        public async Task<UploadFilesResponseDTO> UploadFilesAsync(string identifier, string userToken, Dictionary<string, byte[]> files)
+        {
+            // PASO 1: Manejo del modo de prueba
+            if (_testMode)
+            {
+                _logger.LogInformation("?? MODO PRUEBA: Simulando subida de archivos");
+                _logger.LogInformation($"?? Archivos simulados - Identifier: {identifier}, Cantidad: {files.Count}");
+                
+                await Task.Delay(600); // Simular latencia de upload
+                
+                var uploadedFiles = files.Keys.ToList();
+                
+                return new UploadFilesResponseDTO 
+                { 
+                    Success = true, 
+                    Message = "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)",
+                    UploadedFiles = uploadedFiles
+                };
+            }
+
+            try
+            {
+                // PASO 2: Validar parámetros requeridos
+                if (string.IsNullOrEmpty(identifier))
+                {
+                    _logger.LogError("No se proporcionó Identifier para subir archivos");
+                    return new UploadFilesResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = "Identifier requerido" 
+                    };
+                }
+
+                if (string.IsNullOrEmpty(userToken))
+                {
+                    _logger.LogError("No se proporcionó token de usuario para subir archivos");
+                    return new UploadFilesResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = "Token de usuario requerido" 
+                    };
+                }
+
+                if (files == null || !files.Any())
+                {
+                    _logger.LogError("No se proporcionaron archivos para subir");
+                    return new UploadFilesResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = "Al menos un archivo es requerido" 
+                    };
+                }
+
+                // PASO 3: Preparar MultipartFormDataContent
+                using (var formData = new MultipartFormDataContent())
+                {
+                    // Agregar cada archivo al form-data
+                    foreach (var file in files)
+                    {
+                        var fileContent = new ByteArrayContent(file.Value);
+                        fileContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream");
+                        formData.Add(fileContent, file.Key, $"{file.Key}.jpg"); // Nombre de archivo genérico
+                    }
+
+                    // PASO 4: Configurar headers HTTP con el token del USUARIO
+                    _httpClient.DefaultRequestHeaders.Clear();
+                    _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
+                    
+                    // Header adicional si tenemos ClientId válido
+                    if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                    {
+                        _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                    }
+
+                    _logger.LogInformation($"Subiendo archivos al PSP - Identifier: {identifier}, Archivos: {string.Join(", ", files.Keys)}");
+
+                    // PASO 5: Realizar la llamada HTTP
+                    var response = await _httpClient.PostAsync($"{_baseUrl}/multicuenta/api/v1/Accounts/SelfRegistration/Files?Identifier={identifier}", formData);
+
+                    // PASO 6: Procesar la respuesta
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        _logger.LogInformation($"Archivos subidos exitosamente al PSP - Identifier: {identifier}");
+                        
+                        return new UploadFilesResponseDTO 
+                        { 
+                            Success = true, 
+                            Message = "Archivos subidos exitosamente",
+                            UploadedFiles = files.Keys.ToList()
+                        };
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        _logger.LogError($"Error subiendo archivos al PSP: {response.StatusCode} - {errorContent}");
+                        
+                        return new UploadFilesResponseDTO 
+                        { 
+                            Success = false, 
+                            Error = $"Error del PSP: {response.StatusCode}",
+                            Message = errorContent
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Excepción al subir archivos - Identifier: {identifier}");
+                return new UploadFilesResponseDTO 
+                { 
+                    Success = false, 
+                    Error = ex.Message,
+                    Message = "Error interno del sistema"
+                };
+            }
+        }
+
+        // Agregar estos métodos después de UploadFilesAsync
+
+        /// <summary>
+        /// Obtiene la lista de provincias disponibles
+        /// </summary>
+        public async Task<ProvincesResponseDTO> GetProvincesAsync()
+        {
+            try
+            {
+                // No se requiere autenticación ni headers especiales
+                _httpClient.DefaultRequestHeaders.Clear();
+
+                // Llama al endpoint real del PSP
+                var response = await _httpClient.GetAsync($"{_baseUrl}/multicuenta/api/v1/Province");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation("Provincias obtenidas exitosamente del PSP");
+
+                    // Deserializa la respuesta real del PSP
+                    var apiResponse = JsonConvert.DeserializeObject<ApiProvincesResponse>(responseContent);
+
+                    return new ProvincesResponseDTO
+                    {
+                        Success = apiResponse.success,
+                        Message = apiResponse.message,
+                        Provinces = apiResponse.data
+                    };
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"Error obteniendo provincias del PSP: {response.StatusCode} - {errorContent}");
+
+                    return new ProvincesResponseDTO
+                    {
+                        Success = false,
+                        Error = $"Error del PSP: {response.StatusCode}",
+                        Message = errorContent
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excepción al obtener provincias del PSP");
+                return new ProvincesResponseDTO
+                {
+                    Success = false,
+                    Error = ex.Message,
+                    Message = "Error interno del sistema"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Obtiene la lista de ciudades de una provincia específica
+        /// </summary>
+        public async Task<CitiesResponseDTO> GetCitiesAsync(int provinceId)
+        {
+            if (_testMode)
+            {
+                _logger.LogInformation($"?? MODO PRUEBA: Simulando obtención de ciudades para provincia {provinceId}");
+                
+                await Task.Delay(250); // Simular latencia
+                
+                var mockCities = new List<CityDTO>
+                {
+                    new CityDTO { id = 1, name = "La Plata", provinceId = provinceId, postalCode = "1900" },
+                    new CityDTO { id = 2, name = "Mar del Plata", provinceId = provinceId, postalCode = "7600" },
+                    new CityDTO { id = 3, name = "Córdoba Capital", provinceId = provinceId, postalCode = "5000" },
+                    new CityDTO { id = 17934, name = "Ciudad Ejemplo", provinceId = provinceId, postalCode = "1234" }
+                };
+                
+                return new CitiesResponseDTO 
+                { 
+                    Success = true, 
+                    Message = $"?? SIMULACIÓN: Ciudades obtenidas para provincia {provinceId} (modo prueba)",
+                    Cities = mockCities
+                };
+            }
+
+            try
+            {
+                _httpClient.DefaultRequestHeaders.Clear();
+
+                // Obtener token antes de llamar
+                var tokenResponse = await GetAccessTokenAsync();
+                if (string.IsNullOrEmpty(tokenResponse.access_token))
+                {
+                    return new CitiesResponseDTO
+                    {
+                        Success = false,
+                        Error = "No se pudo obtener token de acceso",
+                        Message = "No autenticado"
+                    };
+                }
+
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
+
+                // Si tu API requiere X-client_id, agrégalo también
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                }
+
+                var response = await _httpClient.GetAsync($"{_baseUrl}/multicuenta/api/v1/City?provinceId={provinceId}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation($"Ciudades obtenidas exitosamente del PSP para provincia {provinceId}");
+
+                    var apiResponse = JsonConvert.DeserializeObject<ApiCitiesResponse>(responseContent);
+
+                    return new CitiesResponseDTO
+                    {
+                        Success = apiResponse.success,
+                        Message = apiResponse.message,
+                        Cities = apiResponse.data
+                    };
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"Error obteniendo ciudades del PSP: {response.StatusCode} - {errorContent}");
+
+                    return new CitiesResponseDTO
+                    {
+                        Success = false,
+                        Error = $"Error del PSP: {response.StatusCode}",
+                        Message = errorContent
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Excepción al obtener ciudades para provincia {provinceId}");
+                return new CitiesResponseDTO 
+                { 
+                    Success = false, 
+                    Error = ex.Message,
+                    Message = "Error interno del sistema"
+                };
+            }
+        }
+
         public bool ValidateConfiguration()
         {
             if (_testMode)
@@ -275,5 +705,19 @@ namespace BusinessCore.Services
                    !string.IsNullOrEmpty(_password);
             // ClientId y ClientSecret ahora son OPCIONALES
         }
+    }
+
+    public class ApiProvincesResponse
+    {
+        public bool success { get; set; }
+        public string message { get; set; }
+        public List<ProvinceDTO> data { get; set; }
+    }
+
+    public class ApiCitiesResponse
+    {
+        public bool success { get; set; }
+        public string message { get; set; }
+        public List<CityDTO> data { get; set; }
     }
 }
