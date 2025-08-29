@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
+﻿using BusinessCore.Services;
+using Commons.Extensions;
+using Commons.Identity.DummyData;
+using Commons.Identity.Services;
 using DAL.Data;
 using DAL.Models;
 using Microsoft.AspNetCore.Builder;
@@ -14,13 +13,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SmartClickCore.Services;
-using Newtonsoft.Json.Serialization;
-using BusinessCore.Services;
-using Commons.Identity.DummyData;
-using Commons.Extensions;
-using Commons.Identity.Services;
 using Microsoft.OpenApi.Models;
+using Newtonsoft.Json.Serialization;
+using SmartClickCore.Services;
+using Swashbuckle.AspNetCore.Swagger;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace SmartClickCore
 {
@@ -66,6 +68,26 @@ namespace SmartClickCore
 
 
             });
+
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Info
+                {
+                    Title = "API de PSP",
+                    Version = "v1",
+                    Description = "Documentación de los endpoints disponibles para la Utilizar PSP."
+                });
+
+                c.DocInclusionPredicate((docName, apiDesc) =>
+                {
+                    if (!apiDesc.TryGetMethodInfo(out var methodInfo)) return false;
+
+                    var controllerNamespace = methodInfo.DeclaringType.Namespace;
+                    return controllerNamespace.Contains("SmartClickCore.API.Controllers.PSP");
+                });
+            });
+
+
             services.AddDbContext<SmartClickContext>(options =>
                 options.UseLazyLoadingProxies()
                         .UseSqlServer(
@@ -153,7 +175,13 @@ namespace SmartClickCore
                 DummyAdmin.Initialize<Usuario>(userService).Wait();
             }
 
-  
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                string swaggerJsonBasePath = string.IsNullOrWhiteSpace(c.RoutePrefix) ? "." : "..";
+                c.SwaggerEndpoint($"{swaggerJsonBasePath}/swagger/v1/swagger.json", "My API");
+            });
+
             //app.UseCors("CorsPolicy");
             app.UseCors("AllowSpecificOrigin");
             app.UseStaticFiles();

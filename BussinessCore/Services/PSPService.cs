@@ -123,8 +123,89 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
         }
 
-        // *** NUEVO MÉTODO: CREAR USUARIO ***
-        // *** MÉTODO CORREGIDO: CREAR USUARIO ***
+        public async Task<TokenResponseDTO> GetAccessTokenUserAsync(string username, string password)
+        {
+            if (_testMode)
+            {
+                _logger.LogInformation("?? MODO PRUEBA: Simulando obtención de token");
+                return new TokenResponseDTO
+                {
+                    access_token = "mock_token_12345",
+                    token_type = "Bearer",
+                    expires_in = 3600,
+                    scope = "api"
+                };
+            }
+
+            try
+            {
+                if (!ValidateConfiguration())
+                {
+                    _logger.LogError("PSP configuration is invalid");
+                    return new TokenResponseDTO();
+                }
+
+                var tokenRequest = new TokenRequestDTO
+                {
+                    username = username,
+                    password = password,
+                    client_secret = _clientSecret,
+                    client_id = _clientId
+                };
+
+                // Convertir a form-encoded - SOLO incluir campos que tenemos
+                var formParams = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("grant_type", tokenRequest.grant_type),
+                    new KeyValuePair<string, string>("username", tokenRequest.username),
+                    new KeyValuePair<string, string>("password", tokenRequest.password)
+                };
+
+                // SOLO agregar ClientId/ClientSecret si están configurados
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    formParams.Add(new KeyValuePair<string, string>("client_id", _clientId));
+                }
+
+                if (!string.IsNullOrEmpty(_clientSecret) && !_clientSecret.Contains("TU_CLIENT_SECRET"))
+                {
+                    formParams.Add(new KeyValuePair<string, string>("client_secret", _clientSecret));
+                }
+
+                var formContent = new FormUrlEncodedContent(formParams);
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                
+                // SOLO agregar header X-client_id si tenemos ClientId válido
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                }
+
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/api/Account/Token", formContent);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    var tokenResponse = JsonConvert.DeserializeObject<TokenResponseDTO>(responseContent);
+                    
+                    _logger.LogInformation("Token obtenido exitosamente del PSP");
+                    return tokenResponse;
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"Error obteniendo token del PSP: {response.StatusCode} - {errorContent}");
+                    return new TokenResponseDTO();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excepción al obtener token del PSP");
+                return new TokenResponseDTO();
+            }
+        }
+
         public async Task<CreateUserResponseDTO> CreateUserAsync(CreateUserRequestDTO request)
         {
             if (_testMode)
@@ -158,7 +239,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/Account", content);
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/api/Account", content);
 
                 var responseContent = await response.Content.ReadAsStringAsync();
                 _logger.LogInformation($"PSP Response Content: {responseContent}");
@@ -191,12 +272,11 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 };
             }
         }
-
-        // Agregar este método después de CreateUserAsync
-
+        
         /// <summary>
         /// Crea una entidad asociada al usuario autenticado (SelfRegistration)
         /// </summary>
+        /// 
         public async Task<SelfRegistrationResponseDTO> SelfRegistrationAsync(SelfRegistrationRequestDTO request, string userToken)
         {
             // PASO 1: Manejo del modo de prueba

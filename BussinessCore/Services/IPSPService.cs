@@ -11,15 +11,21 @@ namespace BusinessCore.Services
         /// </summary>
         Task<TokenResponseDTO> GetAccessTokenAsync();
 
+
+        /// <summary>
+        /// Obtiene un token de acceso del PSP de un Cliente
+        /// </summary>
+        Task<TokenResponseDTO> GetAccessTokenUserAsync(string username, string paswword);
+
         /// <summary>
         /// Crea una nueva entidad y usuario en el PSP
         /// </summary>
-        Task<CreateEntityUserResponseDTO> CreateEntityAndUserAsync(CreateEntityUserRequestDTO request);
+        //Task<CreateEntityUserResponseDTO> CreateEntityAndUserAsync(CreateEntityUserRequestDTO request);
 
         /// <summary>
         /// Registra una entidad completa usando datos simplificados
         /// </summary>
-        Task<RegistrarEntidadResponseDTO> RegistrarEntidadAsync(RegistrarEntidadRequestDTO request);
+        //Task<RegistrarEntidadResponseDTO> RegistrarEntidadAsync(RegistrarEntidadRequestDTO request);
 
         /// <summary>
         /// Valida si las credenciales del PSP están configuradas correctamente

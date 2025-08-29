@@ -202,6 +202,8 @@ namespace DAL.DTOs.PSP
     {
         public int? UserId { get; set; }
         public string UserToken { get; set; }  // Token del usuario creado
+        public string Identifier { get; set; }  // Token del usuario creado
+        public int? EntityId { get; set; }  // Token del usuario creado
     }
 
     // DTO para SelfRegistration con UAT
@@ -309,5 +311,12 @@ namespace DAL.DTOs.PSP
     {
         public int? EntityId { get; set; }
         public int? PersonId { get; set; }
+    }
+
+    public class CreateUserEntidadRequestDTO : PSPBaseResponseDTO
+    {
+        public SelfRegistrationRequestDTO entity { get; set; }
+        public CreateUserRequestDTO user { get; set; }
+        public Dictionary<string, byte[]> files { get; set; } = new Dictionary<string, byte[]>();
     }
 }

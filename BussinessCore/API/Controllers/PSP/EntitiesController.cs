@@ -35,7 +35,7 @@ namespace SmartClickCore.API.Controllers.PSP
         /// Crea un nuevo usuario en el PSP
         /// </summary>
         [HttpPost("CrearUsuario")]
-        public async Task<IActionResult> CrearUsuario([FromBody] CreateUserWithUATRequestDTO request)
+        public async Task<IActionResult> CrearUsuario([FromBody] CreateUserEntidadRequestDTO request)
         {
             try
             {
@@ -53,9 +53,9 @@ namespace SmartClickCore.API.Controllers.PSP
                 }
 
                 // Validar datos requeridos para crear usuario
-                if (string.IsNullOrEmpty(request.userName) || 
-                    string.IsNullOrEmpty(request.email) || 
-                    string.IsNullOrEmpty(request.password))
+                if (string.IsNullOrEmpty(request.user.userName) || 
+                    string.IsNullOrEmpty(request.user.email) || 
+                    string.IsNullOrEmpty(request.user.password))
                 {
                     return BadRequest(new CreateUserWithUATResponseDTO 
                     { 
@@ -69,30 +69,34 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Convertir request con UAT al request del servicio PSP
                 var pspRequest = new CreateUserRequestDTO
                 {
-                    userType = request.userType,
-                    userName = request.userName,
-                    documentType = request.documentType,
-                    documentNumber = request.documentNumber,
-                    firstName = request.firstName,
-                    lastName = request.lastName,
-                    email = request.email,
-                    phoneNumber = request.phoneNumber,
-                    address = request.address,
-                    departmentId = request.departmentId,
-                    cityId = request.cityId,
-                    Active = request.Active,
-                    roles = request.roles,
-                    password = request.password,
-                    passwordConfirm = request.passwordConfirm
+                    userType = request.user.userType,
+                    userName = request.user.userName,
+                    documentType = request.user.documentType,
+                    documentNumber = request.user.documentNumber,
+                    firstName = request.user.firstName,
+                    lastName = request.user.lastName,
+                    email = request.user.email,
+                    phoneNumber = request.user.phoneNumber,
+                    address = request.user.address,
+                    departmentId = request.user.departmentId,
+                    cityId = request.user.cityId,
+                    Active = request.user.Active,
+                    roles = request.user.roles,
+                    password = request.user.password,
+                    passwordConfirm = request.user.passwordConfirm
                 };
 
+
                 // Llamar al servicio PSP
-                var pspResponse = await _pspService.CreateUserAsync(pspRequest);
+                var pspResponse = await _pspService.CreateUserAsync(request.user);
+
 
                 var mensaje = _pspService.IsTestMode() 
                     ? "?? SIMULACIÓN: Usuario creado (modo prueba)"
                     : "Usuario creado exitosamente";
 
+                                      
+                
                 var response = new CreateUserWithUATResponseDTO
                 {
                     Status = pspResponse.Success ? 200 : 500,
@@ -105,7 +109,51 @@ namespace SmartClickCore.API.Controllers.PSP
 
                 if (pspResponse.Success)
                 {
-                    Log.Information($"Usuario creado exitosamente en PSP - UserName: {request.userName}");
+                    Log.Information($"Usuario creado exitosamente en PSP - UserName: {request.user.userName}");
+
+                    var pspResponseToken = await _pspService.GetAccessTokenUserAsync(pspRequest.userName, pspRequest.password);
+                    if (pspResponseToken != null && !string.IsNullOrEmpty(pspResponseToken.access_token))
+                    {
+                        Log.Information($"Token Valido");
+                        var pspResponseSelf = await _pspService.SelfRegistrationAsync(request.entity, pspResponseToken.access_token);
+
+                        if (pspResponseSelf.Success)
+                        {
+                            Log.Information($"SelfRegistration completado exitosamente - CUIT: {request.entity.tributaryIdentifier}");
+                            response.Mensaje += " | " + ( _pspService.IsTestMode() 
+                                ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
+                                : "Entidad creada exitosamente mediante SelfRegistration");
+                            response.Identifier = pspResponseSelf.Identifier;
+                            response.EntityId = pspResponseSelf.EntityId;
+
+                            var pspResponseFiles = await _pspService.UploadFilesAsync(pspResponseSelf.Identifier, pspResponse.UserToken, request.files);
+
+                            if (pspResponseFiles.Success)
+                            {
+                                Log.Information($"Archivos subidos exitosamente - Identifier: {pspResponseSelf.Identifier}, Archivos: {request.files.Count}");
+                                response.Mensaje += " | " + ( _pspService.IsTestMode() 
+                                    ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
+                                    : "Archivos subidos exitosamente");
+                            }
+                            else
+                            {
+                                Log.Warning($"Error al subir archivos: {pspResponseFiles.Error}");
+                                response.Mensaje += " | Error al subir archivos: " + pspResponseFiles.Error;
+                            }
+
+
+
+                        }
+                        else
+                        {
+                            Log.Warning($"Error en SelfRegistration: {pspResponseSelf.Error}");
+                            response.Mensaje += " | Error en SelfRegistration: " + pspResponseSelf.Error;
+                        }
+                    }
+                    else
+                    {
+                        Log.Warning($"Token Invalido");
+                    }
                     return Ok(response);
                 }
                 else
@@ -496,157 +544,158 @@ namespace SmartClickCore.API.Controllers.PSP
         /// <summary>
         /// Crea una entidad y usuario en el PSP en una sola operación (endpoint /Entities/Persons/New)
         /// </summary>
-        [HttpPost("CrearEntidadYUsuario")]
-        public async Task<IActionResult> CrearEntidadYUsuario([FromBody] CreateEntityAndUserWithUATRequestDTO request)
-        {
-            try
-            {
-                // Validar usuario administrador autenticado
-                var usuario = TraeUsuarioUAT(request.UAT);
-                if (usuario == null)
-                {
-                    return BadRequest(new CreateEntityAndUserWithUATResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = request.UAT, 
-                        Mensaje = "Usuario no autenticado",
-                        Success = false
-                    });
-                }
+        //[HttpPost("CrearEntidadYUsuario")]
+        //public async Task<IActionResult> CrearEntidadYUsuario([FromBody] CreateEntityAndUserWithUATRequestDTO request)
+        //{
+        //    try
+        //    {
+        //        // Validar usuario administrador autenticado
+        //        var usuario = TraeUsuarioUAT(request.UAT);
+        //        if (usuario == null)
+        //        {
+        //            return BadRequest(new CreateEntityAndUserWithUATResponseDTO 
+        //            { 
+        //                Status = 401, 
+        //                UAT = request.UAT, 
+        //                Mensaje = "Usuario no autenticado",
+        //                Success = false
+        //            });
+        //        }
 
-                // Validar datos requeridos de la entidad
-                if (string.IsNullOrEmpty(request.entity.tributaryIdentifier) || 
-                    string.IsNullOrEmpty(request.entity.name) || 
-                    string.IsNullOrEmpty(request.entity.email))
-                {
-                    return BadRequest(new CreateEntityAndUserWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = request.UAT, 
-                        Mensaje = "Datos de entidad incompletos: se requiere CUIT, nombre y email",
-                        Success = false
-                    });
-                }
+        //        // Validar datos requeridos de la entidad
+        //        if (string.IsNullOrEmpty(request.entity.tributaryIdentifier) || 
+        //            string.IsNullOrEmpty(request.entity.name) || 
+        //            string.IsNullOrEmpty(request.entity.email))
+        //        {
+        //            return BadRequest(new CreateEntityAndUserWithUATResponseDTO 
+        //            { 
+        //                Status = 400, 
+        //                UAT = request.UAT, 
+        //                Mensaje = "Datos de entidad incompletos: se requiere CUIT, nombre y email",
+        //                Success = false
+        //            });
+        //        }
 
-                // Validar datos requeridos de la persona/usuario
-                if (string.IsNullOrEmpty(request.person.userName) || 
-                    string.IsNullOrEmpty(request.person.email) || 
-                    string.IsNullOrEmpty(request.person.documentNumber))
-                {
-                    return BadRequest(new CreateEntityAndUserWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = request.UAT, 
-                        Mensaje = "Datos de usuario incompletos: se requiere userName, email y documentNumber",
-                        Success = false
-                    });
-                }
+        //        // Validar datos requeridos de la persona/usuario
+        //        if (string.IsNullOrEmpty(request.person.userName) || 
+        //            string.IsNullOrEmpty(request.person.email) || 
+        //            string.IsNullOrEmpty(request.person.documentNumber))
+        //        {
+        //            return BadRequest(new CreateEntityAndUserWithUATResponseDTO 
+        //            { 
+        //                Status = 400, 
+        //                UAT = request.UAT, 
+        //                Mensaje = "Datos de usuario incompletos: se requiere userName, email y documentNumber",
+        //                Success = false
+        //            });
+        //        }
 
-                // Convertir request con UAT al request del servicio PSP
-                var pspRequest = new CreateEntityUserRequestDTO
-                {
-                    entity = request.entity,
-                    person = request.person
-                };
+        //        // Convertir request con UAT al request del servicio PSP
+        //        var pspRequest = new CreateEntityUserRequestDTO
+        //        {
+        //            entity = request.entity,
+        //            person = request.person
+        //        };
 
-                // Llamar al servicio PSP (REAL - sin mock)
-                var pspResponse = await _pspService.CreateEntityAndUserAsync(pspRequest);
+        //        // Llamar al servicio PSP (REAL - sin mock)
+        //        var pspResponse = await _pspService.CreateEntityAndUserAsync(pspRequest);
 
-                var response = new CreateEntityAndUserWithUATResponseDTO
-                {
-                    Status = pspResponse.Success ? 200 : 500,
-                    UAT = request.UAT,
-                    Mensaje = pspResponse.Success ? "Entidad y usuario creados exitosamente" : pspResponse.Error ?? "Error al crear entidad y usuario",
-                    Success = pspResponse.Success,
-                    EntityId = pspResponse.EntityId,
-                    PersonId = pspResponse.PersonId
-                };
+        //        var response = new CreateEntityAndUserWithUATResponseDTO
+        //        {
+        //            Status = pspResponse.Success ? 200 : 500,
+        //            UAT = request.UAT,
+        //            Mensaje = pspResponse.Success ? "Entidad y usuario creados exitosamente" : pspResponse.Error ?? "Error al crear entidad y usuario",
+        //            Success = pspResponse.Success,
+        //            EntityId = pspResponse.EntityId,
+        //            PersonId = pspResponse.PersonId
+        //        };
 
-                if (pspResponse.Success)
-                {
-                    Log.Information($"Entidad y usuario creados exitosamente - CUIT: {request.entity.tributaryIdentifier}, UserName: {request.person.userName}");
-                    return Ok(response);
-                }
-                else
-                {
-                    Log.Warning($"Error al crear entidad y usuario: {pspResponse.Error}");
-                    return BadRequest(response);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error en CrearEntidadYUsuario");
-                return StatusCode(500, new CreateEntityAndUserWithUATResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = request.UAT, 
-                    Mensaje = "Error interno del servidor",
-                    Success = false
-                });
-            }
-        }
+        //        if (pspResponse.Success)
+        //        {
+        //            Log.Information($"Entidad y usuario creados exitosamente - CUIT: {request.entity.tributaryIdentifier}, UserName: {request.person.userName}");
+        //            return Ok(response);
+        //        }
+        //        else
+        //        {
+        //            Log.Warning($"Error al crear entidad y usuario: {pspResponse.Error}");
+        //            return BadRequest(response);
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Log.Error(ex, "Error en CrearEntidadYUsuario");
+        //        return StatusCode(500, new CreateEntityAndUserWithUATResponseDTO 
+        //        { 
+        //            Status = 500, 
+        //            UAT = request.UAT, 
+        //            Mensaje = "Error interno del servidor",
+        //            Success = false
+        //        });
+        //    }
+        //}
 
         /// <summary>
         /// Registra una nueva entidad en el PSP
         /// </summary>
-        [HttpPost("RegistrarEntidad")]
-        public async Task<IActionResult> RegistrarEntidad([FromBody] RegistrarEntidadRequestDTO request)
-        {
-            try
-            {
-                // Validar usuario autenticado usando el método corregido
-                var usuario = TraeUsuarioUAT(request.UAT);
-                if (usuario == null)
-                {
-                    return BadRequest(new RegistrarEntidadResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = request.UAT, 
-                        Mensaje = "Usuario no autenticado",
-                        Success = false
-                    });
-                }
+        /// 
+        //[HttpPost("RegistrarEntidad")]
+        //public async Task<IActionResult> RegistrarEntidad([FromBody] RegistrarEntidadRequestDTO request)
+        //{
+        //    try
+        //    {
+        //        // Validar usuario autenticado usando el método corregido
+        //        var usuario = TraeUsuarioUAT(request.UAT);
+        //        if (usuario == null)
+        //        {
+        //            return BadRequest(new RegistrarEntidadResponseDTO 
+        //            { 
+        //                Status = 401, 
+        //                UAT = request.UAT, 
+        //                Mensaje = "Usuario no autenticado",
+        //                Success = false
+        //            });
+        //        }
 
-                // Validar datos requeridos
-                if (string.IsNullOrEmpty(request.TributaryIdentifier) || 
-                    string.IsNullOrEmpty(request.Name) || 
-                    string.IsNullOrEmpty(request.Email))
-                {
-                    return BadRequest(new RegistrarEntidadResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = request.UAT, 
-                        Mensaje = "Datos incompletos: se requiere CUIT, nombre y email",
-                        Success = false
-                    });
-                }
+        //        // Validar datos requeridos
+        //        if (string.IsNullOrEmpty(request.TributaryIdentifier) || 
+        //            string.IsNullOrEmpty(request.Name) || 
+        //            string.IsNullOrEmpty(request.Email))
+        //        {
+        //            return BadRequest(new RegistrarEntidadResponseDTO 
+        //            { 
+        //                Status = 400, 
+        //                UAT = request.UAT, 
+        //                Mensaje = "Datos incompletos: se requiere CUIT, nombre y email",
+        //                Success = false
+        //            });
+        //        }
 
-                // Llamar al servicio PSP
-                var response = await _pspService.RegistrarEntidadAsync(request);
+        //        // Llamar al servicio PSP
+        //        var response = await _pspService.RegistrarEntidadAsync(request);
 
-                if (response.Success)
-                {
-                    Log.Information($"Entidad registrada exitosamente en PSP para usuario {usuario.UserName}");
-                    return Ok(response);
-                }
-                else
-                {
-                    Log.Warning($"Error al registrar entidad en PSP: {response.Mensaje}");
-                    return BadRequest(response);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error en RegistrarEntidad");
-                return StatusCode(500, new RegistrarEntidadResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = request.UAT, 
-                    Mensaje = "Error interno del servidor",
-                    Success = false
-                });
-            }
-        }
+        //        if (response.Success)
+        //        {
+        //            Log.Information($"Entidad registrada exitosamente en PSP para usuario {usuario.UserName}");
+        //            return Ok(response);
+        //        }
+        //        else
+        //        {
+        //            Log.Warning($"Error al registrar entidad en PSP: {response.Mensaje}");
+        //            return BadRequest(response);
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Log.Error(ex, "Error en RegistrarEntidad");
+        //        return StatusCode(500, new RegistrarEntidadResponseDTO 
+        //        { 
+        //            Status = 500, 
+        //            UAT = request.UAT, 
+        //            Mensaje = "Error interno del servidor",
+        //            Success = false
+        //        });
+        //    }
+        //}
 
         /// <summary>
         /// Valida la configuración del PSP
