@@ -17,7 +17,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyProductAttribute("SmartClickCore")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+230fa5e18c67c9e4e96191574b665b62c82d6479")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SmartClickCore.Views")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 

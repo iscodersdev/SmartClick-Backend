@@ -1,1 +1,62 @@
 ﻿BussinessCore/appsettings.Development.json
+
+# App settings files
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Bb]in/
+[Oo]bj/
+artifacts/
+
+# Rider / VSCode
+.idea/
+.vscode/
+
+# NuGet packages
+*.nupkg
+packages/
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Test / coverage
+coverage/
+*.coverage
+*.coveragexml
+
+# dotnet
+project.lock.json
+generated/
+*.db
+
+# Secrets / local settings
+# Ignora configuraciones de desarrollo (ajusta según tu flujo)
+BussinessCore/appsettings.Development.json
+appsettings.Development.json
+appsettings.Local.json
+
+# Opcional: si no quieres subir ningún appsettings con secretos
+# BussinessCore/appsettings.json
+# appsettings.json
+
+# JetBrains
+.idea/
+
+# Binaries y empaquetado
+*.zip
+*.tar.gz

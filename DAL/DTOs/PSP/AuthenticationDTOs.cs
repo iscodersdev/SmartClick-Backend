@@ -319,4 +319,45 @@ namespace DAL.DTOs.PSP
         public CreateUserRequestDTO user { get; set; }
         public Dictionary<string, byte[]> files { get; set; } = new Dictionary<string, byte[]>();
     }
+
+    // *** DTOs PARA ACCOUNTS/ALL/GET ENDPOINT ***
+
+    /// <summary>
+    /// DTO para la información de cuenta del usuario (mapea respuesta del PSP)
+    /// </summary>
+    public class AccountInfoDTO
+    {
+        public string accountNumber { get; set; }
+        public int accountTypeId { get; set; }
+        public string tributaryIdentifierType { get; set; }
+        public string tributaryIdentifier { get; set; }
+        public string currencyDescription { get; set; }
+        public string currencyName { get; set; }
+        public string currencySymbol { get; set; }
+        public int currencyTypeId { get; set; }
+        public string cvU_CBU { get; set; }
+        public string cvU_CBUAlias { get; set; }
+        public string name { get; set; }
+        public bool deleteAccountSolicitude { get; set; }
+        public int entityId { get; set; }
+    }
+
+    /// <summary>
+    /// DTO para la respuesta del servicio PSP (uso interno del servicio)
+    /// </summary>
+    public class AccountsInfoResponseDTO
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public List<AccountInfoDTO> Accounts { get; set; } = new List<AccountInfoDTO>();
+        public string Error { get; set; }
+    }
+
+    /// <summary>
+    /// DTO para la respuesta del controlador API (incluye UAT y campos de respuesta estándar)
+    /// </summary>
+    public class AccountsInfoWithUATResponseDTO : PSPBaseResponseDTO
+    {
+        public List<AccountInfoDTO> Accounts { get; set; } = new List<AccountInfoDTO>();
+    }
 }

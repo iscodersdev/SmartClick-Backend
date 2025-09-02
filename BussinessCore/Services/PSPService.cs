@@ -772,6 +772,118 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
         }
 
+        /// <summary>
+        /// Obtiene la información de las cuentas del usuario logueado
+        /// </summary>
+        public async Task<AccountsInfoResponseDTO> GetAccountsInfoAsync(string userToken)
+        {
+            try
+            {
+                // Validar que tenemos un token de usuario
+                if (string.IsNullOrEmpty(userToken))
+                {
+                    _logger.LogError("No se proporcionó token de usuario para obtener información de cuentas");
+                    return new AccountsInfoResponseDTO
+                    {
+                        Success = false,
+                        Error = "Token de usuario requerido"
+                    };
+                }
+
+                // Configurar headers HTTP con el token del usuario
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
+                
+                // Header adicional si tenemos ClientId válido
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                }
+
+                var requestUrl = $"{_baseUrl}/multicuenta/api/v1/Accounts/All/Get";
+                _logger.LogInformation($"?? LLAMADA PSP - URL: {requestUrl}");
+                _logger.LogInformation($"?? HEADERS - Authorization: Bearer {userToken.Substring(0, Math.Min(20, userToken.Length))}...");
+                if (!string.IsNullOrEmpty(_clientId))
+                {
+                    _logger.LogInformation($"?? HEADERS - X-client_id: {_clientId}");
+                }
+
+                // Realizar la llamada HTTP al endpoint real del PSP
+                var response = await _httpClient.GetAsync(requestUrl);
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                
+                _logger.LogInformation($"?? PSP RESPONSE - StatusCode: {response.StatusCode}");
+                _logger.LogInformation($"?? PSP RESPONSE - Content: {responseContent}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("? Información de cuentas obtenida exitosamente del PSP");
+
+                    // Primero intentamos deserializar para ver la estructura real
+                    try 
+                    {
+                        // Intentar deserializar como objeto dinámico primero
+                        var dynamicResponse = JsonConvert.DeserializeObject(responseContent);
+                        _logger.LogInformation($"?? RESPUESTA DESERIALIZADA: {JsonConvert.SerializeObject(dynamicResponse, Formatting.Indented)}");
+
+                        // Ahora intentar con nuestra estructura esperada
+                        var apiResponse = JsonConvert.DeserializeObject<ApiAccountsResponse>(responseContent);
+                        _logger.LogInformation($"?? API RESPONSE - Success: {apiResponse?.success}");
+                        _logger.LogInformation($"?? API RESPONSE - Message: {apiResponse?.message}");
+                        _logger.LogInformation($"?? API RESPONSE - Accounts Count: {apiResponse?.accounts?.Count ?? 0}");
+
+                        if (apiResponse?.accounts != null && apiResponse.accounts.Any())
+                        {
+                            foreach (var account in apiResponse.accounts)
+                            {
+                                _logger.LogInformation($"?? CUENTA - AccountNumber: {account.accountNumber}, EntityId: {account.entityId}, Name: {account.name}");
+                            }
+                        }
+
+                        return new AccountsInfoResponseDTO
+                        {
+                            Success = apiResponse?.success ?? false,
+                            Message = "Información de cuentas obtenida exitosamente",
+                            Accounts = apiResponse?.accounts ?? new List<AccountInfoDTO>()
+                        };
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        _logger.LogError(jsonEx, $"? Error deserializando respuesta del PSP: {responseContent}");
+                        
+                        return new AccountsInfoResponseDTO
+                        {
+                            Success = false,
+                            Error = "Error deserializando respuesta del PSP",
+                            Message = $"Respuesta del PSP: {responseContent}"
+                        };
+                    }
+                }
+                else
+                {
+                    _logger.LogError($"? Error obteniendo información de cuentas del PSP: {response.StatusCode} - {responseContent}");
+
+                    return new AccountsInfoResponseDTO
+                    {
+                        Success = false,
+                        Error = $"Error del PSP: {response.StatusCode}",
+                        Message = responseContent
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "? Excepción al obtener información de cuentas del PSP");
+                return new AccountsInfoResponseDTO
+                {
+                    Success = false,
+                    Error = ex.Message,
+                    Message = "Error interno del sistema"
+                };
+            }
+        }
+
         public bool ValidateConfiguration()
         {
             if (_testMode)
@@ -799,5 +911,12 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
         public bool success { get; set; }
         public string message { get; set; }
         public List<CityDTO> data { get; set; }
+    }
+
+    public class ApiAccountsResponse
+    {
+        public bool success { get; set; }
+        public string message { get; set; }
+        public List<AccountInfoDTO> accounts { get; set; }
     }
 }

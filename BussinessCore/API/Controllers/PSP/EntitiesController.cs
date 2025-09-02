@@ -797,5 +797,75 @@ namespace SmartClickCore.API.Controllers.PSP
                 });
             }
         }
+
+        // *** NUEVO ENDPOINT: OBTENER INFORMACIÓN DE CUENTAS ***
+        /// <summary>
+        /// Obtiene la información de las cuentas del usuario logueado
+        /// </summary>
+        [HttpGet("AccountsInfo")]
+        public async Task<IActionResult> GetAccountsInfo([FromQuery] string userToken, [FromQuery] string uat)
+        {
+            try
+            {
+                // Validar usuario administrador autenticado por UAT
+                var usuario = TraeUsuarioUAT(uat);
+                if (usuario == null)
+                {
+                    return BadRequest(new AccountsInfoWithUATResponseDTO 
+                    { 
+                        Status = 401, 
+                        UAT = uat, 
+                        Mensaje = "Usuario no autenticado",
+                        Success = false
+                    });
+                }
+
+                // Validar que tenemos el token del usuario para consultar sus cuentas
+                if (string.IsNullOrEmpty(userToken))
+                {
+                    return BadRequest(new AccountsInfoWithUATResponseDTO 
+                    { 
+                        Status = 400, 
+                        UAT = uat, 
+                        Mensaje = "UserToken requerido para consultar las cuentas",
+                        Success = false
+                    });
+                }
+
+                // Llamar al servicio PSP con el token del usuario
+                var pspResponse = await _pspService.GetAccountsInfoAsync(userToken);
+
+                var response = new AccountsInfoWithUATResponseDTO
+                {
+                    Status = pspResponse.Success ? 200 : 500,
+                    UAT = uat,
+                    Mensaje = pspResponse.Success ? "Información de cuentas obtenida exitosamente" : "Error al obtener información de cuentas",
+                    Success = pspResponse.Success,
+                    Accounts = pspResponse.Accounts
+                };
+
+                if (pspResponse.Success)
+                {
+                    Log.Information($"Información de cuentas obtenida exitosamente - Total cuentas: {pspResponse.Accounts.Count}");
+                    return Ok(response);
+                }
+                else
+                {
+                    Log.Warning($"Error al obtener información de cuentas: {pspResponse.Error}");
+                    return BadRequest(response);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en GetAccountsInfo");
+                return StatusCode(500, new AccountsInfoWithUATResponseDTO 
+                { 
+                    Status = 500, 
+                    UAT = uat, 
+                    Mensaje = "Error interno del servidor",
+                    Success = false
+                });
+            }
+        }
     }
 }

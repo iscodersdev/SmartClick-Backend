@@ -61,5 +61,10 @@ namespace BusinessCore.Services
         /// Obtiene la lista de ciudades de una provincia específica
         /// </summary>
         Task<CitiesResponseDTO> GetCitiesAsync(int provinceId);
+
+        /// <summary>
+        /// Obtiene la información de las cuentas del usuario logueado
+        /// </summary>
+        Task<AccountsInfoResponseDTO> GetAccountsInfoAsync(string userToken);
     }
 }

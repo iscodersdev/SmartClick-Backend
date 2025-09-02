@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "76LkrhAPipA=",
+  "dgSpecHash": "hcCDkZO3Th0=",
   "success": true,
   "projectFilePath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
   "expectedPackageFiles": [
@@ -289,6 +289,10 @@
     "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder\\sqlitepclraw.lib.e_sqlite3.v110_xp\\1.1.11\\sqlitepclraw.lib.e_sqlite3.v110_xp.1.1.11.nupkg.sha512",
     "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder\\sqlitepclraw.provider.e_sqlite3.netstandard11\\1.1.11\\sqlitepclraw.provider.e_sqlite3.netstandard11.1.1.11.nupkg.sha512",
     "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder\\stackexchange.redis.strongname\\1.2.6\\stackexchange.redis.strongname.1.2.6.nupkg.sha512",
+    "C:\\Users\\dullk\\.nuget\\packages\\swashbuckle.aspnetcore\\4.0.1\\swashbuckle.aspnetcore.4.0.1.nupkg.sha512",
+    "C:\\Users\\dullk\\.nuget\\packages\\swashbuckle.aspnetcore.swagger\\4.0.1\\swashbuckle.aspnetcore.swagger.4.0.1.nupkg.sha512",
+    "C:\\Users\\dullk\\.nuget\\packages\\swashbuckle.aspnetcore.swaggergen\\4.0.1\\swashbuckle.aspnetcore.swaggergen.4.0.1.nupkg.sha512",
+    "C:\\Users\\dullk\\.nuget\\packages\\swashbuckle.aspnetcore.swaggerui\\4.0.1\\swashbuckle.aspnetcore.swaggerui.4.0.1.nupkg.sha512",
     "C:\\Users\\dullk\\.nuget\\packages\\system.appcontext\\4.3.0\\system.appcontext.4.3.0.nupkg.sha512",
     "C:\\Users\\dullk\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
     "C:\\Users\\dullk\\.nuget\\packages\\system.codedom\\4.7.0\\system.codedom.4.7.0.nupkg.sha512",
@@ -581,6 +585,18 @@
       "code": "NU1902",
       "level": "Warning",
       "message": "El paquete \"SixLabors.ImageSharp\" 1.0.4 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-qxrv-gp6x-rc23",
+      "projectPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        ".NETCoreApp,Version=v2.2"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "message": "El paquete \"SixLabors.ImageSharp\" 1.0.4 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-rxmq-m78w-7wmc",
       "projectPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
       "warningLevel": 1,
       "filePath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",

@@ -1865,3 +1865,7 @@ C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreap
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.genruntimeconfig.cache
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.sourcelink.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartCli.C9B606DC.Up2Date
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerUI.dll
