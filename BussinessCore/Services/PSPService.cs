@@ -4,13 +4,16 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using DAL.DTOs.PSP;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using DAL.Data;
+using DAL.Models;
 
-// ? CAMBIAR ESTA LÍNEA:
+// ? CAMBIAR ESTA Lï¿½NEA:
 namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "BusinessCore.Services"
 {
     public class PSPService : IPSPService
@@ -24,9 +27,11 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
         private readonly string _username;
         private readonly string _password;
         private readonly bool _testMode;
+        private readonly SmartClickContext _dbContext;
 
-        public PSPService(HttpClient httpClient, IConfiguration configuration, ILogger<PSPService> logger)
+        public PSPService(HttpClient httpClient, IConfiguration configuration, ILogger<PSPService> logger, SmartClickContext context)
         {
+            _dbContext = context;
             _httpClient = httpClient;
             _configuration = configuration;
             _logger = logger;
@@ -44,7 +49,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
         {
             if (_testMode)
             {
-                _logger.LogInformation("?? MODO PRUEBA: Simulando obtención de token");
+                _logger.LogInformation("?? MODO PRUEBA: Simulando obtenciï¿½n de token");
                 return new TokenResponseDTO
                 {
                     access_token = "mock_token_12345",
@@ -78,7 +83,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                     new KeyValuePair<string, string>("password", tokenRequest.password)
                 };
 
-                // SOLO agregar ClientId/ClientSecret si están configurados
+                // SOLO agregar ClientId/ClientSecret si estï¿½n configurados
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
                     formParams.Add(new KeyValuePair<string, string>("client_id", _clientId));
@@ -93,7 +98,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
 
                 _httpClient.DefaultRequestHeaders.Clear();
                 
-                // SOLO agregar header X-client_id si tenemos ClientId válido
+                // SOLO agregar header X-client_id si tenemos ClientId vï¿½lido
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
@@ -118,7 +123,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Excepción al obtener token del PSP");
+                _logger.LogError(ex, "Excepciï¿½n al obtener token del PSP");
                 return new TokenResponseDTO();
             }
         }
@@ -127,7 +132,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
         {
             if (_testMode)
             {
-                _logger.LogInformation("?? MODO PRUEBA: Simulando obtención de token");
+                _logger.LogInformation("?? MODO PRUEBA: Simulando obtenciï¿½n de token");
                 return new TokenResponseDTO
                 {
                     access_token = "mock_token_12345",
@@ -161,7 +166,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                     new KeyValuePair<string, string>("password", tokenRequest.password)
                 };
 
-                // SOLO agregar ClientId/ClientSecret si están configurados
+                // SOLO agregar ClientId/ClientSecret si estï¿½n configurados
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
                     formParams.Add(new KeyValuePair<string, string>("client_id", _clientId));
@@ -176,7 +181,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
 
                 _httpClient.DefaultRequestHeaders.Clear();
                 
-                // SOLO agregar header X-client_id si tenemos ClientId válido
+                // SOLO agregar header X-client_id si tenemos ClientId vï¿½lido
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
@@ -201,7 +206,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Excepción al obtener token del PSP");
+                _logger.LogError(ex, "Excepciï¿½n al obtener token del PSP");
                 return new TokenResponseDTO();
             }
         }
@@ -210,11 +215,11 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
         {
             if (_testMode)
             {
-                _logger.LogInformation("?? MODO PRUEBA: Simulando creación de usuario");
+                _logger.LogInformation("?? MODO PRUEBA: Simulando creaciï¿½n de usuario");
                 return new CreateUserResponseDTO 
                 { 
                     Success = true, 
-                    Message = "?? SIMULACIÓN: Usuario creado exitosamente (modo prueba)",
+                    Message = "?? SIMULACIï¿½N: Usuario creado exitosamente (modo prueba)",
                     UserId = 77777,
                     UserToken = "mock_user_token_98765"
                 };
@@ -263,7 +268,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Excepción al crear usuario en PSP");
+                _logger.LogError(ex, "Excepciï¿½n al crear usuario en PSP");
                 return new CreateUserResponseDTO 
                 { 
                     Success = false, 
@@ -290,7 +295,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 return new SelfRegistrationResponseDTO 
                 { 
                     Success = true, 
-                    Message = "?? SIMULACIÓN: Entidad creada exitosamente (modo prueba)",
+                    Message = "?? SIMULACIï¿½N: Entidad creada exitosamente (modo prueba)",
                     Identifier = "mock-identifier-12345-abcdef",
                     EntityId = 66666
                 };
@@ -301,7 +306,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 // PASO 2: Validar que tenemos un token de usuario
                 if (string.IsNullOrEmpty(userToken))
                 {
-                    _logger.LogError("No se proporcionó token de usuario para SelfRegistration");
+                    _logger.LogError("No se proporcionï¿½ token de usuario para SelfRegistration");
                     return new SelfRegistrationResponseDTO 
                     { 
                         Success = false, 
@@ -317,7 +322,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
                 
-                // Header adicional si tenemos ClientId válido
+                // Header adicional si tenemos ClientId vï¿½lido
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
@@ -335,12 +340,12 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                     _logger.LogInformation($"SelfRegistration completado exitosamente en PSP: {responseContent}");
                     
                     // TODO: Deserializar la respuesta real para obtener el Identifier
-                    // Por ahora devolvemos una respuesta genérica exitosa
+                    // Por ahora devolvemos una respuesta genï¿½rica exitosa
                     return new SelfRegistrationResponseDTO 
                     { 
                         Success = true, 
                         Message = "Entidad creada exitosamente mediante SelfRegistration",
-                        // Identifier y EntityId se deberían extraer de responseContent
+                        // Identifier y EntityId se deberï¿½an extraer de responseContent
                     };
                 }
                 else
@@ -358,7 +363,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Excepción en SelfRegistration - CUIT: {request.tributaryIdentifier}");
+                _logger.LogError(ex, $"Excepciï¿½n en SelfRegistration - CUIT: {request.tributaryIdentifier}");
                 return new SelfRegistrationResponseDTO 
                 { 
                     Success = false, 
@@ -391,7 +396,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"bearer {tokenResponse.access_token}");
                 
-                // Agregar X-client_id si está configurado
+                // Agregar X-client_id si estï¿½ configurado
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
@@ -408,7 +413,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                     _logger.LogInformation($"Entidad y usuario creados exitosamente en PSP: {responseContent}");
             
                     // TODO: Deserializar la respuesta real para obtener EntityId y PersonId
-                    // Por ahora devolvemos una respuesta exitosa genérica
+                    // Por ahora devolvemos una respuesta exitosa genï¿½rica
                     return new CreateEntityUserResponseDTO 
                     { 
                         Success = true, 
@@ -430,7 +435,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Excepción al crear entidad y usuario - CUIT: {request.entity?.tributaryIdentifier}");
+                _logger.LogError(ex, $"Excepciï¿½n al crear entidad y usuario - CUIT: {request.entity?.tributaryIdentifier}");
                 return new CreateEntityUserResponseDTO 
                 { 
                     Success = false, 
@@ -476,7 +481,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 var pspResponse = await CreateEntityAndUserAsync(pspRequest);
 
                 var mensaje = _testMode 
-                    ? "?? SIMULACIÓN: Entidad registrada (modo prueba)"
+                    ? "?? SIMULACIï¿½N: Entidad registrada (modo prueba)"
                     : "Entidad registrada exitosamente";
 
                 return new RegistrarEntidadResponseDTO
@@ -502,10 +507,10 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
         }
 
-        // Agregar este método para el nuevo requerimiento de subir archivos
+        // Agregar este mï¿½todo para el nuevo requerimiento de subir archivos
 
         /// <summary>
-        /// Sube archivos de validación para una entidad (DNI, selfie, etc.)
+        /// Sube archivos de validaciï¿½n para una entidad (DNI, selfie, etc.)
         /// </summary>
         public async Task<UploadFilesResponseDTO> UploadFilesAsync(string identifier, string userToken, Dictionary<string, byte[]> files)
         {
@@ -522,17 +527,17 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 return new UploadFilesResponseDTO 
                 { 
                     Success = true, 
-                    Message = "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)",
+                    Message = "?? SIMULACIï¿½N: Archivos subidos exitosamente (modo prueba)",
                     UploadedFiles = uploadedFiles
                 };
             }
 
             try
             {
-                // PASO 2: Validar parámetros requeridos
+                // PASO 2: Validar parï¿½metros requeridos
                 if (string.IsNullOrEmpty(identifier))
                 {
-                    _logger.LogError("No se proporcionó Identifier para subir archivos");
+                    _logger.LogError("No se proporcionï¿½ Identifier para subir archivos");
                     return new UploadFilesResponseDTO 
                     { 
                         Success = false, 
@@ -542,7 +547,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
 
                 if (string.IsNullOrEmpty(userToken))
                 {
-                    _logger.LogError("No se proporcionó token de usuario para subir archivos");
+                    _logger.LogError("No se proporcionï¿½ token de usuario para subir archivos");
                     return new UploadFilesResponseDTO 
                     { 
                         Success = false, 
@@ -568,14 +573,14 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                     {
                         var fileContent = new ByteArrayContent(file.Value);
                         fileContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream");
-                        formData.Add(fileContent, file.Key, $"{file.Key}.jpg"); // Nombre de archivo genérico
+                        formData.Add(fileContent, file.Key, $"{file.Key}.jpg"); // Nombre de archivo genï¿½rico
                     }
 
                     // PASO 4: Configurar headers HTTP con el token del USUARIO
                     _httpClient.DefaultRequestHeaders.Clear();
                     _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
                     
-                    // Header adicional si tenemos ClientId válido
+                    // Header adicional si tenemos ClientId vï¿½lido
                     if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                     {
                         _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
@@ -615,7 +620,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Excepción al subir archivos - Identifier: {identifier}");
+                _logger.LogError(ex, $"Excepciï¿½n al subir archivos - Identifier: {identifier}");
                 return new UploadFilesResponseDTO 
                 { 
                     Success = false, 
@@ -625,7 +630,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
         }
 
-        // Agregar estos métodos después de UploadFilesAsync
+        // Agregar estos mï¿½todos despuï¿½s de UploadFilesAsync
 
         /// <summary>
         /// Obtiene la lista de provincias disponibles
@@ -634,7 +639,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
         {
             try
             {
-                // No se requiere autenticación ni headers especiales
+                // No se requiere autenticaciï¿½n ni headers especiales
                 _httpClient.DefaultRequestHeaders.Clear();
 
                 // Llama al endpoint real del PSP
@@ -670,7 +675,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Excepción al obtener provincias del PSP");
+                _logger.LogError(ex, "Excepciï¿½n al obtener provincias del PSP");
                 return new ProvincesResponseDTO
                 {
                     Success = false,
@@ -681,13 +686,13 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
         }
 
         /// <summary>
-        /// Obtiene la lista de ciudades de una provincia específica
+        /// Obtiene la lista de ciudades de una provincia especï¿½fica
         /// </summary>
         public async Task<CitiesResponseDTO> GetCitiesAsync(int provinceId)
         {
             if (_testMode)
             {
-                _logger.LogInformation($"?? MODO PRUEBA: Simulando obtención de ciudades para provincia {provinceId}");
+                _logger.LogInformation($"?? MODO PRUEBA: Simulando obtenciï¿½n de ciudades para provincia {provinceId}");
                 
                 await Task.Delay(250); // Simular latencia
                 
@@ -695,14 +700,14 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 {
                     new CityDTO { id = 1, name = "La Plata", provinceId = provinceId, postalCode = "1900" },
                     new CityDTO { id = 2, name = "Mar del Plata", provinceId = provinceId, postalCode = "7600" },
-                    new CityDTO { id = 3, name = "Córdoba Capital", provinceId = provinceId, postalCode = "5000" },
+                    new CityDTO { id = 3, name = "Cï¿½rdoba Capital", provinceId = provinceId, postalCode = "5000" },
                     new CityDTO { id = 17934, name = "Ciudad Ejemplo", provinceId = provinceId, postalCode = "1234" }
                 };
                 
                 return new CitiesResponseDTO 
                 { 
                     Success = true, 
-                    Message = $"?? SIMULACIÓN: Ciudades obtenidas para provincia {provinceId} (modo prueba)",
+                    Message = $"?? SIMULACIï¿½N: Ciudades obtenidas para provincia {provinceId} (modo prueba)",
                     Cities = mockCities
                 };
             }
@@ -725,7 +730,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
 
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
 
-                // Si tu API requiere X-client_id, agrégalo también
+                // Si tu API requiere X-client_id, agrï¿½galo tambiï¿½n
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
@@ -762,7 +767,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Excepción al obtener ciudades para provincia {provinceId}");
+                _logger.LogError(ex, $"Excepciï¿½n al obtener ciudades para provincia {provinceId}");
                 return new CitiesResponseDTO 
                 { 
                     Success = false, 
@@ -773,7 +778,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
         }
 
         /// <summary>
-        /// Obtiene la información de las cuentas del usuario logueado
+        /// Obtiene la informaciï¿½n de las cuentas del usuario logueado
         /// </summary>
         public async Task<AccountsInfoResponseDTO> GetAccountsInfoAsync(string userToken)
         {
@@ -782,7 +787,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 // Validar que tenemos un token de usuario
                 if (string.IsNullOrEmpty(userToken))
                 {
-                    _logger.LogError("No se proporcionó token de usuario para obtener información de cuentas");
+                    _logger.LogError("No se proporcionï¿½ token de usuario para obtener informaciï¿½n de cuentas");
                     return new AccountsInfoResponseDTO
                     {
                         Success = false,
@@ -794,7 +799,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
                 
-                // Header adicional si tenemos ClientId válido
+                // Header adicional si tenemos ClientId vï¿½lido
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
@@ -818,12 +823,12 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogInformation("? Información de cuentas obtenida exitosamente del PSP");
+                    _logger.LogInformation("? Informaciï¿½n de cuentas obtenida exitosamente del PSP");
 
                     // Primero intentamos deserializar para ver la estructura real
                     try 
                     {
-                        // Intentar deserializar como objeto dinámico primero
+                        // Intentar deserializar como objeto dinï¿½mico primero
                         var dynamicResponse = JsonConvert.DeserializeObject(responseContent);
                         _logger.LogInformation($"?? RESPUESTA DESERIALIZADA: {JsonConvert.SerializeObject(dynamicResponse, Formatting.Indented)}");
 
@@ -844,7 +849,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                         return new AccountsInfoResponseDTO
                         {
                             Success = apiResponse?.success ?? false,
-                            Message = "Información de cuentas obtenida exitosamente",
+                            Message = "Informaciï¿½n de cuentas obtenida exitosamente",
                             Accounts = apiResponse?.accounts ?? new List<AccountInfoDTO>()
                         };
                     }
@@ -862,7 +867,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 }
                 else
                 {
-                    _logger.LogError($"? Error obteniendo información de cuentas del PSP: {response.StatusCode} - {responseContent}");
+                    _logger.LogError($"? Error obteniendo informaciï¿½n de cuentas del PSP: {response.StatusCode} - {responseContent}");
 
                     return new AccountsInfoResponseDTO
                     {
@@ -874,7 +879,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "? Excepción al obtener información de cuentas del PSP");
+                _logger.LogError(ex, "? Excepciï¿½n al obtener informaciï¿½n de cuentas del PSP");
                 return new AccountsInfoResponseDTO
                 {
                     Success = false,
@@ -891,7 +896,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                 return true; // En modo test no necesitamos credenciales reales
             }
 
-            // NUEVA VALIDACIÓN: Solo requiere BaseUrl, Username y Password
+            // NUEVA VALIDACIï¿½N: Solo requiere BaseUrl, Username y Password
             return !string.IsNullOrEmpty(_baseUrl) &&
                    !string.IsNullOrEmpty(_username) &&
                    !string.IsNullOrEmpty(_password);

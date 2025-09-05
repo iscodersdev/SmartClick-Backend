@@ -6,8 +6,11 @@ using System.Threading.Tasks;
 using DAL.Data;
 using Serilog;
 using BussinessCore.API.Filters;
+using DAL.DTOs;
+using DAL.DTOs.PSP;
 using DAL.Models;
 using DAL.Mobile;
+using Microsoft.EntityFrameworkCore;
 
 namespace BussinessCore.API.Controllers.Billetera
 {
@@ -21,7 +24,32 @@ namespace BussinessCore.API.Controllers.Billetera
         {
 
         }
+        
+        [HttpPost("TieneBilletera")]
+        public async Task<IActionResult> TieneBilletera([FromBody] PSPBaseResponseDTO consultaDTO)
+        {
+            try
+            {
+                var usuario = TraeUsuarioUAT(consultaDTO.UAT);
+                if (usuario == null)
+                {
+                    return new JsonResult(new RespuestaAPI { Status = 401, UAT = consultaDTO.UAT, Mensaje = "Usuario no encontrado" });
+                }
 
+                var billetera = TraeBilletera(usuario);
+                if (billetera == null)
+                { // Si es null, devuelvo un 204 (consulta exitosa, pero sin contenido)
+                    return new JsonResult(new RespuestaAPI { Status = 204, UAT = consultaDTO.UAT, Mensaje = "El usuario no cuenta con una billetera" });;
+                }
+                // Caso contrario, se envía un 200 (consulta exitosa genérica)
+                return new JsonResult(new RespuestaAPI { Status = 200, UAT = consultaDTO.UAT, Mensaje = "El usuario ya tiene una billetera" });;
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Error en consulta de medios de pago - {e.Message}");
+                return new JsonResult(new RespuestaAPI { Status = 500, UAT = consultaDTO.UAT, Mensaje = "Error en consulta de medios de pago" });
+            }
+        }
 
         [HttpPost("MediosPago")]
         public async Task<IActionResult> MediosPago([FromBody] RespuestaAPI consultaDTO)

@@ -28,12 +28,12 @@ namespace BusinessCore.Services
         //Task<RegistrarEntidadResponseDTO> RegistrarEntidadAsync(RegistrarEntidadRequestDTO request);
 
         /// <summary>
-        /// Valida si las credenciales del PSP están configuradas correctamente
+        /// Valida si las credenciales del PSP estï¿½n configuradas correctamente
         /// </summary>
         bool ValidateConfiguration();
 
         /// <summary>
-        /// Verifica si está en modo de prueba/mock
+        /// Verifica si estï¿½ en modo de prueba/mock
         /// </summary>
         bool IsTestMode();
 
@@ -48,7 +48,7 @@ namespace BusinessCore.Services
         Task<SelfRegistrationResponseDTO> SelfRegistrationAsync(SelfRegistrationRequestDTO request, string userToken);
 
         /// <summary>
-        /// Sube archivos de validación para una entidad (DNI, selfie, etc.)
+        /// Sube archivos de validaciï¿½n para una entidad (DNI, selfie, etc.)
         /// </summary>
         Task<UploadFilesResponseDTO> UploadFilesAsync(string identifier, string userToken, Dictionary<string, byte[]> files);
 
@@ -58,12 +58,12 @@ namespace BusinessCore.Services
         Task<ProvincesResponseDTO> GetProvincesAsync();
 
         /// <summary>
-        /// Obtiene la lista de ciudades de una provincia específica
+        /// Obtiene la lista de ciudades de una provincia especï¿½fica
         /// </summary>
         Task<CitiesResponseDTO> GetCitiesAsync(int provinceId);
 
         /// <summary>
-        /// Obtiene la información de las cuentas del usuario logueado
+        /// Obtiene la informaciï¿½n de las cuentas del usuario logueado
         /// </summary>
         Task<AccountsInfoResponseDTO> GetAccountsInfoAsync(string userToken);
     }

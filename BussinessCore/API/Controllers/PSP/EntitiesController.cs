@@ -24,7 +24,7 @@ namespace SmartClickCore.API.Controllers.PSP
             _pspService = pspService;
         }
 
-        // Método corregido para buscar usuario por UAT
+        // Mï¿½todo corregido para buscar usuario por UAT
         private DAL.Models.Usuario TraeUsuarioUAT(string uat)
         {
             return _context.UAT.Where(u => u.Token == uat).Select(u => u.Cliente.Usuario).FirstOrDefault();
@@ -92,7 +92,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? "?? SIMULACIÓN: Usuario creado (modo prueba)"
+                    ? "?? SIMULACIï¿½N: Usuario creado (modo prueba)"
                     : "Usuario creado exitosamente";
 
                                       
@@ -121,7 +121,7 @@ namespace SmartClickCore.API.Controllers.PSP
                         {
                             Log.Information($"SelfRegistration completado exitosamente - CUIT: {request.entity.tributaryIdentifier}");
                             response.Mensaje += " | " + ( _pspService.IsTestMode() 
-                                ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
+                                ? "?? SIMULACIï¿½N: Entidad creada mediante SelfRegistration (modo prueba)"
                                 : "Entidad creada exitosamente mediante SelfRegistration");
                             response.Identifier = pspResponseSelf.Identifier;
                             response.EntityId = pspResponseSelf.EntityId;
@@ -132,7 +132,7 @@ namespace SmartClickCore.API.Controllers.PSP
                             {
                                 Log.Information($"Archivos subidos exitosamente - Identifier: {pspResponseSelf.Identifier}, Archivos: {request.files.Count}");
                                 response.Mensaje += " | " + ( _pspService.IsTestMode() 
-                                    ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
+                                    ? "?? SIMULACIï¿½N: Archivos subidos exitosamente (modo prueba)"
                                     : "Archivos subidos exitosamente");
                             }
                             else
@@ -259,7 +259,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.SelfRegistrationAsync(pspRequest, request.UserToken);
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
+                    ? "?? SIMULACIï¿½N: Entidad creada mediante SelfRegistration (modo prueba)"
                     : "Entidad creada exitosamente mediante SelfRegistration";
 
                 var response = new SelfRegistrationWithUATResponseDTO
@@ -298,7 +298,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
         // *** NUEVO ENDPOINT: UPLOAD FILES ***
         /// <summary>
-        /// Sube archivos de validación (DNI, selfie, inscripción AFIP, etc.)
+        /// Sube archivos de validaciï¿½n (DNI, selfie, inscripciï¿½n AFIP, etc.)
         /// </summary>
         [HttpPost("UploadFiles")]
         public async Task<IActionResult> UploadFiles([FromQuery] string identifier, [FromQuery] string userToken, [FromQuery] string uat)
@@ -318,7 +318,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
-                // Validar parámetros requeridos
+                // Validar parï¿½metros requeridos
                 if (string.IsNullOrEmpty(identifier))
                 {
                     return BadRequest(new UploadFilesWithUATResponseDTO 
@@ -368,7 +368,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.UploadFilesAsync(identifier, userToken, files);
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
+                    ? "?? SIMULACIï¿½N: Archivos subidos exitosamente (modo prueba)"
                     : "Archivos subidos exitosamente";
 
                 var response = new UploadFilesWithUATResponseDTO
@@ -430,7 +430,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.GetProvincesAsync();
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? "?? SIMULACIÓN: Provincias obtenidas (modo prueba)"
+                    ? "?? SIMULACIï¿½N: Provincias obtenidas (modo prueba)"
                     : "Provincias obtenidas exitosamente";
 
                 var response = new ProvincesWithUATResponseDTO
@@ -468,7 +468,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
         // *** NUEVO ENDPOINT: OBTENER CIUDADES ***
         /// <summary>
-        /// Obtiene la lista de ciudades de una provincia específica
+        /// Obtiene la lista de ciudades de una provincia especï¿½fica
         /// </summary>
         [HttpGet("Cities")]
         public async Task<IActionResult> GetCities([FromQuery] int provinceId, [FromQuery] string uat)
@@ -488,7 +488,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
-                // Validar parámetro
+                // Validar parï¿½metro
                 if (provinceId <= 0)
                 {
                     return BadRequest(new CitiesWithUATResponseDTO 
@@ -504,7 +504,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.GetCitiesAsync(provinceId);
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? $"?? SIMULACIÓN: Ciudades obtenidas para provincia {provinceId} (modo prueba)"
+                    ? $"?? SIMULACIï¿½N: Ciudades obtenidas para provincia {provinceId} (modo prueba)"
                     : $"Ciudades obtenidas exitosamente para provincia {provinceId}";
 
                 var response = new CitiesWithUATResponseDTO
@@ -540,9 +540,9 @@ namespace SmartClickCore.API.Controllers.PSP
             }
         }
 
-        // *** NUEVO ENDPOINT: CREAR ENTIDAD Y USUARIO EN UNA SOLA OPERACIÓN ***
+        // *** NUEVO ENDPOINT: CREAR ENTIDAD Y USUARIO EN UNA SOLA OPERACIï¿½N ***
         /// <summary>
-        /// Crea una entidad y usuario en el PSP en una sola operación (endpoint /Entities/Persons/New)
+        /// Crea una entidad y usuario en el PSP en una sola operaciï¿½n (endpoint /Entities/Persons/New)
         /// </summary>
         //[HttpPost("CrearEntidadYUsuario")]
         //public async Task<IActionResult> CrearEntidadYUsuario([FromBody] CreateEntityAndUserWithUATRequestDTO request)
@@ -643,7 +643,7 @@ namespace SmartClickCore.API.Controllers.PSP
         //{
         //    try
         //    {
-        //        // Validar usuario autenticado usando el método corregido
+        //        // Validar usuario autenticado usando el mï¿½todo corregido
         //        var usuario = TraeUsuarioUAT(request.UAT);
         //        if (usuario == null)
         //        {
@@ -698,7 +698,7 @@ namespace SmartClickCore.API.Controllers.PSP
         //}
 
         /// <summary>
-        /// Valida la configuración del PSP
+        /// Valida la configuraciï¿½n del PSP
         /// </summary>
         [HttpPost("ValidarConfiguracion")]
         public IActionResult ValidarConfiguracion([FromBody] PSPBaseResponseDTO request)
@@ -723,7 +723,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 { 
                     Status = 200, 
                     UAT = request.UAT, 
-                    Mensaje = isValid ? "Configuración PSP válida" : "Configuración PSP inválida",
+                    Mensaje = isValid ? "Configuraciï¿½n PSP vï¿½lida" : "Configuraciï¿½n PSP invï¿½lida",
                     Success = isValid
                 });
             }
@@ -798,9 +798,9 @@ namespace SmartClickCore.API.Controllers.PSP
             }
         }
 
-        // *** NUEVO ENDPOINT: OBTENER INFORMACIÓN DE CUENTAS ***
+        // *** NUEVO ENDPOINT: OBTENER INFORMACIï¿½N DE CUENTAS ***
         /// <summary>
-        /// Obtiene la información de las cuentas del usuario logueado
+        /// Obtiene la informaciï¿½n de las cuentas del usuario logueado
         /// </summary>
         [HttpGet("AccountsInfo")]
         public async Task<IActionResult> GetAccountsInfo([FromQuery] string userToken, [FromQuery] string uat)
@@ -839,19 +839,19 @@ namespace SmartClickCore.API.Controllers.PSP
                 {
                     Status = pspResponse.Success ? 200 : 500,
                     UAT = uat,
-                    Mensaje = pspResponse.Success ? "Información de cuentas obtenida exitosamente" : "Error al obtener información de cuentas",
+                    Mensaje = pspResponse.Success ? "Informaciï¿½n de cuentas obtenida exitosamente" : "Error al obtener informaciï¿½n de cuentas",
                     Success = pspResponse.Success,
                     Accounts = pspResponse.Accounts
                 };
 
                 if (pspResponse.Success)
                 {
-                    Log.Information($"Información de cuentas obtenida exitosamente - Total cuentas: {pspResponse.Accounts.Count}");
+                    Log.Information($"Informaciï¿½n de cuentas obtenida exitosamente - Total cuentas: {pspResponse.Accounts.Count}");
                     return Ok(response);
                 }
                 else
                 {
-                    Log.Warning($"Error al obtener información de cuentas: {pspResponse.Error}");
+                    Log.Warning($"Error al obtener informaciï¿½n de cuentas: {pspResponse.Error}");
                     return BadRequest(response);
                 }
             }

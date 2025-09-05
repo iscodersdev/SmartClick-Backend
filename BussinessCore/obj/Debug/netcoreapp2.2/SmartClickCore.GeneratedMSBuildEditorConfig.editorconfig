@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = SmartClickCore
-build_property.ProjectDir = C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\
+build_property.ProjectDir = /home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/BussinessCore/
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false
