@@ -831,11 +831,11 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                         var apiResponse = JsonConvert.DeserializeObject<ApiAccountsResponse>(responseContent);
                         _logger.LogInformation($"?? API RESPONSE - Success: {apiResponse?.success}");
                         _logger.LogInformation($"?? API RESPONSE - Message: {apiResponse?.message}");
-                        _logger.LogInformation($"?? API RESPONSE - Accounts Count: {apiResponse?.accounts?.Count ?? 0}");
+                        _logger.LogInformation($"?? API RESPONSE - Accounts Count: {apiResponse?.data?.Count ?? 0}"); // ?? FIX
 
-                        if (apiResponse?.accounts != null && apiResponse.accounts.Any())
+                        if (apiResponse?.data != null && apiResponse.data.Any()) // ?? FIX
                         {
-                            foreach (var account in apiResponse.accounts)
+                            foreach (var account in apiResponse.data) // ?? FIX
                             {
                                 _logger.LogInformation($"?? CUENTA - AccountNumber: {account.accountNumber}, EntityId: {account.entityId}, Name: {account.name}");
                             }
@@ -845,7 +845,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                         {
                             Success = apiResponse?.success ?? false,
                             Message = "Información de cuentas obtenida exitosamente",
-                            Accounts = apiResponse?.accounts ?? new List<AccountInfoDTO>()
+                            Accounts = apiResponse?.data ?? new List<AccountInfoDTO>() // ?? FIX
                         };
                     }
                     catch (JsonException jsonEx)
@@ -917,6 +917,7 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
     {
         public bool success { get; set; }
         public string message { get; set; }
-        public List<AccountInfoDTO> accounts { get; set; }
+        public List<AccountInfoDTO> data { get; set; }    // ?? FIX: Cambiar "accounts" por "data"
+        public string code { get; set; }                  // ?? FIX: Agregar "code"
     }
 }
