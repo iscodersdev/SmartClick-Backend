@@ -66,5 +66,15 @@ namespace BusinessCore.Services
         /// Obtiene la información de las cuentas del usuario logueado
         /// </summary>
         Task<AccountsInfoResponseDTO> GetAccountsInfoAsync(string userToken);
+
+        /// <summary>
+        /// Valida una cuenta externa (alias/CVU/CBU) y devuelve datos del titular (tributaryIdentifier)
+        /// </summary>
+        Task<ExternalAccountLookupResponseDTO> ValidateExternalAccountAsync(string textSearch);
+
+        /// <summary>
+        /// Crea una transacción (transferencia) en el PSP. El userToken debe ser el token del usuario que autoriza la transferencia.
+        /// </summary>
+        Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken);
     }
 }

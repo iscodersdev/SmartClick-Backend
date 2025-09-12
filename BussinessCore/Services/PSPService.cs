@@ -10,8 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 
-// ? CAMBIAR ESTA LÍNEA:
-namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "BusinessCore.Services"
+namespace BusinessCore.Services
 {
     public class PSPService : IPSPService
     {
@@ -896,6 +895,204 @@ namespace BusinessCore.Services  // ? Cambiar de "SmartClickCore.Services" a "Bu
                    !string.IsNullOrEmpty(_username) &&
                    !string.IsNullOrEmpty(_password);
             // ClientId y ClientSecret ahora son OPCIONALES
+        }
+        
+        public async Task<ExternalAccountLookupResponseDTO> ValidateExternalAccountAsync(string textSearch)
+        {
+            // PASO 1: Modo de prueba
+            if (_testMode)
+            {
+                _logger.LogInformation("?? MODO PRUEBA: Simulando validación de cuenta externa");
+                return new ExternalAccountLookupResponseDTO
+                {
+                    success = true,
+                    message = "Simulated lookup",
+                    data = new ExternalAccountData
+                    {
+                        externalAccountId = 999,
+                        accountNumber = textSearch,
+                        displayName = "CUENTA_MOCK",
+                        accountTypeId = 3,
+                        accountTypeDescription = "Cuenta Virtual Uniforme",
+                        currencyTypeId = 1,
+                        currencyTypeDescription = "Pesos Argentinos",
+                        currencyTypeName = "Pesos",
+                        label = "",
+                        tributaryIdentifier = "30714093661",
+                        tributaryIdentifierType = "CUIT",
+                        pspBankDescription = "Banco Mock",
+                        virtualAccount = true
+                    },
+                    code = ""
+                };
+            }
+
+            try
+            {
+                // Obtener token de sistema
+                var tokenResponse = await GetAccessTokenAsync();
+                if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.access_token))
+                {
+                    _logger.LogError("No se pudo obtener token del PSP para validar cuenta externa");
+                    return new ExternalAccountLookupResponseDTO { success = false, message = "No se pudo obtener token" };
+                }
+
+                var payload = JsonConvert.SerializeObject(new { textSearch = textSearch });
+                var content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
+
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                }
+
+                var url = $"{_baseUrl}/a/multicuenta/api/v1/Person/ContactNotebook/Get";
+                _logger.LogInformation($"Llamando PSP ValidateExternalAccount - URL: {url} - textSearch: {textSearch}");
+
+                var response = await _httpClient.PostAsync(url, content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation($"PSP ValidateExternalAccount - StatusCode: {response.StatusCode}");
+                _logger.LogInformation($"PSP ValidateExternalAccount - Content: {responseContent}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var apiResponse = JsonConvert.DeserializeObject<ExternalAccountLookupResponseDTO>(responseContent);
+                    return apiResponse ?? new ExternalAccountLookupResponseDTO { success = false, message = "Respuesta vacía del PSP" };
+                }
+                else
+                {
+                    _logger.LogError($"Error validando cuenta externa en PSP: {response.StatusCode} - {responseContent}");
+                    return new ExternalAccountLookupResponseDTO { success = false, message = responseContent };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Excepción al validar cuenta externa: {textSearch}");
+                return new ExternalAccountLookupResponseDTO { success = false, message = ex.Message };
+            }
+        }
+
+        public async Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken)
+        {
+            if (_testMode)
+            {
+                _logger.LogInformation("?? MODO PRUEBA: Simulando CreateTransaction");
+                return new TransactionResultDTO
+                {
+                    Success = true,
+                    TransactionId = 12345,
+                    Message = "?? SIMULACIÓN: Transacción creada (modo prueba)",
+                    RawResponse = "{ \"data\": { \"transactionId\": 12345, \"messageResultTransfer\": \"Transacción pendiente de validación\" } }"
+                };
+            }
+
+            try
+            {
+                if (request == null)
+                {
+                    return new TransactionResultDTO { Success = false, Error = "Request null" };
+                }
+
+                // Si es externa, validar que el titular coincida con los CUITs del usuario
+                if (request.isExternal)
+                {
+                    if (string.IsNullOrEmpty(userToken))
+                    {
+                        return new TransactionResultDTO { Success = false, Error = "UserToken requerido para transacciones externas" };
+                    }
+
+                    // Obtener CUITs del usuario
+                    var accountsInfo = await GetAccountsInfoAsync(userToken);
+                    if (!accountsInfo.Success || accountsInfo.Accounts == null || !accountsInfo.Accounts.Any())
+                    {
+                        return new TransactionResultDTO { Success = false, Error = "No se pudo obtener información de cuentas del usuario para validar CUIT" };
+                    }
+
+                    var userCuids = accountsInfo.Accounts
+                        .Where(a => !string.IsNullOrEmpty(a.tributaryIdentifier))
+                        .Select(a => NormalizeTributary(a.tributaryIdentifier))
+                        .Distinct()
+                        .ToList();
+
+                    // Validar cuenta externa
+                    var lookup = await ValidateExternalAccountAsync(request.destinationAccount.accountNumber);
+                    if (lookup == null || !lookup.success || lookup.data == null)
+                    {
+                        return new TransactionResultDTO { Success = false, Error = "Cuenta externa no encontrada o error en validación" };
+                    }
+
+                    var externalTrib = NormalizeTributary(lookup.data.tributaryIdentifier);
+                    if (!userCuids.Contains(externalTrib))
+                    {
+                        return new TransactionResultDTO { Success = false, Error = "La cuenta externa no pertenece al mismo CUIT/CUIL que el usuario autenticado" };
+                    }
+                }
+
+                // Construir payload y llamar PSP
+                var jsonRequest = JsonConvert.SerializeObject(request);
+                var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                }
+
+                var url = $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add";
+                _logger.LogInformation($"Llamando PSP CreateTransaction - URL: {url}");
+
+                var response = await _httpClient.PostAsync(url, content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation($"PSP CreateTransaction - StatusCode: {response.StatusCode}");
+                _logger.LogInformation($"PSP CreateTransaction - Content: {responseContent}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Intentar deserializar respuesta para extraer transactionId
+                    try
+                    {
+                        var dynamicResp = JsonConvert.DeserializeObject<dynamic>(responseContent);
+                        int? transactionId = null;
+                        try
+                        {
+                            transactionId = dynamicResp.data.transactionId;
+                        }
+                        catch { }
+
+                        return new TransactionResultDTO
+                        {
+                            Success = true,
+                            TransactionId = transactionId,
+                            Message = dynamicResp?.data?.messageResultTransfer ?? "Transacción enviada",
+                            RawResponse = responseContent
+                        };
+                    }
+                    catch (JsonException)
+                    {
+                        return new TransactionResultDTO { Success = true, Message = "Transacción creada (respuesta no JSON)", RawResponse = responseContent };
+                    }
+                }
+                else
+                {
+                    return new TransactionResultDTO { Success = false, Error = $"Error del PSP: {response.StatusCode}", Message = responseContent, RawResponse = responseContent };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excepción en CreateTransactionAsync");
+                return new TransactionResultDTO { Success = false, Error = ex.Message };
+            }
+        }
+
+        private string NormalizeTributary(string t)
+        {
+            if (string.IsNullOrEmpty(t)) return t;
+            return new string(t.Where(char.IsDigit).ToArray());
         }
     }
 

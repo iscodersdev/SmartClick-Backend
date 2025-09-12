@@ -867,5 +867,142 @@ namespace SmartClickCore.API.Controllers.PSP
                 });
             }
         }
+
+        /// <summary>
+        /// Valida una cuenta externa (alias/CVU/CBU) usando PSP
+        /// </summary>
+        [HttpPost("ValidateExternalAccount")]
+        public async Task<IActionResult> ValidateExternalAccount([FromBody] ValidateExternalAccountRequestDTO request)
+        {
+            try
+            {
+                var usuario = TraeUsuarioUAT(request.UAT);
+                if (usuario == null)
+                {
+                    return BadRequest(new ExternalAccountWithUATResponseDTO
+                    {
+                        Status = 401,
+                        UAT = request.UAT,
+                        Mensaje = "Usuario no autenticado",
+                        Success = false
+                    });
+                }
+
+                if (string.IsNullOrEmpty(request.TextSearch))
+                {
+                    return BadRequest(new ExternalAccountWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = request.UAT,
+                        Mensaje = "TextSearch requerido",
+                        Success = false
+                    });
+                }
+
+                var lookup = await _pspService.ValidateExternalAccountAsync(request.TextSearch);
+
+                if (lookup != null && lookup.success)
+                {
+                    return Ok(new ExternalAccountWithUATResponseDTO
+                    {
+                        Status = 200,
+                        UAT = request.UAT,
+                        Mensaje = "Cuenta externa validada",
+                        Success = true,
+                        Data = lookup.data
+                    });
+                }
+                else
+                {
+                    return BadRequest(new ExternalAccountWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = request.UAT,
+                        Mensaje = lookup?.message ?? "Error al validar cuenta externa",
+                        Success = false
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en ValidateExternalAccount");
+                return StatusCode(500, new ExternalAccountWithUATResponseDTO
+                {
+                    Status = 500,
+                    UAT = request.UAT,
+                    Mensaje = "Error interno del servidor",
+                    Success = false
+                });
+            }
+        }
+
+        // *** NUEVO ENDPOINT: CREAR TRANSACCIÓN ***
+        /// <summary>
+        /// Crea una transacción en el PSP (puede ser externa). Usa UAT para validar usuario administrador.
+        /// </summary>
+        [HttpPost("CreateTransaction")]
+        public async Task<IActionResult> CreateTransaction([FromBody] TransactionWithUATRequestDTO request)
+        {
+            try
+            {
+                var usuario = TraeUsuarioUAT(request.UAT);
+                if (usuario == null)
+                {
+                    return BadRequest(new TransactionWithUATResponseDTO
+                    {
+                        Status = 401,
+                        UAT = request.UAT,
+                        Mensaje = "Usuario no autenticado",
+                        Success = false
+                    });
+                }
+
+                if (request.Transaction == null || string.IsNullOrEmpty(request.UserToken))
+                {
+                    return BadRequest(new TransactionWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = request.UAT,
+                        Mensaje = "Transaction y UserToken son requeridos",
+                        Success = false
+                    });
+                }
+
+                // Llamar al servicio PSP
+                var result = await _pspService.CreateTransactionAsync(request.Transaction, request.UserToken);
+
+                var response = new TransactionWithUATResponseDTO
+                {
+                    Status = result.Success ? 200 : 400,
+                    UAT = request.UAT,
+                    Mensaje = result.Success ? "Transacción iniciada" : (result.Error ?? "Error al crear transacción"),
+                    Success = result.Success,
+                    TransactionId = result.TransactionId,
+                    RawResponse = result.RawResponse
+                };
+
+                if (result.Success)
+                {
+                    Log.Information($"Transacción creada en PSP - TransactionId: {result.TransactionId}");
+                    return Ok(response);
+                }
+                else
+                {
+                    Log.Warning($"Error al crear transacción en PSP: {result.Error}");
+                    return BadRequest(response);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en CreateTransaction");
+                return StatusCode(500, new TransactionWithUATResponseDTO
+                {
+                    Status = 500,
+                    UAT = request?.UAT,
+                    Mensaje = "Error interno del servidor",
+                    Success = false
+                });
+            }
+        }
     }
 }
