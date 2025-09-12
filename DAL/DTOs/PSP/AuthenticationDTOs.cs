@@ -393,6 +393,7 @@ namespace DAL.DTOs.PSP
     public class ValidateExternalAccountRequestDTO : PSPBaseResponseDTO
     {
         public string TextSearch { get; set; }
+        public string UserToken { get; set; } // optional: token del usuario PSP para hacer la validación en contexto del usuario
     }
 
     /// <summary>

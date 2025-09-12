@@ -8,6 +8,8 @@ using Serilog;
 using System.Linq;
 using System.IO;
 using System.Collections.Generic;
+using DAL.Models.Core; // for MovimientoBilletera, OrigenMovimiento, TipoOrigenMovimiento
+using Commons.Extensions; // for GetDisplayName extension
 
 namespace SmartClickCore.API.Controllers.PSP
 {
@@ -643,7 +645,7 @@ namespace SmartClickCore.API.Controllers.PSP
         //{
         //    try
         //    {
-        //        // Validar usuario autenticado usando el método corregido
+        //        // Validar usuario autenticado usando el método corrigido
         //        var usuario = TraeUsuarioUAT(request.UAT);
         //        if (usuario == null)
         //        {
@@ -899,7 +901,8 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
-                var lookup = await _pspService.ValidateExternalAccountAsync(request.TextSearch);
+                // Use UserToken if provided, otherwise fallback to system token inside service
+                var lookup = await _pspService.ValidateExternalAccountAsync(request.TextSearch, request.UserToken);
 
                 if (lookup != null && lookup.success)
                 {
@@ -968,8 +971,243 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
-                // Llamar al servicio PSP
-                var result = await _pspService.CreateTransactionAsync(request.Transaction, request.UserToken);
+                // 1) DETECCIÓN: si destinationAccount.accountNumber corresponde a un CVU local, hacer transferencia interna y persistir movimientos
+                var destAccountNumber = request.Transaction.destinationAccount?.accountNumber;
+                if (!string.IsNullOrEmpty(destAccountNumber))
+                {
+                    var billeteraDestino = _context.Billeteras.Where(b => b.CVU == destAccountNumber).FirstOrDefault();
+                    if (billeteraDestino != null)
+                    {
+                        // Obtener cliente asociado al UAT y validar
+                        var clienteOrigen = _context.UAT.Where(u => u.Token == request.UAT).Select(u => u.Cliente).FirstOrDefault();
+                        if (clienteOrigen == null)
+                        {
+                            return BadRequest(new TransactionWithUATResponseDTO
+                            {
+                                Status = 400,
+                                UAT = request.UAT,
+                                Mensaje = "No se encontró cliente asociado al UAT",
+                                Success = false
+                            });
+                        }
+
+                        var billeteraOrigen = _context.Billeteras.Where(b => b.Cliente.Id == clienteOrigen.Id).FirstOrDefault();
+
+                        if (billeteraOrigen == null)
+                        {
+                            return BadRequest(new TransactionWithUATResponseDTO
+                            {
+                                Status = 400,
+                                UAT = request.UAT,
+                                Mensaje = "No se encontró billetera de origen",
+                                Success = false
+                            });
+                        }
+
+                        decimal monto;
+                        try
+                        {
+                            monto = Convert.ToDecimal(request.Transaction.balance);
+                        }
+                        catch
+                        {
+                            return BadRequest(new TransactionWithUATResponseDTO
+                            {
+                                Status = 400,
+                                UAT = request.UAT,
+                                Mensaje = "Monto inválido",
+                                Success = false
+                            });
+                        }
+
+                        if (!billeteraOrigen.ChequeaDebito(monto))
+                        {
+                            return BadRequest(new TransactionWithUATResponseDTO
+                            {
+                                Status = 400,
+                                UAT = request.UAT,
+                                Mensaje = "El monto supera el saldo",
+                                Success = false
+                            });
+                        }
+
+                        // Crear movimientos y persistir (misma lógica que EnviosController)
+                        var movimientoDestino = new MovimientoBilletera
+                        {
+                            CBU = billeteraOrigen.CVU,
+                            Fecha = DateTime.Now,
+                            Monto = monto,
+                            OrigenAsociado = new OrigenMovimiento
+                            {
+                                TipoOrigen = TipoOrigenMovimiento.Billetera,
+                                IdAsociado = billeteraOrigen.Id,
+                                Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
+                            },
+                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDinero)
+                        };
+
+                        billeteraDestino.Saldo += monto;
+                        billeteraDestino.Movimientos.Add(movimientoDestino);
+                        billeteraDestino.Contactos.Add(new ContactosBilletera
+                        {
+                            ClienteContacto = billeteraOrigen.Cliente,
+                            Detalle = billeteraOrigen.Cliente.Usuario.Personas?.GetNombreCompleto()
+                        });
+
+                        var movimientoOrigen = new MovimientoBilletera
+                        {
+                            CBU = billeteraDestino.CVU,
+                            Fecha = DateTime.Now,
+                            Monto = monto,
+                            OrigenAsociado = new OrigenMovimiento
+                            {
+                                TipoOrigen = TipoOrigenMovimiento.Billetera,
+                                IdAsociado = billeteraDestino.Id,
+                                Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
+                            },
+                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
+                        };
+
+                        billeteraOrigen.Saldo -= monto;
+                        billeteraOrigen.Movimientos.Add(movimientoOrigen);
+                        billeteraOrigen.Contactos.Add(new ContactosBilletera
+                        {
+                            ClienteContacto = billeteraDestino.Cliente,
+                            Detalle = billeteraDestino.Cliente.Usuario.Personas?.GetNombreCompleto()
+                        });
+
+                        _context.Update(billeteraDestino);
+                        _context.Update(billeteraOrigen);
+                        _context.SaveChanges();
+
+                        Log.Information($"Transferencia interna realizada: OrigenBilleteraId={billeteraOrigen.Id} DestinoBilleteraId={billeteraDestino.Id} Monto={monto}");
+
+                        return Ok(new TransactionWithUATResponseDTO
+                        {
+                            Status = 200,
+                            UAT = request.UAT,
+                            Mensaje = "Transferencia interna realizada",
+                            Success = true
+                        });
+                    }
+                }
+
+                // 2) No es CVU local: continuar con validación externa/local CUIL y llamada a PSP
+
+                string localCuitToPass = null;
+
+                if (request.Transaction.isExternal)
+                {
+                    try
+                    {
+                        // Obtener cliente relacionado al UAT (cliente administrador que hizo la llamada)
+                        var cliente = _context.UAT.Where(u => u.Token == request.UAT)
+                                                  .Select(u => u.Cliente)
+                                                  .FirstOrDefault();
+
+                        var persona = cliente?.Persona;
+
+                        if (persona != null && !string.IsNullOrEmpty(persona.Cuil))
+                        {
+                            // Normalizar local CUIL (quitar no dígitos)
+                            var normLocal = new string(persona.Cuil.Where(char.IsDigit).ToArray());
+
+                            // Llamar al PSP para validar la cuenta externa y obtener tributaryIdentifier
+                            var lookup = await _pspService.ValidateExternalAccountAsync(request.Transaction.destinationAccount.accountNumber);
+
+                            if (lookup == null || !lookup.success || lookup.data == null)
+                            {
+                                return BadRequest(new TransactionWithUATResponseDTO
+                                {
+                                    Status = 400,
+                                    UAT = request.UAT,
+                                    Mensaje = "Cuenta externa no encontrada o error en validación",
+                                    Success = false
+                                });
+                            }
+
+                            var extTrib = lookup.data.tributaryIdentifier ?? string.Empty;
+                            var normExt = new string(extTrib.Where(char.IsDigit).ToArray());
+
+                            if (!string.Equals(normLocal, normExt, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // No coinciden: rechazar la operación
+                                return BadRequest(new TransactionWithUATResponseDTO
+                                {
+                                    Status = 400,
+                                    UAT = request.UAT,
+                                    Mensaje = "CUIT/CUIL local no coincide con titular de la cuenta externa",
+                                    Success = false
+                                });
+                            }
+
+                            // Si coincide, setear localCuit para pasar al servicio y evitar GetAccountsInfoAsync
+                            localCuitToPass = persona.Cuil;
+
+                            Log.Information($"Validación local CUIT coincide: PersonaId={persona.Id}");
+                        }
+                        // else: no hay CUIL local, seguir con flujo habitual que usará PSP cuentas
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error validando CUIT local contra cuenta externa");
+                        return StatusCode(500, new TransactionWithUATResponseDTO
+                        {
+                            Status = 500,
+                            UAT = request.UAT,
+                            Mensaje = "Error interno validando titularidad",
+                            Success = false
+                        });
+                    }
+                }
+
+                // Llamar al servicio PSP pasando localCuit cuando esté disponible
+                var result = await _pspService.CreateTransactionAsync(request.Transaction, request.UserToken, localCuitToPass);
+
+                // Si PSP creó la transacción y no se hizo transferencia interna, opcional: persistir débito local (si aplica)
+                if (result.Success)
+                {
+                    // Intentamos debitar saldo local si existe billetera origen
+                    try
+                    {
+                        var clienteOrigen = _context.UAT.Where(u => u.Token == request.UAT).Select(u => u.Cliente).FirstOrDefault();
+                        if (clienteOrigen != null)
+                        {
+                            var billeteraOrigen = _context.Billeteras.Where(b => b.Cliente.Id == clienteOrigen.Id).FirstOrDefault();
+
+                            if (billeteraOrigen != null)
+                            {
+                                decimal monto;
+                                if (Decimal.TryParse(request.Transaction.balance.ToString(), out monto))
+                                {
+                                    // Registrar movimiento de débito local por salida a PSP
+                                    var movimiento = new MovimientoBilletera
+                                    {
+                                        CBU = request.Transaction.destinationAccount?.accountNumber ?? string.Empty,
+                                        Fecha = DateTime.Now,
+                                        Monto = monto,
+                                        OrigenAsociado = new OrigenMovimiento
+                                        {
+                                            TipoOrigen = TipoOrigenMovimiento.Cuenta,
+                                            IdAsociado = 0,
+                                            Descripcion = TipoOrigenMovimiento.Cuenta.GetDisplayName()
+                                        },
+                                        TipoMovimiento = _context.TipoMovimientoBilletera.FirstOrDefault(t => t.Id == (int)TipoMovimientoBilleteraEnum.EnvioBilletera) // reuse envio tipo
+                                    };
+
+                                    billeteraOrigen.Saldo -= monto;
+                                    billeteraOrigen.Movimientos.Add(movimiento);
+                                    _context.Update(billeteraOrigen);
+                                    _context.SaveChanges();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "No se pudo registrar débito local tras CreateTransaction PSP");
+                    }
+                }
 
                 var response = new TransactionWithUATResponseDTO
                 {

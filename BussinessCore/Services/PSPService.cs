@@ -897,7 +897,7 @@ namespace BusinessCore.Services
             // ClientId y ClientSecret ahora son OPCIONALES
         }
         
-        public async Task<ExternalAccountLookupResponseDTO> ValidateExternalAccountAsync(string textSearch)
+        public async Task<ExternalAccountLookupResponseDTO> ValidateExternalAccountAsync(string textSearch, string userToken = null)
         {
             // PASO 1: Modo de prueba
             if (_testMode)
@@ -929,19 +929,31 @@ namespace BusinessCore.Services
 
             try
             {
-                // Obtener token de sistema
-                var tokenResponse = await GetAccessTokenAsync();
-                if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.access_token))
+                string tokenToUse = null;
+
+                if (!string.IsNullOrEmpty(userToken))
                 {
-                    _logger.LogError("No se pudo obtener token del PSP para validar cuenta externa");
-                    return new ExternalAccountLookupResponseDTO { success = false, message = "No se pudo obtener token" };
+                    tokenToUse = userToken;
+                    _logger.LogInformation("Usando userToken proporcionado para ValidateExternalAccount");
+                }
+                else
+                {
+                    // Obtener token de sistema
+                    var tokenResponse = await GetAccessTokenAsync();
+                    if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.access_token))
+                    {
+                        _logger.LogError("No se pudo obtener token del PSP para validar cuenta externa");
+                        return new ExternalAccountLookupResponseDTO { success = false, message = "No se pudo obtener token" };
+                    }
+
+                    tokenToUse = tokenResponse.access_token;
                 }
 
                 var payload = JsonConvert.SerializeObject(new { textSearch = textSearch });
                 var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
                 _httpClient.DefaultRequestHeaders.Clear();
-                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenToUse}");
 
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
@@ -975,7 +987,7 @@ namespace BusinessCore.Services
             }
         }
 
-        public async Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken)
+        public async Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken, string localCuit = null)
         {
             if (_testMode)
             {
@@ -1004,18 +1016,28 @@ namespace BusinessCore.Services
                         return new TransactionResultDTO { Success = false, Error = "UserToken requerido para transacciones externas" };
                     }
 
-                    // Obtener CUITs del usuario
-                    var accountsInfo = await GetAccountsInfoAsync(userToken);
-                    if (!accountsInfo.Success || accountsInfo.Accounts == null || !accountsInfo.Accounts.Any())
-                    {
-                        return new TransactionResultDTO { Success = false, Error = "No se pudo obtener información de cuentas del usuario para validar CUIT" };
-                    }
+                    List<string> userCuids = null;
 
-                    var userCuids = accountsInfo.Accounts
-                        .Where(a => !string.IsNullOrEmpty(a.tributaryIdentifier))
-                        .Select(a => NormalizeTributary(a.tributaryIdentifier))
-                        .Distinct()
-                        .ToList();
+                    if (!string.IsNullOrEmpty(localCuit))
+                    {
+                        userCuids = new List<string> { NormalizeTributary(localCuit) };
+                        _logger.LogInformation("Usando localCuit para validación de titularidad");
+                    }
+                    else
+                    {
+                        // Obtener CUITs del usuario desde PSP
+                        var accountsInfo = await GetAccountsInfoAsync(userToken);
+                        if (!accountsInfo.Success || accountsInfo.Accounts == null || !accountsInfo.Accounts.Any())
+                        {
+                            return new TransactionResultDTO { Success = false, Error = "No se pudo obtener información de cuentas del usuario para validar CUIT" };
+                        }
+
+                        userCuids = accountsInfo.Accounts
+                            .Where(a => !string.IsNullOrEmpty(a.tributaryIdentifier))
+                            .Select(a => NormalizeTributary(a.tributaryIdentifier))
+                            .Distinct()
+                            .ToList();
+                    }
 
                     // Validar cuenta externa
                     var lookup = await ValidateExternalAccountAsync(request.destinationAccount.accountNumber);

@@ -69,12 +69,14 @@ namespace BusinessCore.Services
 
         /// <summary>
         /// Valida una cuenta externa (alias/CVU/CBU) y devuelve datos del titular (tributaryIdentifier)
+        /// Se puede pasar userToken (opcional) para que la validacion se haga en contexto del usuario.
         /// </summary>
-        Task<ExternalAccountLookupResponseDTO> ValidateExternalAccountAsync(string textSearch);
+        Task<ExternalAccountLookupResponseDTO> ValidateExternalAccountAsync(string textSearch, string userToken = null);
 
         /// <summary>
         /// Crea una transacción (transferencia) en el PSP. El userToken debe ser el token del usuario que autoriza la transferencia.
+        /// Se puede pasar localCuit para evitar consultar las cuentas del PSP cuando ya se validó localmente.
         /// </summary>
-        Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken);
+        Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken, string localCuit = null);
     }
 }
