@@ -20707,7 +20707,7 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304\\RuntimeIdentifierGraph.json"
       }
     }
   },
@@ -20847,6 +20847,16 @@
       "level": "Warning",
       "warningLevel": 1,
       "message": "El paquete \"SixLabors.ImageSharp\" 1.0.4 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-qxrv-gp6x-rc23",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        ".NETCoreApp,Version=v2.2"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "El paquete \"SixLabors.ImageSharp\" 1.0.4 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-rxmq-m78w-7wmc",
       "libraryId": "SixLabors.ImageSharp",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"

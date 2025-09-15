@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "76LkrhAPipA=",
+  "dgSpecHash": "A9x/IgiT+2o=",
   "success": true,
   "projectFilePath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
   "expectedPackageFiles": [
@@ -581,6 +581,18 @@
       "code": "NU1902",
       "level": "Warning",
       "message": "El paquete \"SixLabors.ImageSharp\" 1.0.4 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-qxrv-gp6x-rc23",
+      "projectPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        ".NETCoreApp,Version=v2.2"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "message": "El paquete \"SixLabors.ImageSharp\" 1.0.4 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-rxmq-m78w-7wmc",
       "projectPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
       "warningLevel": 1,
       "filePath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\BussinessCore\\SmartClickCore.csproj",
