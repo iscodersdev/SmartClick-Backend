@@ -1241,7 +1241,6 @@ D:\SmartClick\BussinessCore\obj\Debug\netcoreapp2.2\SmartCli.C9B606DC.Up2Date
 D:\SmartClick\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.dll
 D:\SmartClick\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.pdb
 D:\SmartClick\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.genruntimeconfig.cache
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\appsettings.Development.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\appsettings.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Connected Services\WsAMMA\ConnectedService.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\SmartClickCore.deps.json
