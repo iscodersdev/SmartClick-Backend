@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace SmartClickCore
 {
@@ -110,9 +111,9 @@ namespace SmartClickCore
             services.AddTransient<NotificacionAPIService>();
             services.AddTransient<PlenarioService>();
             
-            // Registro de servicios PSP - CORREGIDO
-            services.AddHttpClient<IPSPService, PSPService>();
-            // Eliminar esta línea: services.AddTransient<IPSPService, PSPService>();
+            // Registro de servicios PSP - CORREGIDO para .NET Core 2.2
+            services.AddSingleton<HttpClient>(provider => new HttpClient());
+            services.AddTransient<IPSPService, PSPService>();
 
             services.AddSession();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2)

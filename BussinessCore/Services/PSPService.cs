@@ -98,7 +98,8 @@ namespace BusinessCore.Services
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
                 }
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/api/Account/Token", formContent);
+                // URL CORREGIDA según la lista proporcionada
+                var response = await _httpClient.PostAsync($"{_baseUrl}/a/api/api/Account/Token", formContent);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -181,7 +182,8 @@ namespace BusinessCore.Services
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
                 }
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/api/Account/Token", formContent);
+                // URL CORREGIDA según la lista proporcionada
+                var response = await _httpClient.PostAsync($"{_baseUrl}/a/api/api/Account/Token", formContent);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -238,7 +240,8 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/api/api/Account", content);
+                // URL CORREGIDA según la lista proporcionada
+                var response = await _httpClient.PostAsync($"{_baseUrl}/a/api/api/Account", content);
 
                 var responseContent = await response.Content.ReadAsStringAsync();
                 _logger.LogInformation($"PSP Response Content: {responseContent}");
@@ -324,8 +327,8 @@ namespace BusinessCore.Services
 
                 _logger.LogInformation($"Ejecutando SelfRegistration en PSP - CUIT: {request.tributaryIdentifier}");
 
-                // PASO 5: Realizar la llamada HTTP
-                var response = await _httpClient.PostAsync($"{_baseUrl}/multicuenta/api/v1/Accounts/SelfRegistration", content);
+                // PASO 5: Realizar la llamada HTTP - URL CORREGIDA
+                var response = await _httpClient.PostAsync($"{_baseUrl}/a/multicuenta/api/v1/Accounts/SelfRegistration", content);
 
                 // PASO 6: Procesar la respuesta
                 if (response.IsSuccessStatusCode)
@@ -398,8 +401,8 @@ namespace BusinessCore.Services
 
                 _logger.LogInformation($"Creando entidad y usuario en PSP REAL - CUIT: {request.entity.tributaryIdentifier}, UserName: {request.person.userName}");
 
-                // Realizar la llamada HTTP al PSP
-                var response = await _httpClient.PostAsync($"{_baseUrl}/multicuenta/api/v1/Entities/Persons/New", content);
+                // Realizar la llamada HTTP al PSP - URL CORREGIDA
+                var response = await _httpClient.PostAsync($"{_baseUrl}/a/multicuenta/api/v1/Entities/Persons/New", content);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -501,8 +504,6 @@ namespace BusinessCore.Services
             }
         }
 
-        // Agregar este método para el nuevo requerimiento de subir archivos
-
         /// <summary>
         /// Sube archivos de validación para una entidad (DNI, selfie, etc.)
         /// </summary>
@@ -582,8 +583,8 @@ namespace BusinessCore.Services
 
                     _logger.LogInformation($"Subiendo archivos al PSP - Identifier: {identifier}, Archivos: {string.Join(", ", files.Keys)}");
 
-                    // PASO 5: Realizar la llamada HTTP
-                    var response = await _httpClient.PostAsync($"{_baseUrl}/multicuenta/api/v1/Accounts/SelfRegistration/Files?Identifier={identifier}", formData);
+                    // PASO 5: Realizar la llamada HTTP - URL CORREGIDA según la lista proporcionada
+                    var response = await _httpClient.PostAsync($"{_baseUrl}/a/multicuenta/api/v1/Entities/File?entityId={identifier}", formData);
 
                     // PASO 6: Procesar la respuesta
                     if (response.IsSuccessStatusCode)
@@ -636,8 +637,8 @@ namespace BusinessCore.Services
                 // No se requiere autenticación ni headers especiales
                 _httpClient.DefaultRequestHeaders.Clear();
 
-                // Llama al endpoint real del PSP
-                var response = await _httpClient.GetAsync($"{_baseUrl}/multicuenta/api/v1/Province");
+                // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
+                var response = await _httpClient.GetAsync($"{_baseUrl}/a/multicuenta/api/v1/Province");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -730,7 +731,8 @@ namespace BusinessCore.Services
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
                 }
 
-                var response = await _httpClient.GetAsync($"{_baseUrl}/multicuenta/api/v1/City?provinceId={provinceId}");
+                // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
+                var response = await _httpClient.GetAsync($"{_baseUrl}/a/multicuenta/api/v1/City?provinceId={provinceId}");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -799,7 +801,7 @@ namespace BusinessCore.Services
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
                 }
 
-                var requestUrl = $"{_baseUrl}/multicuenta/api/v1/Accounts/All/Get";
+                var requestUrl = $"{_baseUrl}/a/multicuenta/api/v1/Accounts/All/Get";
                 _logger.LogInformation($"?? LLAMADA PSP - URL: {requestUrl}");
                 _logger.LogInformation($"?? HEADERS - Authorization: Bearer {userToken.Substring(0, Math.Min(20, userToken.Length))}...");
                 if (!string.IsNullOrEmpty(_clientId))
@@ -960,14 +962,23 @@ namespace BusinessCore.Services
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
                 }
 
+                // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
                 var url = $"{_baseUrl}/a/multicuenta/api/v1/Person/ContactNotebook/Get";
-                _logger.LogInformation($"Llamando PSP ValidateExternalAccount - URL: {url} - textSearch: {textSearch}");
+                _logger.LogInformation($"?? Llamando PSP ValidateExternalAccount");
+                _logger.LogInformation($"?? URL completa: {url}");
+                _logger.LogInformation($"?? BaseUrl: {_baseUrl}");
+                _logger.LogInformation($"?? TextSearch: {textSearch}");
+                _logger.LogInformation($"?? Authorization: Bearer {tokenToUse.Substring(0, Math.Min(20, tokenToUse.Length))}...");
+                if (!string.IsNullOrEmpty(_clientId))
+                {
+                    _logger.LogInformation($"?? X-client_id: {_clientId}");
+                }
 
                 var response = await _httpClient.PostAsync(url, content);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
-                _logger.LogInformation($"PSP ValidateExternalAccount - StatusCode: {response.StatusCode}");
-                _logger.LogInformation($"PSP ValidateExternalAccount - Content: {responseContent}");
+                _logger.LogInformation($"?? PSP Response StatusCode: {response.StatusCode}");
+                _logger.LogInformation($"?? PSP Response Content: {responseContent}");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -976,13 +987,13 @@ namespace BusinessCore.Services
                 }
                 else
                 {
-                    _logger.LogError($"Error validando cuenta externa en PSP: {response.StatusCode} - {responseContent}");
+                    _logger.LogError($"? Error validando cuenta externa en PSP: {response.StatusCode} - {responseContent}");
                     return new ExternalAccountLookupResponseDTO { success = false, message = responseContent };
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Excepción al validar cuenta externa: {textSearch}");
+                _logger.LogError(ex, $"? Excepción al validar cuenta externa: {textSearch}");
                 return new ExternalAccountLookupResponseDTO { success = false, message = ex.Message };
             }
         }
@@ -1064,6 +1075,7 @@ namespace BusinessCore.Services
                     _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
                 }
 
+                // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
                 var url = $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add";
                 _logger.LogInformation($"Llamando PSP CreateTransaction - URL: {url}");
 
