@@ -1051,7 +1051,7 @@ namespace BusinessCore.Services
                     }
 
                     // Validar cuenta externa
-                    var lookup = await ValidateExternalAccountAsync(request.destinationAccount.accountNumber);
+                    var lookup = await ValidateExternalAccountAsync(request.destinationAccount.accountNumber, userToken);
                     if (lookup == null || !lookup.success || lookup.data == null)
                     {
                         return new TransactionResultDTO { Success = false, Error = "Cuenta externa no encontrada o error en validación" };

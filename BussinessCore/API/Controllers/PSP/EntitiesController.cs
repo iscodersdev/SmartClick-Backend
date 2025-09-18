@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+ï»¿using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
 using BusinessCore.Services;
@@ -10,6 +10,7 @@ using System.IO;
 using System.Collections.Generic;
 using DAL.Models.Core; // for MovimientoBilletera, OrigenMovimiento, TipoOrigenMovimiento
 using Commons.Extensions; // for GetDisplayName extension
+using Microsoft.EntityFrameworkCore;
 
 namespace SmartClickCore.API.Controllers.PSP
 {
@@ -26,7 +27,7 @@ namespace SmartClickCore.API.Controllers.PSP
             _pspService = pspService;
         }
 
-        // Método corregido para buscar usuario por UAT
+        // MÃ©todo corregido para buscar usuario por UAT
         private DAL.Models.Usuario TraeUsuarioUAT(string uat)
         {
             return _context.UAT.Where(u => u.Token == uat).Select(u => u.Cliente.Usuario).FirstOrDefault();
@@ -94,7 +95,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? "?? SIMULACIÓN: Usuario creado (modo prueba)"
+                    ? "?? SIMULACIÃ“N: Usuario creado (modo prueba)"
                     : "Usuario creado exitosamente";
 
                                       
@@ -123,7 +124,7 @@ namespace SmartClickCore.API.Controllers.PSP
                         {
                             Log.Information($"SelfRegistration completado exitosamente - CUIT: {request.entity.tributaryIdentifier}");
                             response.Mensaje += " | " + ( _pspService.IsTestMode() 
-                                ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
+                                ? "?? SIMULACIÃ“N: Entidad creada mediante SelfRegistration (modo prueba)"
                                 : "Entidad creada exitosamente mediante SelfRegistration");
                             response.Identifier = pspResponseSelf.Identifier;
                             response.EntityId = pspResponseSelf.EntityId;
@@ -134,7 +135,7 @@ namespace SmartClickCore.API.Controllers.PSP
                             {
                                 Log.Information($"Archivos subidos exitosamente - Identifier: {pspResponseSelf.Identifier}, Archivos: {request.files.Count}");
                                 response.Mensaje += " | " + ( _pspService.IsTestMode() 
-                                    ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
+                                    ? "?? SIMULACIÃ“N: Archivos subidos exitosamente (modo prueba)"
                                     : "Archivos subidos exitosamente");
                             }
                             else
@@ -261,7 +262,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.SelfRegistrationAsync(pspRequest, request.UserToken);
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
+                    ? "?? SIMULACIÃ“N: Entidad creada mediante SelfRegistration (modo prueba)"
                     : "Entidad creada exitosamente mediante SelfRegistration";
 
                 var response = new SelfRegistrationWithUATResponseDTO
@@ -300,7 +301,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
         // *** NUEVO ENDPOINT: UPLOAD FILES ***
         /// <summary>
-        /// Sube archivos de validación (DNI, selfie, inscripción AFIP, etc.)
+        /// Sube archivos de validaciÃ³n (DNI, selfie, inscripciÃ³n AFIP, etc.)
         /// </summary>
         [HttpPost("UploadFiles")]
         public async Task<IActionResult> UploadFiles([FromQuery] string identifier, [FromQuery] string userToken, [FromQuery] string uat)
@@ -320,7 +321,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
-                // Validar parámetros requeridos
+                // Validar parÃ¡metros requeridos
                 if (string.IsNullOrEmpty(identifier))
                 {
                     return BadRequest(new UploadFilesWithUATResponseDTO 
@@ -370,7 +371,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.UploadFilesAsync(identifier, userToken, files);
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
+                    ? "?? SIMULACIÃ“N: Archivos subidos exitosamente (modo prueba)"
                     : "Archivos subidos exitosamente";
 
                 var response = new UploadFilesWithUATResponseDTO
@@ -432,7 +433,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.GetProvincesAsync();
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? "?? SIMULACIÓN: Provincias obtenidas (modo prueba)"
+                    ? "?? SIMULACIÃ“N: Provincias obtenidas (modo prueba)"
                     : "Provincias obtenidas exitosamente";
 
                 var response = new ProvincesWithUATResponseDTO
@@ -470,7 +471,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
         // *** NUEVO ENDPOINT: OBTENER CIUDADES ***
         /// <summary>
-        /// Obtiene la lista de ciudades de una provincia específica
+        /// Obtiene la lista de ciudades de una provincia especÃ­fica
         /// </summary>
         [HttpGet("Cities")]
         public async Task<IActionResult> GetCities([FromQuery] int provinceId, [FromQuery] string uat)
@@ -490,7 +491,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
-                // Validar parámetro
+                // Validar parÃ¡metro
                 if (provinceId <= 0)
                 {
                     return BadRequest(new CitiesWithUATResponseDTO 
@@ -506,7 +507,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.GetCitiesAsync(provinceId);
 
                 var mensaje = _pspService.IsTestMode() 
-                    ? $"?? SIMULACIÓN: Ciudades obtenidas para provincia {provinceId} (modo prueba)"
+                    ? $"?? SIMULACIÃ“N: Ciudades obtenidas para provincia {provinceId} (modo prueba)"
                     : $"Ciudades obtenidas exitosamente para provincia {provinceId}";
 
                 var response = new CitiesWithUATResponseDTO
@@ -542,9 +543,9 @@ namespace SmartClickCore.API.Controllers.PSP
             }
         }
 
-        // *** NUEVO ENDPOINT: CREAR ENTIDAD Y USUARIO EN UNA SOLA OPERACIÓN ***
+        // *** NUEVO ENDPOINT: CREAR ENTIDAD Y USUARIO EN UNA SOLA OPERACIÃ“N ***
         /// <summary>
-        /// Crea una entidad y usuario en el PSP en una sola operación (endpoint /Entities/Persons/New)
+        /// Crea una entidad y usuario en el PSP en una sola operaciÃ³n (endpoint /Entities/Persons/New)
         /// </summary>
         //[HttpPost("CrearEntidadYUsuario")]
         //public async Task<IActionResult> CrearEntidadYUsuario([FromBody] CreateEntityAndUserWithUATRequestDTO request)
@@ -645,7 +646,7 @@ namespace SmartClickCore.API.Controllers.PSP
         //{
         //    try
         //    {
-        //        // Validar usuario autenticado usando el método corrigido
+        //        // Validar usuario autenticado usando el mÃ©todo corrigido
         //        var usuario = TraeUsuarioUAT(request.UAT);
         //        if (usuario == null)
         //        {
@@ -700,7 +701,7 @@ namespace SmartClickCore.API.Controllers.PSP
         //}
 
         /// <summary>
-        /// Valida la configuración del PSP
+        /// Valida la configuraciÃ³n del PSP
         /// </summary>
         [HttpPost("ValidarConfiguracion")]
         public IActionResult ValidarConfiguracion([FromBody] PSPBaseResponseDTO request)
@@ -725,7 +726,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 { 
                     Status = 200, 
                     UAT = request.UAT, 
-                    Mensaje = isValid ? "Configuración PSP válida" : "Configuración PSP inválida",
+                    Mensaje = isValid ? "ConfiguraciÃ³n PSP vÃ¡lida" : "ConfiguraciÃ³n PSP invÃ¡lida",
                     Success = isValid
                 });
             }
@@ -800,9 +801,9 @@ namespace SmartClickCore.API.Controllers.PSP
             }
         }
 
-        // *** NUEVO ENDPOINT: OBTENER INFORMACIÓN DE CUENTAS ***
+        // *** NUEVO ENDPOINT: OBTENER INFORMACIÃ“N DE CUENTAS ***
         /// <summary>
-        /// Obtiene la información de las cuentas del usuario logueado
+        /// Obtiene la informaciÃ³n de las cuentas del usuario logueado
         /// </summary>
         [HttpGet("AccountsInfo")]
         public async Task<IActionResult> GetAccountsInfo([FromQuery] string userToken, [FromQuery] string uat)
@@ -841,19 +842,19 @@ namespace SmartClickCore.API.Controllers.PSP
                 {
                     Status = pspResponse.Success ? 200 : 500,
                     UAT = uat,
-                    Mensaje = pspResponse.Success ? "Información de cuentas obtenida exitosamente" : "Error al obtener información de cuentas",
+                    Mensaje = pspResponse.Success ? "InformaciÃ³n de cuentas obtenida exitosamente" : "Error al obtener informaciÃ³n de cuentas",
                     Success = pspResponse.Success,
                     Accounts = pspResponse.Accounts
                 };
 
                 if (pspResponse.Success)
                 {
-                    Log.Information($"Información de cuentas obtenida exitosamente - Total cuentas: {pspResponse.Accounts.Count}");
+                    Log.Information($"InformaciÃ³n de cuentas obtenida exitosamente - Total cuentas: {pspResponse.Accounts.Count}");
                     return Ok(response);
                 }
                 else
                 {
-                    Log.Warning($"Error al obtener información de cuentas: {pspResponse.Error}");
+                    Log.Warning($"Error al obtener informaciÃ³n de cuentas: {pspResponse.Error}");
                     return BadRequest(response);
                 }
             }
@@ -939,9 +940,9 @@ namespace SmartClickCore.API.Controllers.PSP
             }
         }
 
-        // *** NUEVO ENDPOINT: CREAR TRANSACCIÓN ***
+        // *** NUEVO ENDPOINT: CREAR TRANSACCIÃ“N ***
         /// <summary>
-        /// Crea una transacción en el PSP (puede ser externa). Usa UAT para validar usuario administrador.
+        /// Crea una transacciÃ³n en el PSP (puede ser externa). Usa UAT para validar usuario administrador.
         /// </summary>
         [HttpPost("CreateTransaction")]
         public async Task<IActionResult> CreateTransaction([FromBody] TransactionWithUATRequestDTO request)
@@ -978,12 +979,12 @@ namespace SmartClickCore.API.Controllers.PSP
                     {
                         Status = 400,
                         UAT = request.UAT,
-                        Mensaje = "Número de cuenta destino requerido",
+                        Mensaje = "NÃºmero de cuenta destino requerido",
                         Success = false
                     });
                 }
 
-                // AUTOMÁTICO: Detectar si es interna o externa
+                // AUTOMÃTICO: Detectar si es interna o externa
                 var billeteraDestino = _context.Billeteras.Where(b => b.CVU == destAccountNumber).FirstOrDefault();
                 bool isInternalTransfer = billeteraDestino != null;
 
@@ -991,17 +992,26 @@ namespace SmartClickCore.API.Controllers.PSP
 
                 if (isInternalTransfer)
                 {
-                    // *** TRANSFERENCIA INTERNA AUTOMÁTICA ***
+                    // *** TRANSFERENCIA INTERNA AUTOMÃTICA ***
                     Log.Information("Procesando transferencia INTERNA");
 
-                    var clienteOrigen = _context.UAT.Where(u => u.Token == request.UAT).Select(u => u.Cliente).FirstOrDefault();
+                    var uatEntryInterno = _context.UAT
+                        .Include(u => u.Cliente)
+                            .ThenInclude(c => c.Persona)
+                        .Include(u => u.Cliente)
+                            .ThenInclude(c => c.Usuario)
+                                .ThenInclude(us => us.Personas)
+                        .FirstOrDefault(u => u.Token == request.UAT);
+
+                    var clienteOrigen = uatEntryInterno?.Cliente;
+
                     if (clienteOrigen == null)
                     {
                         return BadRequest(new TransactionWithUATResponseDTO
                         {
                             Status = 400,
                             UAT = request.UAT,
-                            Mensaje = "No se encontró cliente asociado al UAT",
+                            Mensaje = "No se encontrÃ³ cliente asociado al UAT",
                             Success = false
                         });
                     }
@@ -1013,7 +1023,7 @@ namespace SmartClickCore.API.Controllers.PSP
                         {
                             Status = 400,
                             UAT = request.UAT,
-                            Mensaje = "No se encontró billetera de origen",
+                            Mensaje = "No se encontrÃ³ billetera de origen",
                             Success = false
                         });
                     }
@@ -1029,7 +1039,7 @@ namespace SmartClickCore.API.Controllers.PSP
                         {
                             Status = 400,
                             UAT = request.UAT,
-                            Mensaje = "Monto inválido",
+                            Mensaje = "Monto invÃ¡lido",
                             Success = false
                         });
                     }
@@ -1107,14 +1117,17 @@ namespace SmartClickCore.API.Controllers.PSP
                 }
                 else
                 {
-                    // *** TRANSFERENCIA EXTERNA AUTOMÁTICA ***
+                    // *** TRANSFERENCIA EXTERNA AUTOMÃTICA ***
                     Log.Information("Procesando transferencia EXTERNA");
 
                     // Forzar isExternal = true para el PSP
                     request.Transaction.isExternal = true;
 
-                    // Obtener token de la cuenta recaudadora para transferencias externas
+                    // *** OBTENER TOKEN DEL SISTEMA PSP UNA SOLA VEZ ***
+                    Log.Debug("Antes de GetAccessTokenAsync");
                     var tokenResponse = await _pspService.GetAccessTokenAsync();
+                    Log.Debug("DespuÃ©s de GetAccessTokenAsync - token? {TokenExists}", !string.IsNullOrEmpty(tokenResponse?.access_token));
+
                     if (string.IsNullOrEmpty(tokenResponse.access_token))
                     {
                         return BadRequest(new TransactionWithUATResponseDTO
@@ -1126,38 +1139,45 @@ namespace SmartClickCore.API.Controllers.PSP
                         });
                     }
 
-                    string userTokenToUse = tokenResponse.access_token;
-                    Log.Information("Usando token de cuenta recaudadora para transferencia externa");
+                    // *** VARIABLE ÃšNICA PARA TODO EL FLUJO ***
+                    string systemToken = tokenResponse.access_token;
+                    Log.Information($"Token del sistema PSP obtenido: {systemToken.Substring(0, Math.Min(20, systemToken.Length))}...");
 
-                    // Validar cuenta externa en PSP
+                    // *** VALIDACIÃ“N DE TITULARIDAD Y CUENTA EXTERNA ***
+                    string localCuil = null;
                     try
                     {
-                        var lookup = await _pspService.ValidateExternalAccountAsync(destAccountNumber);
+                        // 1. Obtener el CUIL local correctamente usando Include
+                        var uatEntry = _context.UAT
+                            .Include(u => u.Cliente.Persona) // Cargar Cliente y luego Persona
+                            .FirstOrDefault(u => u.Token == request.UAT);
+
+                        var persona = uatEntry?.Cliente?.Persona;
+                        localCuil = persona?.Cuil;
+
+                        Log.Debug($"CUIL local obtenido: {localCuil}");
+
+                        // 2. Validar cuenta externa en PSP USANDO EL MISMO TOKEN DEL SISTEMA
+                        Log.Debug("Antes de ValidateExternalAccountAsync con systemToken");
+                        var lookup = await _pspService.ValidateExternalAccountAsync(destAccountNumber, systemToken);
+                        //                                                                              â†‘ AHORA PASA EL MISMO TOKEN
+                        Log.Debug("DespuÃ©s de ValidateExternalAccountAsync - success? {Success}", lookup?.success);
+
                         if (lookup == null || !lookup.success || lookup.data == null)
                         {
                             return BadRequest(new TransactionWithUATResponseDTO
                             {
                                 Status = 400,
                                 UAT = request.UAT,
-                                Mensaje = "Cuenta externa no encontrada o inválida",
+                                Mensaje = "Cuenta externa no encontrada o invÃ¡lida",
                                 Success = false
                             });
                         }
 
-                        // *** VALIDACIÓN DE TITULARIDAD CUIT/CUIL ***
-                        // Obtener cliente relacionado al UAT para validar titularidad
-                        var cliente = _context.UAT.Where(u => u.Token == request.UAT)
-                                                  .Select(u => u.Cliente)
-                                                  .FirstOrDefault();
-
-                        var persona = cliente?.Persona;
-
-                        if (persona != null && !string.IsNullOrEmpty(persona.Cuil))
+                        // 3. Comparar titularidad si tenemos el CUIL local
+                        if (!string.IsNullOrEmpty(localCuil))
                         {
-                            // Normalizar CUIL local (quitar no dígitos)
-                            var normLocal = new string(persona.Cuil.Where(char.IsDigit).ToArray());
-
-                            // Obtener CUIT/CUIL del titular de la cuenta externa
+                            var normLocal = new string(localCuil.Where(char.IsDigit).ToArray());
                             var extTrib = lookup.data.tributaryIdentifier ?? string.Empty;
                             var normExt = new string(extTrib.Where(char.IsDigit).ToArray());
 
@@ -1165,47 +1185,32 @@ namespace SmartClickCore.API.Controllers.PSP
 
                             if (!string.Equals(normLocal, normExt, StringComparison.OrdinalIgnoreCase))
                             {
-                                // No coinciden: rechazar la operación
-                                Log.Warning($"Titularidad no coincide - Usuario local CUIL: {persona.Cuil}, Cuenta externa CUIT: {extTrib}");
+                                Log.Warning($"Titularidad no coincide - Usuario local CUIL: {localCuil}, Cuenta externa CUIT: {extTrib}");
                                 return BadRequest(new TransactionWithUATResponseDTO
                                 {
                                     Status = 400,
                                     UAT = request.UAT,
-                                    Mensaje = $"La cuenta externa no pertenece al mismo titular. Local: {persona.Cuil} vs Externo: {extTrib}",
+                                    Mensaje = $"La cuenta externa no pertenece al mismo titular. Local: {localCuil} vs Externo: {extTrib}",
                                     Success = false
                                 });
                             }
-
-                            Log.Information($"Validación de titularidad exitosa - CUIL coincide: {persona.Cuil}");
+                            Log.Information($"ValidaciÃ³n de titularidad exitosa - CUIL coincide: {localCuil}");
                         }
                         else
                         {
-                            // Si no hay CUIL local, log de advertencia pero permitir (puedes cambiar esto)
-                            Log.Warning("Usuario local sin CUIL registrado - no se puede validar titularidad");
-                            
-                            // Opción A: Permitir transferencia sin validación
-                            // (actual - continúa)
-                            
-                            // Opción B: Rechazar si no hay CUIL local
-                            // return BadRequest(new TransactionWithUATResponseDTO
-                            // {
-                            //     Status = 400,
-                            //     UAT = request.UAT,
-                            //     Mensaje = "Usuario local sin CUIL registrado. No se puede validar titularidad para transferencias externas.",
-                            //     Success = false
-                            // });
+                            Log.Warning("Usuario local sin CUIL registrado - no se puede validar titularidad antes de la operaciÃ³n.");
                         }
 
                         Log.Information($"Cuenta externa validada - Titular: {lookup.data.tributaryIdentifier}, Tipo: {lookup.data.accountTypeDescription}");
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Error validando cuenta externa");
+                        Log.Error(ex, "Error validando cuenta externa o titularidad");
                         return StatusCode(500, new TransactionWithUATResponseDTO
                         {
                             Status = 500,
                             UAT = request.UAT,
-                            Mensaje = "Error validando cuenta externa",
+                            Mensaje = "Error validando cuenta externa o titularidad",
                             Success = false
                         });
                     }
@@ -1217,8 +1222,7 @@ namespace SmartClickCore.API.Controllers.PSP
                         var billeteraOrigen = _context.Billeteras.Where(b => b.Cliente.Id == clienteOrigen.Id).FirstOrDefault();
                         if (billeteraOrigen != null)
                         {
-                            decimal monto;
-                            if (Decimal.TryParse(request.Transaction.balance.ToString(), out monto))
+                            if (decimal.TryParse(request.Transaction.balance.ToString(), out decimal monto))
                             {
                                 if (!billeteraOrigen.ChequeaDebito(monto))
                                 {
@@ -1234,10 +1238,74 @@ namespace SmartClickCore.API.Controllers.PSP
                         }
                     }
 
-                    // Llamar al PSP para crear la transacción externa
-                    var result = await _pspService.CreateTransactionAsync(request.Transaction, userTokenToUse, null);
+                    // 4. Llamar al PSP para crear la transacciÃ³n externa USANDO EL MISMO TOKEN
+                    Log.Debug("Antes de CreateTransactionAsync hacia PSP con CUIL local: {cuil}", localCuil);
 
-                    // Si PSP creó la transacción exitosamente, debitar saldo local
+                    // *** COMPLETAR CAMPOS OBLIGATORIOS AUTOMÃTICAMENTE ***
+                    // 1. Agregar currencyTypeId si no estÃ¡ presente
+                    if (string.IsNullOrEmpty(request.Transaction.currencyTypeId) || request.Transaction.currencyTypeId == "0")
+                    {
+                        request.Transaction.currencyTypeId = "1"; // Pesos Argentinos por defecto
+                        Log.Information("Agregando currencyTypeId por defecto: 1 (Pesos)");
+                    }
+
+                    // 2. Completar originAccount si estÃ¡ vacÃ­o
+                    if (request.Transaction.originAccount == null || string.IsNullOrEmpty(request.Transaction.originAccount.accountNumber))
+                    {
+                        // Obtener informaciÃ³n de cuentas del usuario para completar originAccount
+                        var accountsInfo = await _pspService.GetAccountsInfoAsync(systemToken);
+                        if (accountsInfo.Success && accountsInfo.Accounts != null && accountsInfo.Accounts.Any())
+                        {
+                            var firstAccount = accountsInfo.Accounts.First();
+                            request.Transaction.originAccount = new AccountRefDTO // â† CAMBIO: OriginAccountDTO â†’ AccountRefDTO
+                            {
+                                accountNumber = firstAccount.accountNumber,
+                                accountTypeId = firstAccount.accountTypeId,
+                                tributaryIdentifierType = firstAccount.tributaryIdentifierType ?? "CUIT",
+                                tributaryIdentifier = firstAccount.tributaryIdentifier ?? ""
+                            };
+                            
+                            Log.Information($"Completando originAccount automÃ¡ticamente - CVU: {firstAccount.accountNumber}");
+                        }
+                        else
+                        {
+                            Log.Warning("No se pudo obtener informaciÃ³n de cuentas del usuario para completar originAccount");
+                            return BadRequest(new TransactionWithUATResponseDTO
+                            {
+                                Status = 400,
+                                UAT = request.UAT,
+                                Mensaje = "No se pudo obtener informaciÃ³n de la cuenta origen del usuario",
+                                Success = false
+                            });
+                        }
+                    }
+
+                    // 3. Completar availabilityDate si no estÃ¡ presente
+                    if (string.IsNullOrEmpty(request.Transaction.availabilityDate)) // â† CAMBIO: == default(DateTime) â†’ string.IsNullOrEmpty
+                    {
+                        request.Transaction.availabilityDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); // â† CAMBIO: DateTime â†’ string
+                        Log.Information($"Agregando availabilityDate automÃ¡tica: {request.Transaction.availabilityDate}");
+                    }
+
+                    // 4. Completar transactionTypeId si no estÃ¡ presente
+                    if (request.Transaction.transactionTypeId == 0)
+                    {
+                        request.Transaction.transactionTypeId = 1; // DÃ©bito por defecto
+                        Log.Information("Agregando transactionTypeId por defecto: 1 (DÃ©bito)");
+                    }
+
+                    // 5. Completar concept si no estÃ¡ presente
+                    if (string.IsNullOrEmpty(request.Transaction.concept))
+                    {
+                        request.Transaction.concept = "VAR"; // Varios por defecto
+                        Log.Information("Agregando concept por defecto: VAR (Varios)");
+                    }
+
+                    var result = await _pspService.CreateTransactionAsync(request.Transaction, systemToken, localCuil);
+                    //                                                                        â†‘ MISMO TOKEN USADO AQUÃ TAMBIÃ‰N
+                    Log.Debug("DespuÃ©s de CreateTransactionAsync - result.Success: {Success}", result?.Success);
+
+                    // Si PSP creÃ³ la transacciÃ³n exitosamente, debitar saldo local
                     if (result.Success)
                     {
                         try
@@ -1247,10 +1315,9 @@ namespace SmartClickCore.API.Controllers.PSP
                                 var billeteraOrigen = _context.Billeteras.Where(b => b.Cliente.Id == clienteOrigen.Id).FirstOrDefault();
                                 if (billeteraOrigen != null)
                                 {
-                                    decimal monto;
-                                    if (Decimal.TryParse(request.Transaction.balance.ToString(), out monto))
+                                    if (decimal.TryParse(request.Transaction.balance.ToString(), out decimal monto))
                                     {
-                                        // Registrar movimiento de débito local por transferencia externa
+                                        // Registrar movimiento de dÃ©bito local por transferencia externa
                                         var movimiento = new MovimientoBilletera
                                         {
                                             CBU = destAccountNumber,
@@ -1268,7 +1335,9 @@ namespace SmartClickCore.API.Controllers.PSP
                                         billeteraOrigen.Saldo -= monto;
                                         billeteraOrigen.Movimientos.Add(movimiento);
                                         _context.Update(billeteraOrigen);
+                                        Log.Debug("Antes de _context.SaveChanges");
                                         _context.SaveChanges();
+                                        Log.Debug("DespuÃ©s de _context.SaveChanges");
 
                                         Log.Information($"Transferencia EXTERNA completada: ${monto} a {destAccountNumber}, PSP TransactionId: {result.TransactionId}");
                                     }
@@ -1277,7 +1346,7 @@ namespace SmartClickCore.API.Controllers.PSP
                         }
                         catch (Exception ex)
                         {
-                            Log.Warning(ex, "No se pudo registrar débito local tras transferencia externa exitosa");
+                            Log.Warning(ex, "No se pudo registrar dÃ©bito local tras transferencia externa exitosa");
                         }
                     }
 
@@ -1285,7 +1354,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     {
                         Status = result.Success ? 200 : 400,
                         UAT = request.UAT,
-                        Mensaje = result.Success ? $"Transferencia externa realizada exitosamente: ${request.Transaction.balance}" : (result.Error ?? "Error al crear transacción externa"),
+                        Mensaje = result.Success ? $"Transferencia externa realizada exitosamente: ${request.Transaction.balance}" : (result.Error ?? "Error al crear transacciÃ³n externa"),
                         Success = result.Success,
                         TransactionId = result.TransactionId,
                         RawResponse = result.RawResponse
