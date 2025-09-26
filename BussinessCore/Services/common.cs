@@ -302,7 +302,8 @@ namespace SmartClickCore
                 string usuario = "39ad53001@smtp-brevo.com";
                 string password = "K90kxAdQmTtjpJHv";
                 var origen = new MailAddress("sender@servicemailing.com.ar", "SmartClick");
-                string host = "smtp-relay.sendinblue.com";
+               // string host = "smtp-relay.sendinblue.com";
+                string host = "smtp-relay.brevo.com";
                 int puerto = 587;
                 bool ssl = true;
                 NetworkCredential credenciales = new NetworkCredential(usuario, password);
@@ -310,7 +311,7 @@ namespace SmartClickCore
                 correo.From = origen;
                 correo.IsBodyHtml = true;
                 SmtpClient servicio = new SmtpClient(host, puerto);
-                servicio.UseDefaultCredentials = true;
+                servicio.UseDefaultCredentials = false;
                 servicio.Credentials = credenciales;
                 servicio.EnableSsl = ssl;
                 string token = "";
