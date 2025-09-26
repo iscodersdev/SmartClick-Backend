@@ -1373,6 +1373,10 @@ C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreap
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\SQLitePCLRaw.core.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\SQLitePCLRaw.provider.e_sqlite3.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\StackExchange.Redis.StrongName.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerUI.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\System.CodeDom.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\System.Composition.AttributedModel.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\System.Composition.Convention.dll
@@ -1637,6 +1641,7 @@ C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreap
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.csproj.CoreCompileInputs.cache
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.RazorAssemblyInfo.cache
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.RazorAssemblyInfo.cs
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.sourcelink.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.TagHelpers.input.cache
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.TagHelpers.output.cache
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.RazorCoreGenerate.cache
@@ -1859,12 +1864,7 @@ C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreap
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.RazorTargetAssemblyInfo.cache
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.RazorTargetAssemblyInfo.cs
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.Views.pdb
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartCli.C9B606DC.Up2Date
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.pdb
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.genruntimeconfig.cache
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartClickCore.sourcelink.json
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Debug\netcoreapp2.2\SmartCli.C9B606DC.Up2Date
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.dll
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.Swagger.dll
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerGen.dll
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Debug\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerUI.dll

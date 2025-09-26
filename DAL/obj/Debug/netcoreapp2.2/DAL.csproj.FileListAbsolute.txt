@@ -26,6 +26,6 @@ C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Debug\netcoreapp2.2\DAL.G
 C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Debug\netcoreapp2.2\DAL.AssemblyInfoInputs.cache
 C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Debug\netcoreapp2.2\DAL.AssemblyInfo.cs
 C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Debug\netcoreapp2.2\DAL.csproj.CoreCompileInputs.cache
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Debug\netcoreapp2.2\DAL.sourcelink.json
 C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Debug\netcoreapp2.2\DAL.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Debug\netcoreapp2.2\DAL.pdb
-C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Debug\netcoreapp2.2\DAL.sourcelink.json

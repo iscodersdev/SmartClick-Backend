@@ -694,5 +694,59 @@ namespace SmartClickCore.API.Controllers.Billetera
                 });
             }
         }
+
+        /// <summary>
+        /// Verifica si el usuario autenticado tiene una billetera asociada
+        /// </summary>
+        [HttpPost("TieneBilletera")]
+        public async Task<IActionResult> TieneBilletera([FromBody] RespuestaAPI request)
+        {
+            try
+            {
+                Log.Information($"Verificando billetera para UAT: {request.UAT}");
+
+                var cliente = TraeClienteUAT(request.UAT);
+                DAL.Models.Core.Billetera billetera = null;
+
+                if (cliente != null)
+                {
+                    billetera = _context.Billeteras.Where(b => b.Cliente.Id == cliente.Id).FirstOrDefault();
+                }
+                else
+                {
+                    var usuario = TraeUsuarioUAT(request.UAT);
+                    if (usuario != null)
+                    {
+                        billetera = _context.Billeteras.Where(b => b.Cliente.Usuario.Id == usuario.Id).FirstOrDefault();
+                    }
+                }
+
+                var tieneBilletera = billetera != null;
+
+                var response = new
+                {
+                    Status = 200,
+                    UAT = request.UAT,
+                    Mensaje = tieneBilletera ? "Usuario tiene billetera" : "Usuario no tiene billetera",
+                    TieneBilletera = tieneBilletera,
+                    BilleteraId = billetera?.Id,
+                    CVU = billetera?.CVU,
+                    Alias = billetera?.AliasCVU
+                };
+
+                Log.Information($"Consulta TieneBilletera completada - UAT: {request.UAT}, Resultado: {tieneBilletera}");
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Error en consulta TieneBilletera para UAT: {request?.UAT}");
+                return StatusCode(500, new RespuestaAPI 
+                { 
+                    Status = 500, 
+                    UAT = request?.UAT, 
+                    Mensaje = "Error en consulta de billetera" 
+                });
+            }
+        }
     }
 }
