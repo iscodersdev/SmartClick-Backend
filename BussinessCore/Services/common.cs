@@ -228,21 +228,6 @@ namespace SmartClickCore
         }
 
 
-        //public static bool EnviarMail(string destinatario, string titulo, string texto, string cliente, byte[] Adjunto = null, string NombreArchivo = null)
-        //{
-        //    MailAPI mail = new MailAPI();
-        //    mail.Mail = destinatario;
-        //    mail.Html = texto;
-        //    mail.Titulo = titulo;
-        //    DateTime oFec = DateTime.Now;
-        //    var code = Encrypt(mail.Titulo + mail.Html, "SendMail"); 
-        //    mail.Token = code;
-        //    //            var resultado=  EnviarMailGmail(mail);
-        //    var resultado = EnviarMailSendinBlue(mail);
-        //    return true;
-        //}
-
-
         public static bool EnviarMail(string destinatario, string titulo, string texto, string cliente, byte[] Adjunto = null, string NombreArchivo = null)
         {
             MailAPI mail = new MailAPI();
@@ -254,9 +239,8 @@ namespace SmartClickCore
             mail.Token = code;
             //            var resultado=  EnviarMailGmail(mail);
             var resultado = EnviarMailSendinBlue(mail);
-            return resultado; // ✅ RETORNAR EL RESULTADO REAL EN LUGAR DE 'true'
+            return true;
         }
-
 
 
         //public static bool EnviarMail(string destinatario, string titulo, string texto, string cliente, byte[] Adjunto = null, string NombreArchivo = null)
@@ -265,11 +249,16 @@ namespace SmartClickCore
         //    mail.Mail = destinatario;
         //    mail.Html = texto;
         //    mail.Titulo = titulo;
+        //    DateTime oFec = DateTime.Now;
         //    var code = Encrypt(mail.Titulo + mail.Html, "SendMail");
         //    mail.Token = code;
-        //    // Propagar resultado al llamador
-        //    return EnviarMailSendinBlue(mail);
+        //    //            var resultado=  EnviarMailGmail(mail);
+        //    var resultado = EnviarMailSendinBlue(mail);
+        //    return resultado; // ✅ RETORNAR EL RESULTADO REAL EN LUGAR DE 'true'
         //}
+
+
+
 
 
         public static decimal CalculaCFT(double capital,int cantidadcuotas,double montocuota)
@@ -302,7 +291,7 @@ namespace SmartClickCore
                 string usuario = "39ad53001@smtp-brevo.com";
                 string password = "K90kxAdQmTtjpJHv";
                 var origen = new MailAddress("sender@servicemailing.com.ar", "SmartClick");
-               // string host = "smtp-relay.sendinblue.com";
+                // string host = "smtp-relay.sendinblue.com";
                 string host = "smtp-relay.brevo.com";
                 int puerto = 587;
                 bool ssl = true;
@@ -325,94 +314,7 @@ namespace SmartClickCore
 
         }
 
-        //public static bool EnviarMailSendinBlue(MailAPI mail)
-        //{
-        //    if (mail == null || string.IsNullOrWhiteSpace(mail.Mail))
-        //    {
-        //        System.Diagnostics.Debug.WriteLine("❌ EnviarMailSendinBlue: mail.Mail es null o vacío");
-        //        return false;
-        //    }
-
-        //    try
-        //    {
-        //        // ✅ CREDENCIALES CORRECTAS DE BREVO
-        //        string usuario = "39ad53001@smtp-brevo.com";
-        //        string password = "K90kxAdQmTtjpJHv";
-
-        //        // ✅ USAR EL MISMO EMAIL PARA ORIGEN Y CREDENCIALES
-        //        var origen = new MailAddress(usuario, "SmartClick");
-        //        string host = "smtp-relay.sendinblue.com";
-        //        int puerto = 587;
-        //        bool ssl = true;
-        //        NetworkCredential credenciales = new NetworkCredential(usuario, password);
-
-        //        System.Diagnostics.Debug.WriteLine($"🔍 Intentando enviar mail:");
-        //        System.Diagnostics.Debug.WriteLine($"   - Destino: {mail.Mail}");
-        //        System.Diagnostics.Debug.WriteLine($"   - Título: {mail.Titulo}");
-        //        System.Diagnostics.Debug.WriteLine($"   - Host: {host}:{puerto}");
-        //        System.Diagnostics.Debug.WriteLine($"   - Usuario: {usuario}");
-        //        System.Diagnostics.Debug.WriteLine($"   - SSL: {ssl}");
-
-        //        // ✅ USAR EL MISMO EMAIL EN MAILMESSAGE Y ORIGEN
-        //        using (var correo = new MailMessage(usuario, mail.Mail, mail.Titulo, cuerpoHTMLGmail(mail.Titulo, mail.Html, "")))
-        //        using (var servicio = new SmtpClient(host, puerto))
-        //        {
-        //            correo.From = origen;
-        //            correo.IsBodyHtml = true;
-
-        //            servicio.UseDefaultCredentials = false; // ✅ IMPORTANTE: FALSE
-        //            servicio.Credentials = credenciales;
-        //            servicio.EnableSsl = ssl;
-        //            servicio.Timeout = 30000; // 30 segundos timeout
-
-        //            // ✅ USAR Send EN LUGAR DE SendAsync para capturar excepciones
-        //            servicio.Send(correo);
-        //            System.Diagnostics.Debug.WriteLine("✅ Mail enviado exitosamente");
-        //        }
-
-        //        return true;
-        //    }
-        //    catch (SmtpException smtpEx)
-        //    {
-        //        System.Diagnostics.Debug.WriteLine($"❌ Error SMTP: {smtpEx.StatusCode} - {smtpEx.Message}");
-        //        System.Diagnostics.Debug.WriteLine($"   InnerException: {smtpEx.InnerException?.Message}");
-        //        LogError("SMTP Error", smtpEx, mail);
-        //        return false;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        System.Diagnostics.Debug.WriteLine($"❌ Error General: {ex.Message}");
-        //        System.Diagnostics.Debug.WriteLine($"   StackTrace: {ex.StackTrace}");
-        //        LogError("General Error", ex, mail);
-        //        return false;
-        //    }
-        //}
-
-        //// Método auxiliar para logging
-        //private static void LogError(string tipo, Exception ex, MailAPI mail)
-        //{
-        //    try
-        //    {
-        //        var logPath = Path.Combine(Directory.GetCurrentDirectory(), "logs");
-        //        if (!Directory.Exists(logPath)) Directory.CreateDirectory(logPath);
-
-        //        var logFile = Path.Combine(logPath, $"mail_errors_{DateTime.Now:yyyyMMdd}.log");
-        //        var logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{tipo}] - Destino: {mail?.Mail} - Error: {ex.Message}\r\n" +
-        //                      $"StackTrace: {ex.StackTrace}\r\n" +
-        //                      $"InnerException: {ex.InnerException?.Message}\r\n\r\n";
-
-        //        File.AppendAllText(logFile, logEntry);
-        //    }
-        //    catch { }
-        //}
-
-
-
-
-
-
-
-
+      
 
 
         public static bool EnviarMailGmail(MailAPI mail)

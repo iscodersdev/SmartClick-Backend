@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SmartClickCore")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4fc68e63a1d0407c08de69f2b5910246f2351c2e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4908e60bbabf5ec93e7801a9b542480c63387ef9")]
 [assembly: System.Reflection.AssemblyProductAttribute("SmartClickCore")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SmartClickCore")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
