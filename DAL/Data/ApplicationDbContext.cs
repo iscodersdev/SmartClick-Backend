@@ -126,6 +126,9 @@ namespace DAL.Data
 
 
         #endregion
+        // PSP integration tables
+        public DbSet<DAL.Models.PSPAccount> PSPAccounts { get; set; }
+        public DbSet<DAL.Models.PSPAccountFile> PSPAccountFiles { get; set; }
         public override List<IWorkSpace> GetIWorkSpaces()
         {
             return new List<IWorkSpace>();

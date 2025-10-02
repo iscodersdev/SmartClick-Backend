@@ -1383,5 +1383,210 @@ namespace SmartClickCore.API.Controllers.PSP
                 });
             }
         }
+
+        /// <summary>
+        /// Endpoint orquestador: crea usuario en PSP, registra entidad y sube archivos. Recibe multipart/form-data.
+        /// </summary>
+        [HttpPost("CrearCuentaPSPOrquestado")]
+        public async Task<IActionResult> CrearCuentaPSPOrquestado()
+        {
+            try
+            {
+                var form = Request.Form;
+                string requestId = Request.Headers.ContainsKey("Idempotency-Key") ? Request.Headers["Idempotency-Key"].FirstOrDefault() : form["RequestId"].FirstOrDefault() ?? Guid.NewGuid().ToString();
+
+                string cuil = form["CUIL"].FirstOrDefault();
+                string nombre = form["NOMBRE"].FirstOrDefault();
+                string apellido = form["APELLIDO"].FirstOrDefault();
+                string email = form["EMAIL"].FirstOrDefault();
+                string phoneCode = form["PHONECODE"].FirstOrDefault();
+                string telefono = form["TELEFONO"].FirstOrDefault();
+                string direccion = form["DIRECCION"].FirstOrDefault();
+                string provincia = form["PROVINCIA"].FirstOrDefault();
+                string cityId = form["CITYID"].FirstOrDefault();
+                string password = form["PASSWORD"].FirstOrDefault();
+                string postalCode = form["POSTALCODE"].FirstOrDefault();
+
+                if (string.IsNullOrEmpty(cuil) || string.IsNullOrEmpty(nombre) || string.IsNullOrEmpty(apellido) ||
+                    string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+                {
+                    return BadRequest(new { Status = 400, Mensaje = "Faltan campos obligatorios", Success = false });
+                }
+
+                // Idempotencia: si ya existe RequestId o PSPAccount para ese CUIL, devolver estado
+                var existing = _context.Set<DAL.Models.PSPAccount>().FirstOrDefault(p => p.RequestId == requestId || (!string.IsNullOrEmpty(p.TributaryIdentifier) && p.TributaryIdentifier == cuil));
+                if (existing != null)
+                {
+                    return Ok(new { Status = 200, Mensaje = "Ya existe registro", AccountId = existing.Id, StatusText = existing.Status });
+                }
+
+                // Persist initial PSPAccount
+                var pspAccount = new DAL.Models.PSPAccount
+                {
+                    RequestId = requestId,
+                    TributaryIdentifier = cuil,
+                    UserName = email,
+                    Status = "creating",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Set<DAL.Models.PSPAccount>().Add(pspAccount);
+                _context.SaveChanges();
+
+                // Paso 1: CreateUser
+                var createUserReq = new CreateUserRequestDTO
+                {
+                    userType = "5",
+                    userName = email,
+                    documentType = "CUIL",
+                    documentNumber = cuil,
+                    firstName = nombre,
+                    lastName = apellido,
+                    email = email,
+                    phoneNumber = (phoneCode ?? "") + (telefono ?? ""),
+                    address = direccion,
+                    departmentId = provincia, // keep as string to match DTO
+                    cityId = cityId,         // keep as string to match DTO
+                    Active = true,
+                    roles = new List<int> { 9 },
+                    password = password,
+                    passwordConfirm = password
+                };
+
+                var createUserResp = await _pspService.CreateUserAsync(createUserReq);
+                if (createUserResp == null || !createUserResp.Success)
+                {
+                    pspAccount.Status = "error_user";
+                    pspAccount.ErrorMessage = createUserResp?.Error ?? createUserResp?.Message ?? "Error al crear usuario";
+                    pspAccount.UpdatedAt = DateTime.UtcNow;
+                    _context.SaveChanges();
+                    return BadRequest(new { Status = 400, Mensaje = "Error creando usuario en PSP", Detail = pspAccount.ErrorMessage });
+                }
+
+                pspAccount.PSPUserId = createUserResp.UserId?.ToString();
+                pspAccount.Status = "user_created";
+                pspAccount.UpdatedAt = DateTime.UtcNow;
+                _context.SaveChanges();
+
+                // Paso 2: Obtener token del usuario creado
+                var tokenResp = await _pspService.GetAccessTokenUserAsync(createUserReq.userName, createUserReq.password);
+                string userToken = tokenResp?.access_token;
+                if (string.IsNullOrEmpty(userToken))
+                {
+                    pspAccount.Status = "error_token";
+                    pspAccount.ErrorMessage = "No se pudo obtener token del usuario creado";
+                    pspAccount.UpdatedAt = DateTime.UtcNow;
+                    _context.SaveChanges();
+                    return BadRequest(new { Status = 400, Mensaje = pspAccount.ErrorMessage });
+                }
+
+                // Guardar token cifrado usando common.Encrypt (evita cambios de constructor DI)
+                try
+                {
+                    pspAccount.EncryptedUserToken = common.Encrypt(userToken, "PSPToken");
+                }
+                catch
+                {
+                    pspAccount.EncryptedUserToken = null;
+                }
+                pspAccount.TokenExpiry = tokenResp.expires_in > 0 ? (DateTime?)DateTime.UtcNow.AddSeconds(tokenResp.expires_in) : null;
+                pspAccount.Status = "token_saved";
+                pspAccount.UpdatedAt = DateTime.UtcNow;
+                _context.SaveChanges();
+
+                // Paso 3: SelfRegistration
+                var selfReq = new SelfRegistrationRequestDTO
+                {
+                    entityTypeId = 5,
+                    parentId = 1786,
+                    isPhysicalPerson = true,
+                    taxPayer = false,
+                    isPyME = false,
+                    PyMEEffectiveDate = null,
+                    tributaryIdentifierType = "CUIL",
+                    tributaryIdentifier = cuil,
+                    name = nombre,
+                    phoneCode = phoneCode,
+                    phone = telefono,
+                    address = direccion,
+                    floor = null,
+                    department = null,
+                    cityId = !string.IsNullOrEmpty(cityId) ? Convert.ToInt32(cityId) : 0,
+                    postalCode = postalCode,
+                    email = email,
+                    isRevalidation = true,
+                    IsSameAddress = true,
+                    activityPostalCode = postalCode,
+                    activityCityId = !string.IsNullOrEmpty(cityId) ? Convert.ToInt32(cityId) : 0,
+                    activityAddress = direccion,
+                    activityFloor = null,
+                    activityDepartment = null,
+                    FantasyName = null,
+                    cuf = null,
+                    CovenantCode = null
+                };
+
+                var selfResp = await _pspService.SelfRegistrationAsync(selfReq, userToken);
+
+                if (selfResp == null || !selfResp.Success)
+                {
+                    pspAccount.Status = "error_registration";
+                    pspAccount.ErrorMessage = selfResp?.Error ?? selfResp?.Message ?? "Error en SelfRegistration";
+                    pspAccount.UpdatedAt = DateTime.UtcNow;
+                    _context.SaveChanges();
+                    return BadRequest(new { Status = 400, Mensaje = "Error registrando entidad en PSP", Detail = pspAccount.ErrorMessage });
+                }
+
+                pspAccount.Identifier = selfResp.Identifier;
+                pspAccount.EntityId = selfResp.EntityId;
+                pspAccount.Status = "registered";
+                pspAccount.UpdatedAt = DateTime.UtcNow;
+                _context.SaveChanges();
+
+                // Paso 4: Upload files (si vienen)
+                var filesDict = new Dictionary<string, byte[]>();
+                foreach (var f in Request.Form.Files)
+                {
+                    using (var ms = new MemoryStream())
+                    {
+                        await f.CopyToAsync(ms);
+                        filesDict[f.Name] = ms.ToArray();
+                    }
+                }
+
+                if (filesDict.Any())
+                {
+                    var uploadResp = await _pspService.UploadFilesAsync(pspAccount.Identifier, userToken, filesDict);
+                    if (uploadResp == null || !uploadResp.Success)
+                    {
+                        pspAccount.Status = "error_upload";
+                        pspAccount.ErrorMessage = uploadResp?.Error ?? uploadResp?.Message ?? "Error subiendo archivos";
+                        pspAccount.UpdatedAt = DateTime.UtcNow;
+                        _context.SaveChanges();
+                        return BadRequest(new { Status = 400, Mensaje = "Error subiendo archivos", Detail = pspAccount.ErrorMessage });
+                    }
+
+                    pspAccount.Status = "files_uploaded";
+                    pspAccount.UpdatedAt = DateTime.UtcNow;
+                    _context.SaveChanges();
+                }
+
+                return Ok(new
+                {
+                    Status = 200,
+                    Mensaje = "Cuenta PSP creada y archivos subidos correctamente",
+                    Success = true,
+                    AccountId = pspAccount.Id,
+                    PSPUserId = pspAccount.PSPUserId,
+                    Identifier = pspAccount.Identifier,
+                    UserTokenPreview = userToken?.Substring(0, Math.Min(20, userToken.Length)) + "..."
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en CrearCuentaPSPOrquestado");
+                return StatusCode(500, new { Status = 500, Mensaje = "Error interno del servidor", Error = ex.Message });
+            }
+        }
     }
 }
