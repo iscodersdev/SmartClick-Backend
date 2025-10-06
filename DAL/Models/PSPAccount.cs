@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace DAL.Models
 {
@@ -31,5 +32,8 @@ namespace DAL.Models
 
         // Optional: store the tributary identifier (CUIL/CUIT)
         public string TributaryIdentifier { get; set; }
+
+        // Agregar esta colección para navegación inversa
+        public virtual ICollection<PSPAccountFile> PSPAccountFiles { get; set; }
     }
 }

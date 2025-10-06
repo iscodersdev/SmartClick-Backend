@@ -11,7 +11,7 @@ namespace DAL.Models
         public string StoragePath { get; set; } // ruta/URL a blob o filesystem
         public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 
-        // navegación opcional
-        public PSPAccount PSPAccount { get; set; }
+        // navegación opcional - AGREGAR palabra clave virtual
+        public virtual PSPAccount PSPAccount { get; set; }
     }
 }

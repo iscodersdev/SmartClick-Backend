@@ -1241,8 +1241,8 @@ D:\SmartClick\BussinessCore\obj\Release\netcoreapp2.2\SmartClickCore.dll
 D:\SmartClick\BussinessCore\obj\Release\netcoreapp2.2\SmartClickCore.pdb
 D:\SmartClick\BussinessCore\obj\Release\netcoreapp2.2\SmartClickCore.genruntimeconfig.cache
 D:\SmartClick\BussinessCore\bin\Release\netcoreapp2.2\Microsoft.OpenApi.dll
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Connected Services\WsAMMA\ConnectedService.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\appsettings.json
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Connected Services\WsAMMA\ConnectedService.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\SmartClickCore.deps.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\SmartClickCore.runtimeconfig.json
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\SmartClickCore.runtimeconfig.dev.json
@@ -1373,6 +1373,10 @@ C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcore
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\SQLitePCLRaw.core.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\SQLitePCLRaw.provider.e_sqlite3.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\StackExchange.Redis.StrongName.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Swashbuckle.AspNetCore.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerUI.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\System.CodeDom.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\System.Composition.AttributedModel.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\System.Composition.Convention.dll
@@ -1864,7 +1868,3 @@ C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Release\netcore
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Release\netcoreapp2.2\SmartClickCore.dll
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Release\netcoreapp2.2\SmartClickCore.pdb
 C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\obj\Release\netcoreapp2.2\SmartClickCore.genruntimeconfig.cache
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Swashbuckle.AspNetCore.dll
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Swashbuckle.AspNetCore.Swagger.dll
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerGen.dll
-C:\Users\dullk\source\repos\SmartClick-Backend\BussinessCore\bin\Release\netcoreapp2.2\Swashbuckle.AspNetCore.SwaggerUI.dll
