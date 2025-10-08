@@ -8,6 +8,7 @@ COPY NuGet.config /app/NuGet.config
 
 # Copiá primero el csproj (mejora el cache)
 COPY BussinessCore/SmartClickCore.csproj BussinessCore/
+COPY DAL/DAL.csproj DAL/
 RUN dotnet restore BussinessCore/SmartClickCore.csproj --configfile /app/NuGet.config
 
 # Copiá el resto del código y publicá
