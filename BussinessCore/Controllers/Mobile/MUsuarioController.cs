@@ -419,10 +419,10 @@ namespace SmartClick.Controllers
             cliente.Celular = uat.Celular;
             cliente.Persona.FechaNacimiento = Convert.ToDateTime(uat.FechaNacimiento);
             //cliente.Persona.Mail = uat.Mail; *** Cambiar en la tabla User
-            //if (uat.Password1 != null)
-            //{
-            //    cliente.Password = uat.Password1;
-            //}
+            if (uat.Password1 != null)
+            {
+                cliente.Password = uat.Password1;
+            }
             _context.Clientes.Update(cliente);
             _context.SaveChanges();
             return uat;
