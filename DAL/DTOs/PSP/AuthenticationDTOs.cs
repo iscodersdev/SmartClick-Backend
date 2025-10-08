@@ -83,7 +83,7 @@ namespace DAL.DTOs.PSP
     {
         public bool Success { get; set; }
         public string Message { get; set; }
-        public int? EntityId { get; set; }
+        public string EntityId { get; set; }
         public int? PersonId { get; set; }
         public string Error { get; set; }
     }
@@ -142,7 +142,7 @@ namespace DAL.DTOs.PSP
 
     public class RegistrarEntidadResponseDTO : PSPBaseResponseDTO
     {
-        public int? EntityId { get; set; }
+        public string EntityId { get; set; }
         public int? PersonId { get; set; }
     }
 
@@ -229,7 +229,7 @@ namespace DAL.DTOs.PSP
         public int? UserId { get; set; }
         public string UserToken { get; set; }  // Token del usuario creado
         public string Identifier { get; set; }  // Token del usuario creado
-        public int? EntityId { get; set; }  // Token del usuario creado
+        public string EntityId { get; set; }  // Token del usuario creado
     }
 
     // DTO para SelfRegistration con UAT
@@ -242,7 +242,7 @@ namespace DAL.DTOs.PSP
     public class SelfRegistrationWithUATResponseDTO : PSPBaseResponseDTO
     {
         public string Identifier { get; set; }  // ID para subir archivos después
-        public int? EntityId { get; set; }
+        public string EntityId { get; set; }
     }
 
     // *** DTOs PARA UPLOAD FILES ***
@@ -335,7 +335,7 @@ namespace DAL.DTOs.PSP
 
     public class CreateEntityAndUserWithUATResponseDTO : PSPBaseResponseDTO
     {
-        public int? EntityId { get; set; }
+        public string EntityId { get; set; }
         public int? PersonId { get; set; }
     }
 

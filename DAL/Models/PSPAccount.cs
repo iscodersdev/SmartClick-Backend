@@ -15,7 +15,7 @@ namespace DAL.Models
         public string PSPUserId { get; set; }
         public string UserName { get; set; }
         public string Identifier { get; set; }    // Identifier de SelfRegistration
-        public int? EntityId { get; set; }        // EntityId del PSP
+        public string EntityId { get; set; }        // EntityId del PSP
         public string AccountNumber { get; set; } // CVU/CBU si aplica
 
         // Token cifrado y metadatos
