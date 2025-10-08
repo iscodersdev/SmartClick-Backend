@@ -60,7 +60,8 @@ namespace SmartClickCore
             {
                 builder.WithOrigins("https://signature-hero.lovable.app",
                                     "https://siempreclick.netlify.app",
-                                    "https://preview--smartclick-web-start.lovable.app"
+                                    "https://preview--smartclick-web-start.lovable.app",
+                                    "https://firmaprever.netlify.app"
                     )
                        .AllowAnyHeader()
                        .AllowAnyMethod()

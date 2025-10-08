@@ -212,7 +212,7 @@ namespace DAL.DTOs.PSP
         public bool Success { get; set; }
         public string Message { get; set; }
         public string Identifier { get; set; }  // ID para subir archivos después
-        public int? EntityId { get; set; }
+        public string EntityId { get; set; }
         public string Error { get; set; }
     }
 

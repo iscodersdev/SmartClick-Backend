@@ -294,7 +294,7 @@ namespace BusinessCore.Services
                     Success = true, 
                     Message = "?? SIMULACI�N: Entidad creada exitosamente (modo prueba)",
                     Identifier = "mock-identifier-12345-abcdef",
-                    EntityId = 66666
+                    EntityId = ""
                 };
             }
 
@@ -336,15 +336,44 @@ namespace BusinessCore.Services
                     var responseContent = await response.Content.ReadAsStringAsync();
                     _logger.LogInformation($"SelfRegistration completado exitosamente en PSP: {responseContent}");
                     
-                    // TODO: Deserializar la respuesta real para obtener el Identifier
-                    // Por ahora devolvemos una respuesta gen�rica exitosa
-                    return new SelfRegistrationResponseDTO 
-                    { 
-                        Success = true, 
-                        Message = "Entidad creada exitosamente mediante SelfRegistration",
-                        Identifier = responseContent
-                        // Identifier y EntityId se deber�an extraer de responseContent
-                    };
+                    try
+                    {
+                        // ✅ DESERIALIZAR la respuesta del PSP
+                        var pspResponse = JsonConvert.DeserializeObject<ApiSelfRegistrationResponse>(responseContent);
+                        
+                        if (pspResponse?.success == true && pspResponse.data != null)
+                        {
+                            return new SelfRegistrationResponseDTO 
+                            { 
+                                Success = true, 
+                                Message = pspResponse.message ?? "Entidad creada exitosamente mediante SelfRegistration",
+                                Identifier = pspResponse.data.identifier,  // ✅ Campo limpio
+                                EntityId = pspResponse.data.entityId       // ✅ Bonus: también extraer entityId si viene
+                            };
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"Respuesta exitosa del PSP pero sin datos válidos: {responseContent}");
+                            return new SelfRegistrationResponseDTO 
+                            { 
+                                Success = false, 
+                                Error = "Respuesta del PSP sin datos válidos",
+                                Message = responseContent
+                            };
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        _logger.LogError(jsonEx, $"Error deserializando respuesta de SelfRegistration: {responseContent}");
+                        
+                        // ⚠️ FALLBACK: Si no se puede deserializar, devolver el raw content
+                        return new SelfRegistrationResponseDTO 
+                        { 
+                            Success = true,  // El HTTP fue exitoso
+                            Message = "Respuesta no deserializable del PSP",
+                            Identifier = responseContent  // Como último recurso
+                        };
+                    }
                 }
                 else
                 {
@@ -1151,5 +1180,18 @@ namespace BusinessCore.Services
         public string message { get; set; }
         public List<AccountInfoDTO> data { get; set; }    // ?? FIX: Cambiar "accounts" por "data"
         public string code { get; set; }                  // ?? FIX: Agregar "code"
+    }
+
+    public class ApiSelfRegistrationResponse
+    {
+        public bool success { get; set; }
+        public string message { get; set; }
+        public SelfRegistrationData data { get; set; }
+    }
+
+    public class SelfRegistrationData
+    {
+        public string identifier { get; set; }
+        public string entityId { get; set; }
     }
 }
