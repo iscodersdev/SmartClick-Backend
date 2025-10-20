@@ -48,28 +48,52 @@ namespace SmartClickCore
 
            
 
-            services.AddCors(options =>
-            {
-                options.AddPolicy("CorsPolicy",
-                    builder => builder.AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader());
+            //services.AddCors(options =>
+            //{
+            //    options.AddPolicy("CorsPolicy",
+            //        builder => builder.AllowAnyOrigin()
+            //        .AllowAnyMethod()
+            //        .AllowAnyHeader());
 
-                options.AddPolicy("AllowSpecificOrigin",
-            builder =>
-            {
-                builder.WithOrigins("https://signature-hero.lovable.app",
-                                    "https://siempreclick.netlify.app",
-                                    "https://preview--smartclick-web-start.lovable.app",
-                                    "https://firmaprever.netlify.app"
-                    )
-                       .AllowAnyHeader()
-                       .AllowAnyMethod()
-                       .AllowCredentials();
-            });
+            //    options.AddPolicy("AllowSpecificOrigin",
+            //builder =>
+            //{
+            //    builder.WithOrigins("https://signature-hero.lovable.app",
+            //                        "https://siempreclick.netlify.app",
+            //                        "https://preview--smartclick-web-start.lovable.app",
+            //                        "https://firmaprever.netlify.app",
+            //                        "https://smartclick-web-start.lovable.app"
+            //        )
+            //           .AllowAnyHeader()
+            //           .AllowAnyMethod()
+            //           .AllowCredentials();
+            //});
 
 
-            });
+                services.AddCors(options =>
+                {
+                    options.AddPolicy("CorsPolicy",
+                        builder => builder.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+
+                    options.AddPolicy("AllowSpecificOrigin",
+                builder =>
+                {
+                    builder.WithOrigins("https://signature-hero.lovable.app",
+                                        "https://siempreclick.netlify.app",
+                                        "https://preview--smartclick-web-start.lovable.app",
+                                        "https://firmaprever.netlify.app",
+                                        "https://smartclick-web-start.lovable.app"
+                        )
+                           .AllowAnyHeader()
+                           .AllowAnyMethod()
+                           .AllowCredentials();
+                });
+
+
+
+                });
 
             services.AddSwaggerGen(c =>
             {
@@ -147,6 +171,62 @@ namespace SmartClickCore
         }
 
 
+        //public void Configure(IApplicationBuilder app, IHostingEnvironment env, UserService<Usuario> userService, SmartClickContext context)
+        //{
+        //    // Asignacion de administradores por defecto
+        //    //var adminUserResult = context.Usuarios.Where(x => x.UserName == "ramperez" || x.UserName == "pperez" || x.UserName == "mkucsera" || x.UserName == "aballa").ToList();
+        //    //if (adminUserResult != null)
+        //    //{
+        //    //    foreach (Usuario a in adminUserResult)
+        //    //    {
+        //    //        if (usuario.GetClaimsAsync(a).Result.All(x => x.Type != "IsAdmin"))
+        //    //        {
+        //    //            usuario.AddClaimAsync(a, new Claim("IsAdmin", a.UserName));
+        //    //        }
+        //    //    }
+        //    //}
+
+        //    if (env.IsDevelopment())
+        //    {
+        //        app.UseDeveloperExceptionPage();
+        //        app.UseDatabaseErrorPage();
+        //        DummyAdmin.Initialize<Usuario>(userService).Wait();
+        //    }
+        //    else
+        //    {
+        //        //app.UseDeveloperExceptionPage();
+        //        app.UseDatabaseErrorPage();
+        //        app.UseHsts();                
+        //        //Provisorio
+        //        DummyAdmin.Initialize<Usuario>(userService).Wait();
+        //    }
+
+        //    app.UseSwagger();
+        //    app.UseSwaggerUI(c =>
+        //    {
+        //        string swaggerJsonBasePath = string.IsNullOrWhiteSpace(c.RoutePrefix) ? "." : "..";
+        //        c.SwaggerEndpoint($"{swaggerJsonBasePath}/swagger/v1/swagger.json", "My API");
+        //    });
+
+        //    //app.UseCors("CorsPolicy");
+        //    app.UseCors("AllowSpecificOrigin");
+        //    app.UseStaticFiles();
+        //    app.UseSession();
+        //    app.UseCommonsLibraryScripts();
+        //    app.UseAuthentication();
+        //    app.UseMvc(routes =>
+        //    {
+        //        routes.MapRoute(
+        //          name: "areas",
+        //          template: "{area:exists}/{controller=Home}/{action=Index}/{id?}"
+        //      );
+        //        routes.MapRoute(
+        //            name: "default",
+        //            template: "{controller=Home}/{action=Index}/{id?}");
+        //    });
+        //    app.UseCookiePolicy();
+        //}
+
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, UserService<Usuario> userService, SmartClickContext context)
         {
             // Asignacion de administradores por defecto
@@ -172,7 +252,7 @@ namespace SmartClickCore
             {
                 //app.UseDeveloperExceptionPage();
                 app.UseDatabaseErrorPage();
-                app.UseHsts();                
+                app.UseHsts();
                 //Provisorio
                 DummyAdmin.Initialize<Usuario>(userService).Wait();
             }
@@ -184,8 +264,8 @@ namespace SmartClickCore
                 c.SwaggerEndpoint($"{swaggerJsonBasePath}/swagger/v1/swagger.json", "My API");
             });
 
-            //app.UseCors("CorsPolicy");
-            app.UseCors("AllowSpecificOrigin");
+            // CAMBIO: Usar CorsPolicy en lugar de AllowSpecificOrigin para permitir cualquier origen
+            app.UseCors("CorsPolicy");
             app.UseStaticFiles();
             app.UseSession();
             app.UseCommonsLibraryScripts();
@@ -202,5 +282,6 @@ namespace SmartClickCore
             });
             app.UseCookiePolicy();
         }
+
     }
 }
