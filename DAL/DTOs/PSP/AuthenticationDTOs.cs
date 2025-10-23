@@ -377,6 +377,7 @@ namespace DAL.DTOs.PSP
         public string Message { get; set; }
         public List<AccountInfoDTO> Accounts { get; set; } = new List<AccountInfoDTO>();
         public string Error { get; set; }
+        public string RawResponse { get; set; }
     }
 
     /// <summary>

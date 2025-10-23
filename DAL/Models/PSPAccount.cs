@@ -1,39 +1,64 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Models
 {
     public class PSPAccount
     {
         public int Id { get; set; }
+        public string RequestId { get; set; } // para idempotencia / reintentos
 
-        // FK opcionales hacia tus entidades locales (no obliga a cambiar tablas existentes)
+        // --- Datos Locales ---
         public int? ClienteId { get; set; }
-        public int? UsuarioId { get; set; }
+        public string UsuarioId { get; set; } // matches AspNetUsers.Id (string)
+        public string TributaryIdentifier { get; set; } // CUIL
+        public string UserName { get; set; } // Email
 
-        // Identificadores devueltos por PSP
+        // --- Datos del PSP ---
         public string PSPUserId { get; set; }
-        public string UserName { get; set; }
+        public string EntityId { get; set; }        // EntityId del PSP (string to allow alphanumeric)
         public string Identifier { get; set; }    // Identifier de SelfRegistration
-        public string EntityId { get; set; }        // EntityId del PSP
-        public string AccountNumber { get; set; } // CVU/CBU si aplica
+        public string AccountNumber { get; set; }
+        public string CVU { get; set; }
+        public string CVU_CBUAlias { get; set; }
+        public int? AccountTypeId { get; set; }
+        public string TributaryIdentifierType { get; set; }
+        public string CurrencyDescription { get; set; }
+        public string CurrencyName { get; set; }
+        public string CurrencySymbol { get; set; }
+        public int? CurrencyTypeId { get; set; }
+        public bool? DeleteAccountSolicitude { get; set; }
 
-        // Token cifrado y metadatos
+        // Optional fields from Children/Get
+        public int? EntityStatus { get; set; }
+        public string EntityStatusDescription { get; set; }
+        public string StatusDescription { get; set; }
+
+        // --- Estado y Tokens ---
+        public string Status { get; set; }        // creating, user_created, registered, active, pending_approval, error_*
+        public string ErrorMessage { get; set; }
+        [Column(TypeName = "text")]
         public string EncryptedUserToken { get; set; }
         public DateTime? TokenExpiry { get; set; }
+        [Column(TypeName = "text")]
+        public string EncryptedPassword { get; set; } // Para refrescar el token si es necesario
 
-        // Control de estado / idempotencia / auditoría
-        public string Status { get; set; }        // creating, user_created, registered, files_uploaded, validated, error...
-        public string ErrorMessage { get; set; }
-        public string RequestId { get; set; }     // para idempotencia / reintentos
+        // --- Campos de Trazabilidad ---
+        [Column(TypeName = "text")]
+        public string LastC1ResponseJson { get; set; }
+        [Column(TypeName = "text")]
+        public string LastC7ResponseJson { get; set; }
+        public DateTime? LastStatusCheck { get; set; }
 
+
+        // --- Timestamps ---
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 
-        // Optional: store the tributary identifier (CUIL/CUIT)
-        public string TributaryIdentifier { get; set; }
-
-        // Agregar esta colección para navegación inversa
-        public virtual ICollection<PSPAccountFile> PSPAccountFiles { get; set; }
+        // --- Relaciones (Opcional pero recomendado) ---
+        public virtual Clientes Cliente { get; set; }
+        public virtual Usuario Usuario { get; set; }
+        public virtual ICollection<PSPAccountFile> PSPAccountFiles { get; set; } = new List<PSPAccountFile>();
     }
 }

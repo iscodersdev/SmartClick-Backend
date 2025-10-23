@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using DAL.Models.Core; // for MovimientoBilletera, OrigenMovimiento, TipoOrigenMovimiento
 using Commons.Extensions; // for GetDisplayName extension
 using Microsoft.EntityFrameworkCore;
+using DAL.DTOs.API;
 
 namespace SmartClickCore.API.Controllers.PSP
 {
@@ -33,6 +34,135 @@ namespace SmartClickCore.API.Controllers.PSP
             return _context.UAT.Where(u => u.Token == uat).Select(u => u.Cliente.Usuario).FirstOrDefault();
         }
 
+        // *** NUEVO MÉTODO HELPER: OBTENER O REFRESCAR TOKEN DEL USUARIO PSP ***
+        /// <summary>
+        /// Obtiene el UserToken del PSP para un usuario, ya sea desde la base de datos o solicitándolo al PSP
+        /// </summary>
+        private async Task<string> ObtenerUserTokenPSP(DAL.Models.Usuario usuario)
+        {
+            try
+            {
+                // 1. Buscar PSPAccount existente para el usuario
+                var pspAccount = _context.Set<DAL.Models.PSPAccount>()
+                    .Where(p => p.Usuario.Id == usuario.Id)
+                    .FirstOrDefault();
+
+                // 2. Si existe y tiene token válido (no expirado), usarlo
+                if (pspAccount != null &&
+                    !string.IsNullOrEmpty(pspAccount.EncryptedUserToken) &&
+                    pspAccount.TokenExpiry.HasValue &&
+                    pspAccount.TokenExpiry.Value > DateTime.UtcNow.AddMinutes(5)) // Buffer de 5 minutos
+                {
+                    try
+                    {
+                        string decryptedToken = common.Decrypt(pspAccount.EncryptedUserToken, "PSPToken");
+                        Log.Information($"Token recuperado desde BD para usuario {usuario.UserName}");
+                        return decryptedToken;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, $"Error descifrando token almacenado para usuario {usuario.UserName}");
+                    }
+                }
+
+                // 3. Si no hay token válido, necesitamos obtener uno del PSP
+                // OPCIÓN A: Si tenemos username y password PSP almacenados en PSPAccount
+                if (pspAccount != null &&
+                    !string.IsNullOrEmpty(pspAccount.UserName) &&
+                    !string.IsNullOrEmpty(pspAccount.EncryptedPassword))
+                {
+                    try
+                    {
+                        string decryptedPassword = common.Decrypt(pspAccount.EncryptedPassword, "PSPPassword");
+                        Log.Information($"Intentando obtener token del PSP para usuario {pspAccount.UserName}");
+
+                        var tokenResponse = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedPassword);
+
+                        if (!string.IsNullOrEmpty(tokenResponse?.access_token))
+                        {
+                            // Guardar el nuevo token en la BD
+                            try
+                            {
+                                pspAccount.EncryptedUserToken = common.Encrypt(tokenResponse.access_token, "PSPToken");
+                                pspAccount.TokenExpiry = tokenResponse.expires_in > 0
+                                    ? (DateTime?)DateTime.UtcNow.AddSeconds(tokenResponse.expires_in)
+                                    : null;
+                                pspAccount.UpdatedAt = DateTime.UtcNow;
+
+                                _context.SaveChanges();
+
+                                Log.Information($"Token del PSP obtenido y guardado para usuario {pspAccount.UserName}");
+                                return tokenResponse.access_token;
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error(ex, $"Error guardando token en BD para usuario {pspAccount.UserName}");
+                                // Aunque no se guarde, devolvemos el token obtenido
+                                return tokenResponse.access_token;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, $"Error obteniendo token del PSP para usuario {pspAccount.UserName}");
+                    }
+                }
+
+                // OPCIÓN B: Si tenemos un email y password almacenado en Cliente (fallback)
+                var cliente = usuario.Clientes;
+                if (cliente != null && !string.IsNullOrEmpty(cliente.Password))
+                {
+                    Log.Information($"Fallback: Intentando obtener token del PSP usando datos del Cliente");
+
+                    var tokenResponse = await _pspService.GetAccessTokenUserAsync(usuario.UserName, cliente.Password);
+
+                    if (!string.IsNullOrEmpty(tokenResponse?.access_token))
+                    {
+                        // Guardar o actualizar el token en la BD
+                        if (pspAccount == null)
+                        {
+                            pspAccount = new DAL.Models.PSPAccount
+                            {
+                                Usuario = usuario,
+                                UserName = usuario.UserName,
+                                Status = "active",
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            _context.Set<DAL.Models.PSPAccount>().Add(pspAccount);
+                        }
+
+                        try
+                        {
+                            pspAccount.EncryptedUserToken = common.Encrypt(tokenResponse.access_token, "PSPToken");
+                            pspAccount.TokenExpiry = tokenResponse.expires_in > 0
+                                ? (DateTime?)DateTime.UtcNow.AddSeconds(tokenResponse.expires_in)
+                                : null;
+                            pspAccount.UpdatedAt = DateTime.UtcNow;
+
+                            _context.SaveChanges();
+
+                            Log.Information($"Token del PSP obtenido y guardado para usuario {usuario.UserName}");
+                            return tokenResponse.access_token;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, $"Error guardando token en BD para usuario {usuario.UserName}");
+                            // Aunque no se guarde, devolvemos el token obtenido
+                            return tokenResponse.access_token;
+                        }
+                    }
+                }
+
+                Log.Warning($"No se pudo obtener UserToken para usuario {usuario.UserName}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Error en ObtenerUserTokenPSP para usuario {usuario?.UserName}");
+                return null;
+            }
+        }
+
         // *** NUEVO ENDPOINT: CREAR USUARIO ***
         /// <summary>
         /// Crea un nuevo usuario en el PSP
@@ -46,24 +176,24 @@ namespace SmartClickCore.API.Controllers.PSP
                 var usuario = TraeUsuarioUAT(request.UAT);
                 if (usuario == null)
                 {
-                    return BadRequest(new CreateUserWithUATResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = request.UAT, 
+                    return BadRequest(new CreateUserWithUATResponseDTO
+                    {
+                        Status = 401,
+                        UAT = request.UAT,
                         Mensaje = "Usuario no autenticado",
                         Success = false
                     });
                 }
 
                 // Validar datos requeridos para crear usuario
-                if (string.IsNullOrEmpty(request.user.userName) || 
-                    string.IsNullOrEmpty(request.user.email) || 
+                if (string.IsNullOrEmpty(request.user.userName) ||
+                    string.IsNullOrEmpty(request.user.email) ||
                     string.IsNullOrEmpty(request.user.password))
                 {
-                    return BadRequest(new CreateUserWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = request.UAT, 
+                    return BadRequest(new CreateUserWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = request.UAT,
                         Mensaje = "Datos incompletos: se requiere userName, email y password",
                         Success = false
                     });
@@ -94,12 +224,12 @@ namespace SmartClickCore.API.Controllers.PSP
                 var pspResponse = await _pspService.CreateUserAsync(request.user);
 
 
-                var mensaje = _pspService.IsTestMode() 
+                var mensaje = _pspService.IsTestMode()
                     ? "?? SIMULACIÓN: Usuario creado (modo prueba)"
                     : "Usuario creado exitosamente";
 
-                                      
-                
+
+
                 var response = new CreateUserWithUATResponseDTO
                 {
                     Status = pspResponse.Success ? 200 : 500,
@@ -114,16 +244,90 @@ namespace SmartClickCore.API.Controllers.PSP
                 {
                     Log.Information($"Usuario creado exitosamente en PSP - UserName: {request.user.userName}");
 
+                    // *** PASO 2: GUARDAR CREDENCIALES PSP AUTOMÁTICAMENTE (OPCIÓN 1) ***
+                    try
+                    {
+                        // Buscar usuario local por email para asociar PSPAccount
+                        var usuarioLocal = _context.Usuarios.FirstOrDefault(u => u.UserName == request.user.email || u.Email == request.user.email);
+
+                        if (usuarioLocal != null)
+                        {
+                            // Verificar si ya existe PSPAccount para este usuario
+                            var pspAccountExistente = _context.Set<DAL.Models.PSPAccount>()
+                                .FirstOrDefault(p => p.Usuario.Id == usuarioLocal.Id);
+
+                            if (pspAccountExistente == null)
+                            {
+                                // Crear nuevo PSPAccount
+                                var nuevoPspAccount = new DAL.Models.PSPAccount
+                                {
+                                    Usuario = usuarioLocal,
+                                    UserName = request.user.userName,
+                                    EncryptedPassword = common.Encrypt(request.user.password, "PSPPassword"),
+                                    PSPUserId = pspResponse.UserId?.ToString(),
+                                    Status = "active",
+                                    CreatedAt = DateTime.UtcNow
+                                };
+
+                                _context.Set<DAL.Models.PSPAccount>().Add(nuevoPspAccount);
+                                _context.SaveChanges();
+
+                                Log.Information($"✅ Credenciales PSP guardadas automáticamente para usuario {usuarioLocal.UserName}");
+                            }
+                            else
+                            {
+                                // Actualizar PSPAccount existente
+                                pspAccountExistente.UserName = request.user.userName;
+                                pspAccountExistente.EncryptedPassword = common.Encrypt(request.user.password, "PSPPassword");
+                                pspAccountExistente.PSPUserId = pspResponse.UserId?.ToString();
+                                pspAccountExistente.UpdatedAt = DateTime.UtcNow;
+
+                                _context.SaveChanges();
+
+                                Log.Information($"✅ Credenciales PSP actualizadas automáticamente para usuario {usuarioLocal.UserName}");
+                            }
+                        }
+                        else
+                        {
+                            Log.Warning($"⚠️ No se encontró usuario local con email {request.user.email} para asociar PSPAccount. Se puede guardar manualmente con el endpoint GuardarCredencialesPSP.");
+                        }
+                    }
+                    catch (Exception exCredenciales)
+                    {
+                        Log.Error(exCredenciales, $"❌ Error guardando credenciales PSP para usuario {request.user.userName}. El usuario PSP fue creado exitosamente pero las credenciales no se guardaron localmente.");
+                        // No fallar el request completo, solo advertir
+                    }
+                    // *** FIN PASO 2 ***
+
                     var pspResponseToken = await _pspService.GetAccessTokenUserAsync(pspRequest.userName, pspRequest.password);
                     if (pspResponseToken != null && !string.IsNullOrEmpty(pspResponseToken.access_token))
                     {
+                        // Actualizar el token en la BD después de obtenerlo
+                        try
+                        {
+                            var pspAccountToUpdate = _context.Set<DAL.Models.PSPAccount>().FirstOrDefault(p => p.Usuario.UserName == request.user.email || p.Usuario.Email == request.user.email);
+                            if (pspAccountToUpdate != null)
+                            {
+                                pspAccountToUpdate.EncryptedUserToken = common.Encrypt(pspResponseToken.access_token, "PSPToken");
+                                pspAccountToUpdate.TokenExpiry = pspResponseToken.expires_in > 0
+                                    ? (DateTime?)DateTime.UtcNow.AddSeconds(pspResponseToken.expires_in)
+                                    : null;
+                                _context.SaveChanges();
+                                Log.Information($"Token actualizado en BD para usuario {request.user.userName}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, $"No se pudo guardar el token en BD para {request.user.userName}, pero se continúa la operación.");
+                        }
+
                         Log.Information($"Token Valido");
                         var pspResponseSelf = await _pspService.SelfRegistrationAsync(request.entity, pspResponseToken.access_token);
 
                         if (pspResponseSelf.Success)
                         {
                             Log.Information($"SelfRegistration completado exitosamente - CUIT: {request.entity.tributaryIdentifier}");
-                            response.Mensaje += " | " + ( _pspService.IsTestMode() 
+                            response.Mensaje += " | " + (_pspService.IsTestMode()
                                 ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
                                 : "Entidad creada exitosamente mediante SelfRegistration");
                             response.Identifier = pspResponseSelf.Identifier;
@@ -134,7 +338,7 @@ namespace SmartClickCore.API.Controllers.PSP
                             if (pspResponseFiles.Success)
                             {
                                 Log.Information($"Archivos subidos exitosamente - Identifier: {pspResponseSelf.Identifier}, Archivos: {request.files.Count}");
-                                response.Mensaje += " | " + ( _pspService.IsTestMode() 
+                                response.Mensaje += " | " + (_pspService.IsTestMode()
                                     ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
                                     : "Archivos subidos exitosamente");
                             }
@@ -168,10 +372,10 @@ namespace SmartClickCore.API.Controllers.PSP
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en CrearUsuario");
-                return StatusCode(500, new CreateUserWithUATResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = request.UAT, 
+                return StatusCode(500, new CreateUserWithUATResponseDTO
+                {
+                    Status = 500,
+                    UAT = request.UAT,
                     Mensaje = "Error interno del servidor",
                     Success = false
                 });
@@ -191,24 +395,24 @@ namespace SmartClickCore.API.Controllers.PSP
                 var usuario = TraeUsuarioUAT(request.UAT);
                 if (usuario == null)
                 {
-                    return BadRequest(new SelfRegistrationWithUATResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = request.UAT, 
+                    return BadRequest(new SelfRegistrationWithUATResponseDTO
+                    {
+                        Status = 401,
+                        UAT = request.UAT,
                         Mensaje = "Usuario no autenticado",
                         Success = false
                     });
                 }
 
                 // Validar datos requeridos
-                if (string.IsNullOrEmpty(request.tributaryIdentifier) || 
-                    string.IsNullOrEmpty(request.name) || 
+                if (string.IsNullOrEmpty(request.tributaryIdentifier) ||
+                    string.IsNullOrEmpty(request.name) ||
                     string.IsNullOrEmpty(request.email))
                 {
-                    return BadRequest(new SelfRegistrationWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = request.UAT, 
+                    return BadRequest(new SelfRegistrationWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = request.UAT,
                         Mensaje = "Datos incompletos: se requiere CUIT, nombre y email",
                         Success = false
                     });
@@ -217,10 +421,10 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Validar que tenemos el token del usuario para SelfRegistration
                 if (string.IsNullOrEmpty(request.UserToken))
                 {
-                    return BadRequest(new SelfRegistrationWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = request.UAT, 
+                    return BadRequest(new SelfRegistrationWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = request.UAT,
                         Mensaje = "Se requiere UserToken del usuario creado previamente",
                         Success = false
                     });
@@ -261,7 +465,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Llamar al servicio PSP con el token del usuario
                 var pspResponse = await _pspService.SelfRegistrationAsync(pspRequest, request.UserToken);
 
-                var mensaje = _pspService.IsTestMode() 
+                var mensaje = _pspService.IsTestMode()
                     ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
                     : "Entidad creada exitosamente mediante SelfRegistration";
 
@@ -289,10 +493,10 @@ namespace SmartClickCore.API.Controllers.PSP
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en SelfRegistration");
-                return StatusCode(500, new SelfRegistrationWithUATResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = request.UAT, 
+                return StatusCode(500, new SelfRegistrationWithUATResponseDTO
+                {
+                    Status = 500,
+                    UAT = request.UAT,
                     Mensaje = "Error interno del servidor",
                     Success = false
                 });
@@ -312,10 +516,10 @@ namespace SmartClickCore.API.Controllers.PSP
                 var usuario = TraeUsuarioUAT(uat);
                 if (usuario == null)
                 {
-                    return BadRequest(new UploadFilesWithUATResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = uat, 
+                    return BadRequest(new UploadFilesWithUATResponseDTO
+                    {
+                        Status = 401,
+                        UAT = uat,
                         Mensaje = "Usuario no autenticado",
                         Success = false
                     });
@@ -324,10 +528,10 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Validar parámetros requeridos
                 if (string.IsNullOrEmpty(identifier))
                 {
-                    return BadRequest(new UploadFilesWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = uat, 
+                    return BadRequest(new UploadFilesWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = uat,
                         Mensaje = "Identifier requerido",
                         Success = false
                     });
@@ -335,10 +539,10 @@ namespace SmartClickCore.API.Controllers.PSP
 
                 if (string.IsNullOrEmpty(userToken))
                 {
-                    return BadRequest(new UploadFilesWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = uat, 
+                    return BadRequest(new UploadFilesWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = uat,
                         Mensaje = "UserToken requerido",
                         Success = false
                     });
@@ -347,10 +551,10 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Validar que tengamos archivos
                 if (Request.Form.Files == null || Request.Form.Files.Count == 0)
                 {
-                    return BadRequest(new UploadFilesWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = uat, 
+                    return BadRequest(new UploadFilesWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = uat,
                         Mensaje = "Al menos un archivo es requerido",
                         Success = false
                     });
@@ -370,7 +574,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Llamar al servicio PSP
                 var pspResponse = await _pspService.UploadFilesAsync(identifier, userToken, files);
 
-                var mensaje = _pspService.IsTestMode() 
+                var mensaje = _pspService.IsTestMode()
                     ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
                     : "Archivos subidos exitosamente";
 
@@ -397,10 +601,10 @@ namespace SmartClickCore.API.Controllers.PSP
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en UploadFiles");
-                return StatusCode(500, new UploadFilesWithUATResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = uat, 
+                return StatusCode(500, new UploadFilesWithUATResponseDTO
+                {
+                    Status = 500,
+                    UAT = uat,
                     Mensaje = "Error interno del servidor",
                     Success = false
                 });
@@ -420,10 +624,10 @@ namespace SmartClickCore.API.Controllers.PSP
                 var usuario = TraeUsuarioUAT(uat);
                 if (usuario == null)
                 {
-                    return BadRequest(new ProvincesWithUATResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = uat, 
+                    return BadRequest(new ProvincesWithUATResponseDTO
+                    {
+                        Status = 401,
+                        UAT = uat,
                         Mensaje = "Usuario no autenticado",
                         Success = false
                     });
@@ -432,7 +636,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Llamar al servicio PSP
                 var pspResponse = await _pspService.GetProvincesAsync();
 
-                var mensaje = _pspService.IsTestMode() 
+                var mensaje = _pspService.IsTestMode()
                     ? "?? SIMULACIÓN: Provincias obtenidas (modo prueba)"
                     : "Provincias obtenidas exitosamente";
 
@@ -459,10 +663,10 @@ namespace SmartClickCore.API.Controllers.PSP
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en GetProvinces");
-                return StatusCode(500, new ProvincesWithUATResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = uat, 
+                return StatusCode(500, new ProvincesWithUATResponseDTO
+                {
+                    Status = 500,
+                    UAT = uat,
                     Mensaje = "Error interno del servidor",
                     Success = false
                 });
@@ -482,10 +686,10 @@ namespace SmartClickCore.API.Controllers.PSP
                 var usuario = TraeUsuarioUAT(uat);
                 if (usuario == null)
                 {
-                    return BadRequest(new CitiesWithUATResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = uat, 
+                    return BadRequest(new CitiesWithUATResponseDTO
+                    {
+                        Status = 401,
+                        UAT = uat,
                         Mensaje = "Usuario no autenticado",
                         Success = false
                     });
@@ -494,10 +698,10 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Validar parámetro
                 if (provinceId <= 0)
                 {
-                    return BadRequest(new CitiesWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = uat, 
+                    return BadRequest(new CitiesWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = uat,
                         Mensaje = "ProvinceId debe ser mayor a 0",
                         Success = false
                     });
@@ -506,7 +710,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Llamar al servicio PSP
                 var pspResponse = await _pspService.GetCitiesAsync(provinceId);
 
-                var mensaje = _pspService.IsTestMode() 
+                var mensaje = _pspService.IsTestMode()
                     ? $"?? SIMULACIÓN: Ciudades obtenidas para provincia {provinceId} (modo prueba)"
                     : $"Ciudades obtenidas exitosamente para provincia {provinceId}";
 
@@ -533,10 +737,10 @@ namespace SmartClickCore.API.Controllers.PSP
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en GetCities");
-                return StatusCode(500, new CitiesWithUATResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = uat, 
+                return StatusCode(500, new CitiesWithUATResponseDTO
+                {
+                    Status = 500,
+                    UAT = uat,
                     Mensaje = "Error interno del servidor",
                     Success = false
                 });
@@ -660,933 +864,6 @@ namespace SmartClickCore.API.Controllers.PSP
         //        }
 
         //        // Validar datos requeridos
-        //        if (string.IsNullOrEmpty(request.TributaryIdentifier) || 
-        //            string.IsNullOrEmpty(request.Name) || 
-        //            string.IsNullOrEmpty(request.Email))
-        //        {
-        //            return BadRequest(new RegistrarEntidadResponseDTO 
-        //            { 
-        //                Status = 400, 
-        //                UAT = request.UAT, 
-        //                Mensaje = "Datos incompletos: se requiere CUIT, nombre y email",
-        //                Success = false
-        //            });
-        //        }
-
-        //        // Llamar al servicio PSP
-        //        var response = await _pspService.RegistrarEntidadAsync(request);
-
-        //        if (response.Success)
-        //        {
-        //            Log.Information($"Entidad registrada exitosamente en PSP para usuario {usuario.UserName}");
-        //            return Ok(response);
-        //        }
-        //        else
-        //        {
-        //            Log.Warning($"Error al registrar entidad en PSP: {response.Mensaje}");
-        //            return BadRequest(response);
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Log.Error(ex, "Error en RegistrarEntidad");
-        //        return StatusCode(500, new RegistrarEntidadResponseDTO 
-        //        { 
-        //            Status = 500, 
-        //            UAT = request.UAT, 
-        //            Mensaje = "Error interno del servidor",
-        //            Success = false
-        //        });
-        //    }
-        //}
-
-        /// <summary>
-        /// Valida la configuración del PSP
-        /// </summary>
-        [HttpPost("ValidarConfiguracion")]
-        public IActionResult ValidarConfiguracion([FromBody] PSPBaseResponseDTO request)
-        {
-            try
-            {
-                var usuario = TraeUsuarioUAT(request.UAT);
-                if (usuario == null)
-                {
-                    return BadRequest(new PSPBaseResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = request.UAT, 
-                        Mensaje = "Usuario no autenticado",
-                        Success = false
-                    });
-                }
-
-                bool isValid = _pspService.ValidateConfiguration();
-
-                return Ok(new PSPBaseResponseDTO 
-                { 
-                    Status = 200, 
-                    UAT = request.UAT, 
-                    Mensaje = isValid ? "Configuración PSP válida" : "Configuración PSP inválida",
-                    Success = isValid
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error en ValidarConfiguracion");
-                return StatusCode(500, new PSPBaseResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = request.UAT, 
-                    Mensaje = "Error interno del servidor",
-                    Success = false
-                });
-            }
-        }
-
-        /// <summary>
-        /// Obtiene un token del PSP (para pruebas)
-        /// </summary>
-        [HttpPost("ObtenerToken")]
-        public async Task<IActionResult> ObtenerToken([FromBody] PSPBaseResponseDTO request)
-        {
-            try
-            {
-                var usuario = TraeUsuarioUAT(request.UAT);
-                if (usuario == null)
-                {
-                    return BadRequest(new PSPBaseResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = request.UAT, 
-                        Mensaje = "Usuario no autenticado",
-                        Success = false
-                    });
-                }
-
-                var tokenResponse = await _pspService.GetAccessTokenAsync();
-
-                if (!string.IsNullOrEmpty(tokenResponse.access_token))
-                {
-                    return Ok(new 
-                    { 
-                        Status = 200, 
-                        UAT = request.UAT, 
-                        Mensaje = "Token obtenido exitosamente",
-                        Success = true,
-                        Token = tokenResponse.access_token,
-                        ExpiresIn = tokenResponse.expires_in
-                    });
-                }
-                else
-                {
-                    return BadRequest(new PSPBaseResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = request.UAT, 
-                        Mensaje = "Error al obtener token del PSP",
-                        Success = false
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error en ObtenerToken");
-                return StatusCode(500, new PSPBaseResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = request.UAT, 
-                    Mensaje = "Error interno del servidor",
-                    Success = false
-                });
-            }
-        }
-
-        // *** NUEVO ENDPOINT: OBTENER INFORMACIÓN DE CUENTAS ***
-        /// <summary>
-        /// Obtiene la información de las cuentas del usuario logueado
-        /// </summary>
-        [HttpGet("AccountsInfo")]
-        public async Task<IActionResult> GetAccountsInfo([FromQuery] string userToken, [FromQuery] string uat)
-        {
-            try
-            {
-                // Validar usuario administrador autenticado por UAT
-                var usuario = TraeUsuarioUAT(uat);
-                if (usuario == null)
-                {
-                    return BadRequest(new AccountsInfoWithUATResponseDTO 
-                    { 
-                        Status = 401, 
-                        UAT = uat, 
-                        Mensaje = "Usuario no autenticado",
-                        Success = false
-                    });
-                }
-
-                // Validar que tenemos el token del usuario para consultar sus cuentas
-                if (string.IsNullOrEmpty(userToken))
-                {
-                    return BadRequest(new AccountsInfoWithUATResponseDTO 
-                    { 
-                        Status = 400, 
-                        UAT = uat, 
-                        Mensaje = "UserToken requerido para consultar las cuentas",
-                        Success = false
-                    });
-                }
-
-                // Llamar al servicio PSP con el token del usuario
-                var pspResponse = await _pspService.GetAccountsInfoAsync(userToken);
-
-                var response = new AccountsInfoWithUATResponseDTO
-                {
-                    Status = pspResponse.Success ? 200 : 500,
-                    UAT = uat,
-                    Mensaje = pspResponse.Success ? "Información de cuentas obtenida exitosamente" : "Error al obtener información de cuentas",
-                    Success = pspResponse.Success,
-                    Accounts = pspResponse.Accounts
-                };
-
-                if (pspResponse.Success)
-                {
-                    Log.Information($"Información de cuentas obtenida exitosamente - Total cuentas: {pspResponse.Accounts.Count}");
-                    return Ok(response);
-                }
-                else
-                {
-                    Log.Warning($"Error al obtener información de cuentas: {pspResponse.Error}");
-                    return BadRequest(response);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error en GetAccountsInfo");
-                return StatusCode(500, new AccountsInfoWithUATResponseDTO 
-                { 
-                    Status = 500, 
-                    UAT = uat, 
-                    Mensaje = "Error interno del servidor",
-                    Success = false
-                });
-            }
-        }
-
-        /// <summary>
-        /// Valida una cuenta externa (alias/CVU/CBU) usando PSP
-        /// </summary>
-        [HttpPost("ValidateExternalAccount")]
-        public async Task<IActionResult> ValidateExternalAccount([FromBody] ValidateExternalAccountRequestDTO request)
-        {
-            try
-            {
-                var usuario = TraeUsuarioUAT(request.UAT);
-                if (usuario == null)
-                {
-                    return BadRequest(new ExternalAccountWithUATResponseDTO
-                    {
-                        Status = 401,
-                        UAT = request.UAT,
-                        Mensaje = "Usuario no autenticado",
-                        Success = false
-                    });
-                }
-
-                if (string.IsNullOrEmpty(request.TextSearch))
-                {
-                    return BadRequest(new ExternalAccountWithUATResponseDTO
-                    {
-                        Status = 400,
-                        UAT = request.UAT,
-                        Mensaje = "TextSearch requerido",
-                        Success = false
-                    });
-                }
-
-                // Use UserToken if provided, otherwise fallback to system token inside service
-                var lookup = await _pspService.ValidateExternalAccountAsync(request.TextSearch, request.UserToken);
-
-                if (lookup != null && lookup.success)
-                {
-                    return Ok(new ExternalAccountWithUATResponseDTO
-                    {
-                        Status = 200,
-                        UAT = request.UAT,
-                        Mensaje = "Cuenta externa validada",
-                        Success = true,
-                        Data = lookup.data
-                    });
-                }
-                else
-                {
-                    return BadRequest(new ExternalAccountWithUATResponseDTO
-                    {
-                        Status = 400,
-                        UAT = request.UAT,
-                        Mensaje = lookup?.message ?? "Error al validar cuenta externa",
-                        Success = false
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error en ValidateExternalAccount");
-                return StatusCode(500, new ExternalAccountWithUATResponseDTO
-                {
-                    Status = 500,
-                    UAT = request.UAT,
-                    Mensaje = "Error interno del servidor",
-                    Success = false
-                });
-            }
-        }
-
-        // *** NUEVO ENDPOINT: CREAR TRANSACCIÓN ***
-        /// <summary>
-        /// Crea una transacción en el PSP (puede ser externa). Usa UAT para validar usuario administrador.
-        /// </summary>
-        [HttpPost("CreateTransaction")]
-        public async Task<IActionResult> CreateTransaction([FromBody] TransactionWithUATRequestDTO request)
-        {
-            try
-            {
-                var usuario = TraeUsuarioUAT(request.UAT);
-                if (usuario == null)
-                {
-                    return BadRequest(new TransactionWithUATResponseDTO
-                    {
-                        Status = 401,
-                        UAT = request.UAT,
-                        Mensaje = "Usuario no autenticado",
-                        Success = false
-                    });
-                }
-
-                if (request.Transaction == null)
-                {
-                    return BadRequest(new TransactionWithUATResponseDTO
-                    {
-                        Status = 400,
-                        UAT = request.UAT,
-                        Mensaje = "Transaction es requerida",
-                        Success = false
-                    });
-                }
-
-                var destAccountNumber = request.Transaction.destinationAccount?.accountNumber;
-                if (string.IsNullOrEmpty(destAccountNumber))
-                {
-                    return BadRequest(new TransactionWithUATResponseDTO
-                    {
-                        Status = 400,
-                        UAT = request.UAT,
-                        Mensaje = "Número de cuenta destino requerido",
-                        Success = false
-                    });
-                }
-
-                // AUTOMÁTICO: Detectar si es interna o externa
-                var billeteraDestino = _context.Billeteras.Where(b => b.CVU == destAccountNumber).FirstOrDefault();
-                bool isInternalTransfer = billeteraDestino != null;
-
-                Log.Information($"Detectando tipo de transferencia - CVU: {destAccountNumber}, Es interna: {isInternalTransfer}");
-
-                if (isInternalTransfer)
-                {
-                    // *** TRANSFERENCIA INTERNA AUTOMÁTICA ***
-                    Log.Information("Procesando transferencia INTERNA");
-
-                    var uatEntryInterno = _context.UAT
-                        .Include(u => u.Cliente)
-                            .ThenInclude(c => c.Persona)
-                        .Include(u => u.Cliente)
-                            .ThenInclude(c => c.Usuario)
-                                .ThenInclude(us => us.Personas)
-                        .FirstOrDefault(u => u.Token == request.UAT);
-
-                    var clienteOrigen = uatEntryInterno?.Cliente;
-
-                    if (clienteOrigen == null)
-                    {
-                        return BadRequest(new TransactionWithUATResponseDTO
-                        {
-                            Status = 400,
-                            UAT = request.UAT,
-                            Mensaje = "No se encontró cliente asociado al UAT",
-                            Success = false
-                        });
-                    }
-
-                    var billeteraOrigen = _context.Billeteras.Where(b => b.Cliente.Id == clienteOrigen.Id).FirstOrDefault();
-                    if (billeteraOrigen == null)
-                    {
-                        return BadRequest(new TransactionWithUATResponseDTO
-                        {
-                            Status = 400,
-                            UAT = request.UAT,
-                            Mensaje = "No se encontró billetera de origen",
-                            Success = false
-                        });
-                    }
-
-                    decimal monto;
-                    try
-                    {
-                        monto = Convert.ToDecimal(request.Transaction.balance);
-                    }
-                    catch
-                    {
-                        return BadRequest(new TransactionWithUATResponseDTO
-                        {
-                            Status = 400,
-                            UAT = request.UAT,
-                            Mensaje = "Monto inválido",
-                            Success = false
-                        });
-                    }
-
-                    if (!billeteraOrigen.ChequeaDebito(monto))
-                    {
-                        return BadRequest(new TransactionWithUATResponseDTO
-                        {
-                            Status = 400,
-                            UAT = request.UAT,
-                            Mensaje = "El monto supera el saldo disponible",
-                            Success = false
-                        });
-                    }
-
-                    // Crear movimientos internos
-                    var movimientoDestino = new MovimientoBilletera
-                    {
-                        CBU = billeteraOrigen.CVU,
-                        Fecha = DateTime.Now,
-                        Monto = monto,
-                        OrigenAsociado = new OrigenMovimiento
-                        {
-                            TipoOrigen = TipoOrigenMovimiento.Billetera,
-                            IdAsociado = billeteraOrigen.Id,
-                            Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
-                        },
-                        TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDinero)
-                    };
-
-                    billeteraDestino.Saldo += monto;
-                    billeteraDestino.Movimientos.Add(movimientoDestino);
-                    billeteraDestino.Contactos.Add(new ContactosBilletera
-                    {
-                        ClienteContacto = billeteraOrigen.Cliente,
-                        Detalle = billeteraOrigen.Cliente.Usuario.Personas?.GetNombreCompleto()
-                    });
-
-                    var movimientoOrigen = new MovimientoBilletera
-                    {
-                        CBU = billeteraDestino.CVU,
-                        Fecha = DateTime.Now,
-                        Monto = monto,
-                        OrigenAsociado = new OrigenMovimiento
-                        {
-                            TipoOrigen = TipoOrigenMovimiento.Billetera,
-                            IdAsociado = billeteraDestino.Id,
-                            Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
-                        },
-                        TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
-                    };
-
-                    billeteraOrigen.Saldo -= monto;
-                    billeteraOrigen.Movimientos.Add(movimientoOrigen);
-                    billeteraOrigen.Contactos.Add(new ContactosBilletera
-                    {
-                        ClienteContacto = billeteraDestino.Cliente,
-                        Detalle = billeteraDestino.Cliente.Usuario.Personas?.GetNombreCompleto()
-                    });
-
-                    _context.Update(billeteraDestino);
-                    _context.Update(billeteraOrigen);
-                    _context.SaveChanges();
-
-                    Log.Information($"Transferencia INTERNA completada: ${monto} de {billeteraOrigen.CVU} a {billeteraDestino.CVU}");
-
-                    return Ok(new TransactionWithUATResponseDTO
-                    {
-                        Status = 200,
-                        UAT = request.UAT,
-                        Mensaje = $"Transferencia interna realizada exitosamente: ${monto}",
-                        Success = true,
-                        TransactionId = null // Las internas no tienen ID de PSP
-                    });
-                }
-                else
-                {
-                    // *** TRANSFERENCIA EXTERNA AUTOMÁTICA ***
-                    Log.Information("Procesando transferencia EXTERNA");
-
-                    // Forzar isExternal = true para el PSP
-                    request.Transaction.isExternal = true;
-
-                    // *** OBTENER TOKEN DEL SISTEMA PSP UNA SOLA VEZ ***
-                    Log.Debug("Antes de GetAccessTokenAsync");
-                    var tokenResponse = await _pspService.GetAccessTokenAsync();
-                    Log.Debug("Después de GetAccessTokenAsync - token? {TokenExists}", !string.IsNullOrEmpty(tokenResponse?.access_token));
-
-                    if (string.IsNullOrEmpty(tokenResponse.access_token))
-                    {
-                        return BadRequest(new TransactionWithUATResponseDTO
-                        {
-                            Status = 400,
-                            UAT = request.UAT,
-                            Mensaje = "No se pudo obtener token de la cuenta recaudadora PSP",
-                            Success = false
-                        });
-                    }
-
-                    // *** VARIABLE ÚNICA PARA TODO EL FLUJO ***
-                    string systemToken = tokenResponse.access_token;
-                    Log.Information($"Token del sistema PSP obtenido: {systemToken.Substring(0, Math.Min(20, systemToken.Length))}...");
-
-                    // *** VALIDACIÓN DE TITULARIDAD Y CUENTA EXTERNA ***
-                    string localCuil = null;
-                    try
-                    {
-                        // 1. Obtener el CUIL local correctamente usando Include
-                        var uatEntry = _context.UAT
-                            .Include(u => u.Cliente.Persona) // Cargar Cliente y luego Persona
-                            .FirstOrDefault(u => u.Token == request.UAT);
-
-                        var persona = uatEntry?.Cliente?.Persona;
-                        localCuil = persona?.Cuil;
-
-                        Log.Debug($"CUIL local obtenido: {localCuil}");
-
-                        // 2. Validar cuenta externa en PSP USANDO EL MISMO TOKEN DEL SISTEMA
-                        Log.Debug("Antes de ValidateExternalAccountAsync con systemToken");
-                        var lookup = await _pspService.ValidateExternalAccountAsync(destAccountNumber, systemToken);
-                        //                                                                              ↑ AHORA PASA EL MISMO TOKEN
-                        Log.Debug("Después de ValidateExternalAccountAsync - success? {Success}", lookup?.success);
-
-                        if (lookup == null || !lookup.success || lookup.data == null)
-                        {
-                            return BadRequest(new TransactionWithUATResponseDTO
-                            {
-                                Status = 400,
-                                UAT = request.UAT,
-                                Mensaje = "Cuenta externa no encontrada o inválida",
-                                Success = false
-                            });
-                        }
-
-                        // 3. Comparar titularidad si tenemos el CUIL local
-                        if (!string.IsNullOrEmpty(localCuil))
-                        {
-                            var normLocal = new string(localCuil.Where(char.IsDigit).ToArray());
-                            var extTrib = lookup.data.tributaryIdentifier ?? string.Empty;
-                            var normExt = new string(extTrib.Where(char.IsDigit).ToArray());
-
-                            Log.Information($"Validando titularidad - Local: {normLocal}, Externo: {normExt}");
-
-                            if (!string.Equals(normLocal, normExt, StringComparison.OrdinalIgnoreCase))
-                            {
-                                Log.Warning($"Titularidad no coincide - Usuario local CUIL: {localCuil}, Cuenta externa CUIT: {extTrib}");
-                                return BadRequest(new TransactionWithUATResponseDTO
-                                {
-                                    Status = 400,
-                                    UAT = request.UAT,
-                                    Mensaje = $"La cuenta externa no pertenece al mismo titular. Local: {localCuil} vs Externo: {extTrib}",
-                                    Success = false
-                                });
-                            }
-                            Log.Information($"Validación de titularidad exitosa - CUIL coincide: {localCuil}");
-                        }
-                        else
-                        {
-                            Log.Warning("Usuario local sin CUIL registrado - no se puede validar titularidad antes de la operación.");
-                        }
-
-                        Log.Information($"Cuenta externa validada - Titular: {lookup.data.tributaryIdentifier}, Tipo: {lookup.data.accountTypeDescription}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Error validando cuenta externa o titularidad");
-                        return StatusCode(500, new TransactionWithUATResponseDTO
-                        {
-                            Status = 500,
-                            UAT = request.UAT,
-                            Mensaje = "Error validando cuenta externa o titularidad",
-                            Success = false
-                        });
-                    }
-
-                    // Verificar saldo local antes de enviar al PSP
-                    var clienteOrigen = _context.UAT.Where(u => u.Token == request.UAT).Select(u => u.Cliente).FirstOrDefault();
-                    if (clienteOrigen != null)
-                    {
-                        var billeteraOrigen = _context.Billeteras.Where(b => b.Cliente.Id == clienteOrigen.Id).FirstOrDefault();
-                        if (billeteraOrigen != null)
-                        {
-                            if (decimal.TryParse(request.Transaction.balance.ToString(), out decimal monto))
-                            {
-                                if (!billeteraOrigen.ChequeaDebito(monto))
-                                {
-                                    return BadRequest(new TransactionWithUATResponseDTO
-                                    {
-                                        Status = 400,
-                                        UAT = request.UAT,
-                                        Mensaje = "Saldo insuficiente para transferencia externa",
-                                        Success = false
-                                    });
-                                }
-                            }
-                        }
-                    }
-
-                    // 4. Llamar al PSP para crear la transacción externa USANDO EL MISMO TOKEN
-                    Log.Debug("Antes de CreateTransactionAsync hacia PSP con CUIL local: {cuil}", localCuil);
-
-                    // *** COMPLETAR CAMPOS OBLIGATORIOS AUTOMÁTICAMENTE ***
-                    // 1. Agregar currencyTypeId si no está presente
-                    if (string.IsNullOrEmpty(request.Transaction.currencyTypeId) || request.Transaction.currencyTypeId == "0")
-                    {
-                        request.Transaction.currencyTypeId = "1"; // Pesos Argentinos por defecto
-                        Log.Information("Agregando currencyTypeId por defecto: 1 (Pesos)");
-                    }
-
-                    // 2. Completar originAccount si está vacío
-                    if (request.Transaction.originAccount == null || string.IsNullOrEmpty(request.Transaction.originAccount.accountNumber))
-                    {
-                        // Obtener información de cuentas del usuario para completar originAccount
-                        var accountsInfo = await _pspService.GetAccountsInfoAsync(systemToken);
-                        if (accountsInfo.Success && accountsInfo.Accounts != null && accountsInfo.Accounts.Any())
-                        {
-                            var firstAccount = accountsInfo.Accounts.First();
-                            request.Transaction.originAccount = new AccountRefDTO // ← CAMBIO: OriginAccountDTO → AccountRefDTO
-                            {
-                                accountNumber = firstAccount.accountNumber,
-                                accountTypeId = firstAccount.accountTypeId,
-                                tributaryIdentifierType = firstAccount.tributaryIdentifierType ?? "CUIT",
-                                tributaryIdentifier = firstAccount.tributaryIdentifier ?? ""
-                            };
-                            
-                            Log.Information($"Completando originAccount automáticamente - CVU: {firstAccount.accountNumber}");
-                        }
-                        else
-                        {
-                            Log.Warning("No se pudo obtener información de cuentas del usuario para completar originAccount");
-                            return BadRequest(new TransactionWithUATResponseDTO
-                            {
-                                Status = 400,
-                                UAT = request.UAT,
-                                Mensaje = "No se pudo obtener información de la cuenta origen del usuario",
-                                Success = false
-                            });
-                        }
-                    }
-
-                    // 3. Completar availabilityDate si no está presente
-                    if (string.IsNullOrEmpty(request.Transaction.availabilityDate)) // ← CAMBIO: == default(DateTime) → string.IsNullOrEmpty
-                    {
-                        request.Transaction.availabilityDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); // ← CAMBIO: DateTime → string
-                        Log.Information($"Agregando availabilityDate automática: {request.Transaction.availabilityDate}");
-                    }
-
-                    // 4. Completar transactionTypeId si no está presente
-                    if (request.Transaction.transactionTypeId == 0)
-                    {
-                        request.Transaction.transactionTypeId = 1; // Débito por defecto
-                        Log.Information("Agregando transactionTypeId por defecto: 1 (Débito)");
-                    }
-
-                    // 5. Completar concept si no está presente
-                    if (string.IsNullOrEmpty(request.Transaction.concept))
-                    {
-                        request.Transaction.concept = "VAR"; // Varios por defecto
-                        Log.Information("Agregando concept por defecto: VAR (Varios)");
-                    }
-
-                    var result = await _pspService.CreateTransactionAsync(request.Transaction, systemToken, localCuil);
-                    //                                                                        ↑ MISMO TOKEN USADO AQUÍ TAMBIÉN
-                    Log.Debug("Después de CreateTransactionAsync - result.Success: {Success}", result?.Success);
-
-                    // Si PSP creó la transacción exitosamente, debitar saldo local
-                    if (result.Success)
-                    {
-                        try
-                        {
-                            if (clienteOrigen != null)
-                            {
-                                var billeteraOrigen = _context.Billeteras.Where(b => b.Cliente.Id == clienteOrigen.Id).FirstOrDefault();
-                                if (billeteraOrigen != null)
-                                {
-                                    if (decimal.TryParse(request.Transaction.balance.ToString(), out decimal monto))
-                                    {
-                                        // Registrar movimiento de débito local por transferencia externa
-                                        var movimiento = new MovimientoBilletera
-                                        {
-                                            CBU = destAccountNumber,
-                                            Fecha = DateTime.Now,
-                                            Monto = monto,
-                                            OrigenAsociado = new OrigenMovimiento
-                                            {
-                                                TipoOrigen = TipoOrigenMovimiento.Cuenta,
-                                                IdAsociado = 0,
-                                                Descripcion = "Transferencia Externa PSP"
-                                            },
-                                            TipoMovimiento = _context.TipoMovimientoBilletera.FirstOrDefault(t => t.Id == (int)TipoMovimientoBilleteraEnum.EnvioBilletera)
-                                        };
-
-                                        billeteraOrigen.Saldo -= monto;
-                                        billeteraOrigen.Movimientos.Add(movimiento);
-                                        _context.Update(billeteraOrigen);
-                                        Log.Debug("Antes de _context.SaveChanges");
-                                        _context.SaveChanges();
-                                        Log.Debug("Después de _context.SaveChanges");
-
-                                        Log.Information($"Transferencia EXTERNA completada: ${monto} a {destAccountNumber}, PSP TransactionId: {result.TransactionId}");
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex, "No se pudo registrar débito local tras transferencia externa exitosa");
-                        }
-                    }
-
-                    var response = new TransactionWithUATResponseDTO
-                    {
-                        Status = result.Success ? 200 : 400,
-                        UAT = request.UAT,
-                        Mensaje = result.Success ? $"Transferencia externa realizada exitosamente: ${request.Transaction.balance}" : (result.Error ?? "Error al crear transacción externa"),
-                        Success = result.Success,
-                        TransactionId = result.TransactionId,
-                        RawResponse = result.RawResponse
-                    };
-
-                    if (result.Success)
-                    {
-                        return Ok(response);
-                    }
-                    else
-                    {
-                        Log.Warning($"Error en transferencia externa: {result.Error}");
-                        return BadRequest(response);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error en CreateTransaction");
-                return StatusCode(500, new TransactionWithUATResponseDTO
-                {
-                    Status = 500,
-                    UAT = request?.UAT,
-                    Mensaje = "Error interno del servidor",
-                    Success = false
-                });
-            }
-        }
-
-        /// <summary>
-        /// Endpoint orquestador: crea usuario en PSP, registra entidad y sube archivos. Recibe multipart/form-data.
-        /// </summary>
-        [HttpPost("CrearCuentaPSPOrquestado")]
-        public async Task<IActionResult> CrearCuentaPSPOrquestado()
-        {
-            try
-            {
-                var form = Request.Form;
-                string requestId = Request.Headers.ContainsKey("Idempotency-Key") ? Request.Headers["Idempotency-Key"].FirstOrDefault() : form["RequestId"].FirstOrDefault() ?? Guid.NewGuid().ToString();
-
-                string cuil = form["CUIL"].FirstOrDefault();
-                string nombre = form["NOMBRE"].FirstOrDefault();
-                string apellido = form["APELLIDO"].FirstOrDefault();
-                string email = form["EMAIL"].FirstOrDefault();
-                string phoneCode = form["PHONECODE"].FirstOrDefault();
-                string telefono = form["TELEFONO"].FirstOrDefault();
-                string direccion = form["DIRECCION"].FirstOrDefault();
-                string provincia = form["PROVINCIA"].FirstOrDefault();
-                string cityId = form["CITYID"].FirstOrDefault();
-                string password = form["PASSWORD"].FirstOrDefault();
-                string postalCode = form["POSTALCODE"].FirstOrDefault();
-
-                if (string.IsNullOrEmpty(cuil) || string.IsNullOrEmpty(nombre) || string.IsNullOrEmpty(apellido) ||
-                    string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
-                {
-                    return BadRequest(new { Status = 400, Mensaje = "Faltan campos obligatorios", Success = false });
-                }
-
-                // Idempotencia: si ya existe RequestId o PSPAccount para ese CUIL, devolver estado
-                var existing = _context.Set<DAL.Models.PSPAccount>().FirstOrDefault(p => p.RequestId == requestId || (!string.IsNullOrEmpty(p.TributaryIdentifier) && p.TributaryIdentifier == cuil));
-                if (existing != null)
-                {
-                    return Ok(new { Status = 200, Mensaje = "Ya existe registro", AccountId = existing.Id, StatusText = existing.Status });
-                }
-
-                // Persist initial PSPAccount
-                var pspAccount = new DAL.Models.PSPAccount
-                {
-                    RequestId = requestId,
-                    TributaryIdentifier = cuil,
-                    UserName = email,
-                    Status = "creating",
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.Set<DAL.Models.PSPAccount>().Add(pspAccount);
-                _context.SaveChanges();
-
-                // Paso 1: CreateUser
-                var createUserReq = new CreateUserRequestDTO
-                {
-                    userType = "5",
-                    userName = email,
-                    documentType = "CUIL",
-                    documentNumber = cuil,
-                    firstName = nombre,
-                    lastName = apellido,
-                    email = email,
-                    phoneNumber = (phoneCode ?? "") + (telefono ?? ""),
-                    address = direccion,
-                    departmentId = provincia, // keep as string to match DTO
-                    cityId = cityId,         // keep as string to match DTO
-                    Active = true,
-                    roles = new List<int> { 9 },
-                    password = password,
-                    passwordConfirm = password
-                };
-
-                var createUserResp = await _pspService.CreateUserAsync(createUserReq);
-                if (createUserResp == null || !createUserResp.Success)
-                {
-                    pspAccount.Status = "error_user";
-                    pspAccount.ErrorMessage = createUserResp?.Error ?? createUserResp?.Message ?? "Error al crear usuario";
-                    pspAccount.UpdatedAt = DateTime.UtcNow;
-                    _context.SaveChanges();
-                    return BadRequest(new { Status = 400, Mensaje = "Error creando usuario en PSP", Detail = pspAccount.ErrorMessage });
-                }
-
-                pspAccount.PSPUserId = createUserResp.UserId?.ToString();
-                pspAccount.Status = "user_created";
-                pspAccount.UpdatedAt = DateTime.UtcNow;
-                _context.SaveChanges();
-
-                // Paso 2: Obtener token del usuario creado
-                var tokenResp = await _pspService.GetAccessTokenUserAsync(createUserReq.userName, createUserReq.password);
-                string userToken = tokenResp?.access_token;
-                if (string.IsNullOrEmpty(userToken))
-                {
-                    pspAccount.Status = "error_token";
-                    pspAccount.ErrorMessage = "No se pudo obtener token del usuario creado";
-                    pspAccount.UpdatedAt = DateTime.UtcNow;
-                    _context.SaveChanges();
-                    return BadRequest(new { Status = 400, Mensaje = pspAccount.ErrorMessage });
-                }
-
-                // Guardar token cifrado usando common.Encrypt (evita cambios de constructor DI)
-                try
-                {
-                    pspAccount.EncryptedUserToken = common.Encrypt(userToken, "PSPToken");
-                }
-                catch
-                {
-                    pspAccount.EncryptedUserToken = null;
-                }
-                pspAccount.TokenExpiry = tokenResp.expires_in > 0 ? (DateTime?)DateTime.UtcNow.AddSeconds(tokenResp.expires_in) : null;
-                pspAccount.Status = "token_saved";
-                pspAccount.UpdatedAt = DateTime.UtcNow;
-                _context.SaveChanges();
-
-                // Paso 3: SelfRegistration
-                var selfReq = new SelfRegistrationRequestDTO
-                {
-                    entityTypeId = 5,
-                    parentId = 1786,
-                    isPhysicalPerson = true,
-                    taxPayer = false,
-                    isPyME = false,
-                    PyMEEffectiveDate = null,
-                    tributaryIdentifierType = "CUIL",
-                    tributaryIdentifier = cuil,
-                    name = nombre,
-                    phoneCode = phoneCode,
-                    phone = telefono,
-                    address = direccion,
-                    floor = null,
-                    department = null,
-                    cityId = !string.IsNullOrEmpty(cityId) ? Convert.ToInt32(cityId) : 0,
-                    postalCode = postalCode,
-                    email = email,
-                    isRevalidation = true,
-                    IsSameAddress = true,
-                    activityPostalCode = postalCode,
-                    activityCityId = !string.IsNullOrEmpty(cityId) ? Convert.ToInt32(cityId) : 0,
-                    activityAddress = direccion,
-                    activityFloor = null,
-                    activityDepartment = null,
-                    FantasyName = null,
-                    cuf = null,
-                    CovenantCode = null
-                };
-
-                var selfResp = await _pspService.SelfRegistrationAsync(selfReq, userToken);
-
-                if (selfResp == null || !selfResp.Success)
-                {
-                    pspAccount.Status = "error_registration";
-                    pspAccount.ErrorMessage = selfResp?.Error ?? selfResp?.Message ?? "Error en SelfRegistration";
-                    pspAccount.UpdatedAt = DateTime.UtcNow;
-                    _context.SaveChanges();
-                    return BadRequest(new { Status = 400, Mensaje = "Error registrando entidad en PSP", Detail = pspAccount.ErrorMessage });
-                }
-
-                pspAccount.Identifier = selfResp.Identifier;
-                pspAccount.EntityId = selfResp.EntityId;
-                pspAccount.Status = "registered";
-                pspAccount.UpdatedAt = DateTime.UtcNow;
-                _context.SaveChanges();
-
-                // Paso 4: Upload files (si vienen)
-                var filesDict = new Dictionary<string, byte[]>();
-                foreach (var f in Request.Form.Files)
-                {
-                    using (var ms = new MemoryStream())
-                    {
-                        await f.CopyToAsync(ms);
-                        filesDict[f.Name] = ms.ToArray();
-                    }
-                }
-
-                if (filesDict.Any())
-                {
-                    var uploadResp = await _pspService.UploadFilesAsync(pspAccount.Identifier, userToken, filesDict);
-                    if (uploadResp == null || !uploadResp.Success)
-                    {
-                        pspAccount.Status = "error_upload";
-                        pspAccount.ErrorMessage = uploadResp?.Error ?? uploadResp?.Message ?? "Error subiendo archivos";
-                        pspAccount.UpdatedAt = DateTime.UtcNow;
-                        _context.SaveChanges();
-                        return BadRequest(new { Status = 400, Mensaje = "Error subiendo archivos", Detail = pspAccount.ErrorMessage });
-                    }
-
-                    pspAccount.Status = "files_uploaded";
-                    pspAccount.UpdatedAt = DateTime.UtcNow;
-                    _context.SaveChanges();
-                }
-
-                return Ok(new
-                {
-                    Status = 200,
-                    Mensaje = "Cuenta PSP creada y archivos subidos correctamente",
-                    Success = true,
-                    AccountId = pspAccount.Id,
-                    PSPUserId = pspAccount.PSPUserId,
-                    Identifier = pspAccount.Identifier,
-                    UserTokenPreview = userToken?.Substring(0, Math.Min(20, userToken.Length)) + "..."
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error en CrearCuentaPSPOrquestado");
-                return StatusCode(500, new { Status = 500, Mensaje = "Error interno del servidor", Error = ex.Message });
-            }
-        }
+        //        if (string.IsNullOrEmpty(request.Tribu
     }
 }

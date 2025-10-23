@@ -434,6 +434,24 @@ namespace SmartClickCore
             tdes.Dispose();
             return sin_simbolos(Convert.ToBase64String(resultArray, 0, resultArray.Length));
         }
+        
+        public static string Decrypt(string toDecrypt, string secretKey)
+        {
+            byte[] keyArray;
+            byte[] toDecryptArray = Convert.FromBase64String(toDecrypt);
+            var md5Serv = System.Security.Cryptography.MD5.Create();
+            keyArray = md5Serv.ComputeHash(UTF8Encoding.UTF8.GetBytes(secretKey));
+            md5Serv.Dispose();
+            var tdes = System.Security.Cryptography.TripleDES.Create();
+            tdes.Key = keyArray;
+            tdes.Mode = CipherMode.ECB;
+            tdes.Padding = PaddingMode.PKCS7;
+            ICryptoTransform cTransform = tdes.CreateDecryptor();
+            byte[] resultArray = cTransform.TransformFinalBlock(toDecryptArray, 0, toDecryptArray.Length);
+            tdes.Dispose();
+            return UTF8Encoding.UTF8.GetString(resultArray);
+        }
+        
         public static string sin_simbolos(String cadena)
         {
             try

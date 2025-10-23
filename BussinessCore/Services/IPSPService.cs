@@ -63,7 +63,7 @@ namespace BusinessCore.Services
         Task<CitiesResponseDTO> GetCitiesAsync(int provinceId);
 
         /// <summary>
-        /// Obtiene la información de las cuentas del usuario logueado
+        /// C1: Consulta los datos de la cuenta del usuario logueado.
         /// </summary>
         Task<AccountsInfoResponseDTO> GetAccountsInfoAsync(string userToken);
 
@@ -78,5 +78,15 @@ namespace BusinessCore.Services
         /// Se puede pasar localCuit para evitar consultar las cuentas del PSP cuando ya se validó localmente.
         /// </summary>
         Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken, string localCuit = null);
+
+        /// <summary>
+        /// C1: Consulta los datos de la cuenta del usuario logueado.
+        /// </summary>
+        Task<AccountsInfoResponseDTO> GetAccountDataAsync(string userToken);
+
+        /// <summary>
+        /// C7: Obtiene la entidad hija por su identificador tributario.
+        /// </summary>
+        Task<EntityStatusResponseDTO> GetEntityByTributaryIdAsync(string tributaryIdentifier, string systemToken);
     }
 }

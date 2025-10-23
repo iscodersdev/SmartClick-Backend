@@ -4,14 +4,16 @@ using DAL.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace DAL.Migrations
 {
     [DbContext(typeof(SmartClickContext))]
-    partial class SmartClickContextModelSnapshot : ModelSnapshot
+    [Migration("20251022165818_AddPspAccountColumns")]
+    partial class AddPspAccountColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1778,25 +1780,11 @@ namespace DAL.Migrations
 
                     b.Property<string>("AccountNumber");
 
-                    b.Property<int?>("AccountTypeId");
-
                     b.Property<string>("CVU");
-
-                    b.Property<string>("CVU_CBUAlias");
 
                     b.Property<int?>("ClienteId");
 
                     b.Property<DateTime>("CreatedAt");
-
-                    b.Property<string>("CurrencyDescription");
-
-                    b.Property<string>("CurrencyName");
-
-                    b.Property<string>("CurrencySymbol");
-
-                    b.Property<int?>("CurrencyTypeId");
-
-                    b.Property<bool?>("DeleteAccountSolicitude");
 
                     b.Property<string>("EncryptedPassword")
                         .HasColumnType("text");
@@ -1805,10 +1793,6 @@ namespace DAL.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("EntityId");
-
-                    b.Property<int?>("EntityStatus");
-
-                    b.Property<string>("EntityStatusDescription");
 
                     b.Property<string>("ErrorMessage");
 
@@ -1828,25 +1812,23 @@ namespace DAL.Migrations
 
                     b.Property<string>("Status");
 
-                    b.Property<string>("StatusDescription");
-
                     b.Property<DateTime?>("TokenExpiry");
 
                     b.Property<string>("TributaryIdentifier");
-
-                    b.Property<string>("TributaryIdentifierType");
 
                     b.Property<DateTime?>("UpdatedAt");
 
                     b.Property<string>("UserName");
 
-                    b.Property<string>("UsuarioId");
+                    b.Property<int?>("UsuarioId");
+
+                    b.Property<string>("UsuarioId1");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ClienteId");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("UsuarioId1");
 
                     b.ToTable("PSPAccounts");
                 });
@@ -3127,7 +3109,7 @@ namespace DAL.Migrations
 
                     b.HasOne("DAL.Models.Usuario", "Usuario")
                         .WithMany()
-                        .HasForeignKey("UsuarioId");
+                        .HasForeignKey("UsuarioId1");
                 });
 
             modelBuilder.Entity("DAL.Models.PSPAccountFile", b =>

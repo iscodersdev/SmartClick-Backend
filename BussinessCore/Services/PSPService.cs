@@ -1158,6 +1158,130 @@ namespace BusinessCore.Services
             if (string.IsNullOrEmpty(t)) return t;
             return new string(t.Where(char.IsDigit).ToArray());
         }
+
+        public async Task<AccountsInfoResponseDTO> GetAccountDataAsync(string userToken)
+        {
+            // Implementación de la llamada a C1: /Accounts/All/Get
+            try
+            {
+                var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/a/multicuenta/api/v1/Accounts/All/Get");
+                requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", userToken);
+                requestMessage.Headers.Add("X-client_id", _clientId);
+
+                var response = await _httpClient.SendAsync(requestMessage);
+                var content = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Error en GetAccountDataAsync (C1): {StatusCode} - {Content}", response.StatusCode, content);
+                    return new AccountsInfoResponseDTO { Success = false, Error = content };
+                }
+
+                var apiResponse = JsonConvert.DeserializeObject<ApiAccountsResponse>(content);
+                return new AccountsInfoResponseDTO
+                {
+                    Success = apiResponse.success,
+                    Accounts = apiResponse.data,
+                    Error = apiResponse.success ? null : apiResponse.message,
+                    RawResponse = content // Guardamos el JSON crudo
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excepción en GetAccountDataAsync (C1)");
+                return new AccountsInfoResponseDTO { Success = false, Error = ex.Message };
+            }
+        }
+
+        public async Task<EntityStatusResponseDTO> GetEntityByTributaryIdAsync(string tributaryIdentifier, string systemToken)
+        {
+            // Implementación de la llamada a C7: /Accounts/Children/Get
+            try
+            {
+                var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Children/Get?TributaryIdentifier={tributaryIdentifier}");
+                requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", systemToken);
+                requestMessage.Headers.Add("X-client_id", _clientId);
+
+                _logger.LogInformation($"🔍 Llamando PSP C7 - URL: {requestMessage.RequestUri}");
+                _logger.LogInformation($"🔍 CUIL/CUIT consultado: {tributaryIdentifier}");
+
+                var response = await _httpClient.SendAsync(requestMessage);
+                var content = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation($"📥 PSP C7 Response - StatusCode: {response.StatusCode}");
+                _logger.LogInformation($"📥 PSP C7 Response - Content: {content}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("❌ Error en GetEntityByTributaryIdAsync (C7): {StatusCode} - {Content}", response.StatusCode, content);
+                    return new EntityStatusResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = $"Error HTTP {response.StatusCode}",
+                        RawResponse = content 
+                    };
+                }
+                
+                // ✅ DESERIALIZAR RESPUESTA DEL PSP
+                try
+                {
+                    var apiResponse = JsonConvert.DeserializeObject<ApiEntityStatusResponse>(content);
+                    
+                    if (apiResponse == null)
+                    {
+                        _logger.LogWarning("⚠️ Respuesta del PSP deserializada como null");
+                        return new EntityStatusResponseDTO 
+                        { 
+                            Success = false, 
+                            Error = "Respuesta del PSP vacía o inválida",
+                            RawResponse = content 
+                        };
+                    }
+
+                    // ✅ VERIFICAR SI HAY DATOS
+                    bool hasData = apiResponse.data != null && apiResponse.data.Count > 0;
+                    
+                    _logger.LogInformation($"✅ Respuesta del PSP - Success: {apiResponse.success}, HasData: {hasData}, Entities: {apiResponse.data?.Count ?? 0}");
+
+                    // Si el PSP dice "success" pero no hay datos, es un 404 (no encontrado)
+                    if (apiResponse.success && !hasData)
+                    {
+                        _logger.LogInformation($"ℹ️ No se encontraron entidades para CUIL: {tributaryIdentifier} (cuenta en proceso, rechazada o no existe)");
+                        return new EntityStatusResponseDTO 
+                        { 
+                            Success = false,  // ❌ Cambiamos a false porque NO hay datos
+                            Data = new List<EntityStatusData>(),
+                            Error = $"No se encontró información de la entidad con CUIT/CUIL: {tributaryIdentifier}",
+                            RawResponse = content 
+                        };
+                    }
+
+                    // ✅ MAPEAR A NUESTRO DTO DE RESPUESTA
+                    return new EntityStatusResponseDTO 
+                    { 
+                        Success = apiResponse.success && hasData,  // Solo true si hay datos
+                        Data = apiResponse.data ?? new List<EntityStatusData>(),
+                        Error = (!apiResponse.success) ? (apiResponse.message ?? "Error desconocido del PSP") : null,
+                        RawResponse = content
+                    };
+                }
+                catch (JsonException jsonEx)
+                {
+                    _logger.LogError(jsonEx, $"❌ Error deserializando respuesta del PSP: {content}");
+                    return new EntityStatusResponseDTO 
+                    { 
+                        Success = false, 
+                        Error = "Error deserializando respuesta del PSP",
+                        RawResponse = content 
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Excepción en GetEntityByTributaryIdAsync (C7)");
+                return new EntityStatusResponseDTO { Success = false, Error = ex.Message };
+            }
+        }
     }
 
     public class ApiProvincesResponse
@@ -1193,5 +1317,14 @@ namespace BusinessCore.Services
     {
         public string identifier { get; set; }
         public string entityId { get; set; }
+    }
+
+    // *** NUEVO: Respuesta del PSP para C7 (Accounts/Children/Get) ***
+    public class ApiEntityStatusResponse
+    {
+        public bool success { get; set; }
+        public string message { get; set; }
+        public List<EntityStatusData> data { get; set; }
+        public string code { get; set; }
     }
 }
