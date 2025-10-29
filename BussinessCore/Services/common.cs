@@ -432,7 +432,7 @@ namespace SmartClickCore
               cTransform.TransformFinalBlock(toEncryptArray, 0,
               toEncryptArray.Length);
             tdes.Dispose();
-            return sin_simbolos(Convert.ToBase64String(resultArray, 0, resultArray.Length));
+            return Convert.ToBase64String(resultArray, 0, resultArray.Length);
         }
         
         public static string Decrypt(string toDecrypt, string secretKey)

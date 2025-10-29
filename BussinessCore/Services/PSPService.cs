@@ -9,6 +9,7 @@ using DAL.DTOs.PSP;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Threading;
 
 namespace BusinessCore.Services
 {
@@ -91,7 +92,7 @@ namespace BusinessCore.Services
                 var formContent = new FormUrlEncodedContent(formParams);
 
                 _httpClient.DefaultRequestHeaders.Clear();
-                
+
                 // SOLO agregar header X-client_id si tenemos ClientId v�lido
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
@@ -105,7 +106,7 @@ namespace BusinessCore.Services
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
                     var tokenResponse = JsonConvert.DeserializeObject<TokenResponseDTO>(responseContent);
-                    
+
                     _logger.LogInformation("Token obtenido exitosamente del PSP");
                     return tokenResponse;
                 }
@@ -175,7 +176,7 @@ namespace BusinessCore.Services
                 var formContent = new FormUrlEncodedContent(formParams);
 
                 _httpClient.DefaultRequestHeaders.Clear();
-                
+
                 // SOLO agregar header X-client_id si tenemos ClientId v�lido
                 if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
                 {
@@ -189,7 +190,7 @@ namespace BusinessCore.Services
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
                     var tokenResponse = JsonConvert.DeserializeObject<TokenResponseDTO>(responseContent);
-                    
+
                     _logger.LogInformation("Token obtenido exitosamente del PSP");
                     return tokenResponse;
                 }
@@ -655,7 +656,155 @@ namespace BusinessCore.Services
             }
         }
 
-        // Agregar estos m�todos despu�s de UploadFilesAsync
+        // Helper: POST with retries used by Recover/Reset
+        private async Task<SimplePspResponseDTO> PostWithRetriesAsync(string url, string jsonPayload, Dictionary<string, string> headers = null, int maxAttempts = 3)
+        {
+            int attempt = 0;
+            while (attempt < maxAttempts)
+            {
+                attempt++;
+                try
+                {
+                    var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                    _httpClient.DefaultRequestHeaders.Clear();
+
+                    if (headers != null)
+                    {
+                        foreach (var kv in headers)
+                        {
+                            // avoid duplicate header exceptions
+                            if (!_httpClient.DefaultRequestHeaders.Contains(kv.Key))
+                                _httpClient.DefaultRequestHeaders.Add(kv.Key, kv.Value);
+                        }
+                    }
+
+                    var response = await _httpClient.PostAsync(url, content);
+                    var respContent = await response.Content.ReadAsStringAsync();
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        try
+                        {
+                            var apiResp = JsonConvert.DeserializeObject<SimplePspResponseDTO>(respContent);
+                            if (apiResp != null)
+                            {
+                                apiResp.httpStatusCode = (int)response.StatusCode;
+                                return apiResp;
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            return new SimplePspResponseDTO { success = true, message = "OK (no JSON)", data = respContent, httpStatusCode = (int)response.StatusCode };
+                        }
+                    }
+
+                    // If not success, try to deserialize error body
+                    try
+                    {
+                        var apiResp = JsonConvert.DeserializeObject<SimplePspResponseDTO>(respContent);
+                        if (apiResp != null)
+                        {
+                            apiResp.httpStatusCode = (int)response.StatusCode;
+                            return apiResp;
+                        }
+                    }
+                    catch { }
+
+                    // If we reach here and it's a transient error, retry
+                    if ((int)response.StatusCode >= 500 && attempt < maxAttempts)
+                    {
+                        await Task.Delay(250 * attempt);
+                        continue;
+                    }
+
+                    return new SimplePspResponseDTO { success = false, message = respContent, code = "", httpStatusCode = (int)response.StatusCode };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error calling PSP POST {url} attempt {attempt}");
+                    if (attempt < maxAttempts)
+                        await Task.Delay(200 * attempt);
+                    else
+                        return new SimplePspResponseDTO { success = false, message = ex.Message, code = "", httpStatusCode = 0 };
+                }
+            }
+
+            return new SimplePspResponseDTO { success = false, message = "Max attempts reached", code = "" };
+        }
+
+        public async Task<SimplePspResponseDTO> RecoverPasswordAsync(RecoverPasswordRequestDTO request, string systemToken)
+        {
+            if (_testMode)
+            {
+                _logger.LogInformation("?? MODO PRUEBA: Simulando RecoverPassword");
+                await Task.Delay(200);
+                return new SimplePspResponseDTO { success = true, message = "Simulated: recover request sent", data = request.UserName };
+            }
+
+            try
+            {
+                var url = $"{_baseUrl}/a/api/api/RecoverPassword";
+
+                var payload = JsonConvert.SerializeObject(new { UserName = request.UserName, Email = request.Email });
+                var headers = new Dictionary<string, string>();
+
+                if (!string.IsNullOrEmpty(systemToken))
+                {
+                    headers["Authorization"] = $"Bearer {systemToken}";
+                }
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    headers["X-client_id"] = _clientId;
+                }
+
+                return await PostWithRetriesAsync(url, payload, headers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in RecoverPasswordAsync");
+                return new SimplePspResponseDTO { success = false, message = ex.Message };
+            }
+        }
+
+        public async Task<SimplePspResponseDTO> ResetPasswordAsync(ResetPasswordRequestDTO request, string systemToken)
+        {
+            if (_testMode)
+            {
+                _logger.LogInformation("?? MODO PRUEBA: Simulando ResetPassword");
+                await Task.Delay(200);
+                return new SimplePspResponseDTO { success = true, message = "Simulated: password reset", data = null };
+            }
+
+            try
+            {
+                var url = $"{_baseUrl}/a/api/api/ResetPassword";
+
+                var payload = JsonConvert.SerializeObject(new
+                {
+                    UserName = request.UserName,
+                    Password = request.Password,
+                    PasswordConfirm = request.PasswordConfirm,
+                    EventValidator = request.EventValidator
+                });
+
+                var headers = new Dictionary<string, string>();
+                if (!string.IsNullOrEmpty(systemToken))
+                {
+                    headers["Authorization"] = $"Bearer {systemToken}";
+                }
+                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                {
+                    headers["X-client_id"] = _clientId;
+                }
+
+                return await PostWithRetriesAsync(url, payload, headers);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ResetPasswordAsync");
+                return new SimplePspResponseDTO { success = false, message = ex.Message };
+            }
+        }
 
         /// <summary>
         /// Obtiene la lista de provincias disponibles
@@ -994,7 +1143,7 @@ namespace BusinessCore.Services
 
                 // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
                 var url = $"{_baseUrl}/a/multicuenta/api/v1/Person/ContactNotebook/Get";
-                _logger.LogInformation($"?? Llamando PSP ValidateExternalAccount");
+                _logger.LogInformation("?? Llamando PSP ValidateExternalAccount");
                 _logger.LogInformation($"?? URL completa: {url}");
                 _logger.LogInformation($"?? BaseUrl: {_baseUrl}");
                 _logger.LogInformation($"?? TextSearch: {textSearch}");
@@ -1282,49 +1431,50 @@ namespace BusinessCore.Services
                 return new EntityStatusResponseDTO { Success = false, Error = ex.Message };
             }
         }
-    }
 
-    public class ApiProvincesResponse
-    {
-        public bool success { get; set; }
-        public string message { get; set; }
-        public List<ProvinceDTO> data { get; set; }
-    }
+        // Helper response classes
+        public class ApiProvincesResponse
+        {
+            public bool success { get; set; }
+            public string message { get; set; }
+            public List<ProvinceDTO> data { get; set; }
+        }
 
-    public class ApiCitiesResponse
-    {
-        public bool success { get; set; }
-        public string message { get; set; }
-        public List<CityDTO> data { get; set; }
-    }
+        public class ApiCitiesResponse
+        {
+            public bool success { get; set; }
+            public string message { get; set; }
+            public List<CityDTO> data { get; set; }
+        }
 
-    public class ApiAccountsResponse
-    {
-        public bool success { get; set; }
-        public string message { get; set; }
-        public List<AccountInfoDTO> data { get; set; }    // ?? FIX: Cambiar "accounts" por "data"
-        public string code { get; set; }                  // ?? FIX: Agregar "code"
-    }
+        public class ApiAccountsResponse
+        {
+            public bool success { get; set; }
+            public string message { get; set; }
+            public List<AccountInfoDTO> data { get; set; }    // ?? FIX: Cambiar "accounts" por "data"
+            public string code { get; set; }                  // ?? FIX: Agregar "code"
+        }
 
-    public class ApiSelfRegistrationResponse
-    {
-        public bool success { get; set; }
-        public string message { get; set; }
-        public SelfRegistrationData data { get; set; }
-    }
+        public class ApiSelfRegistrationResponse
+        {
+            public bool success { get; set; }
+            public string message { get; set; }
+            public SelfRegistrationData data { get; set; }
+        }
 
-    public class SelfRegistrationData
-    {
-        public string identifier { get; set; }
-        public string entityId { get; set; }
-    }
+        public class SelfRegistrationData
+        {
+            public string identifier { get; set; }
+            public string entityId { get; set; }
+        }
 
-    // *** NUEVO: Respuesta del PSP para C7 (Accounts/Children/Get) ***
-    public class ApiEntityStatusResponse
-    {
-        public bool success { get; set; }
-        public string message { get; set; }
-        public List<EntityStatusData> data { get; set; }
-        public string code { get; set; }
+        // *** NUEVO: Respuesta del PSP para C7 (Accounts/Children/Get) ***
+        public class ApiEntityStatusResponse
+        {
+            public bool success { get; set; }
+            public string message { get; set; }
+            public List<EntityStatusData> data { get; set; }
+            public string code { get; set; }
+        }
     }
 }

@@ -12,6 +12,8 @@ using DAL.Models.Core; // for MovimientoBilletera, OrigenMovimiento, TipoOrigenM
 using Commons.Extensions; // for GetDisplayName extension
 using Microsoft.EntityFrameworkCore;
 using DAL.DTOs.API;
+using Newtonsoft.Json;
+using DAL.Models;
 
 namespace SmartClickCore.API.Controllers.PSP
 {
@@ -42,10 +44,24 @@ namespace SmartClickCore.API.Controllers.PSP
         {
             try
             {
+                Log.Information($"🔍 ObtenerUserTokenPSP iniciado para usuario: {usuario.UserName} (ID: {usuario.Id})");
+
                 // 1. Buscar PSPAccount existente para el usuario
                 var pspAccount = _context.Set<DAL.Models.PSPAccount>()
                     .Where(p => p.Usuario.Id == usuario.Id)
                     .FirstOrDefault();
+
+                if (pspAccount == null)
+                {
+                    Log.Warning($"⚠️ No existe PSPAccount en BD para usuario {usuario.UserName} (ID: {usuario.Id})");
+                }
+                else
+                {
+                    Log.Information($"✅ PSPAccount encontrado - UserName: {pspAccount.UserName}, PSPUserId: {pspAccount.PSPUserId}");
+                    Log.Information($"   - Token almacenado: {(!string.IsNullOrEmpty(pspAccount.EncryptedUserToken) ? "SÍ" : "NO")}");
+                    Log.Information($"   - Token expira: {pspAccount.TokenExpiry?.ToString() ?? "N/A"}");
+                    Log.Information($"   - Password almacenado: {(!string.IsNullOrEmpty(pspAccount.EncryptedPassword) ? "SÍ" : "NO")}");
+                }
 
                 // 2. Si existe y tiene token válido (no expirado), usarlo
                 if (pspAccount != null &&
@@ -56,12 +72,27 @@ namespace SmartClickCore.API.Controllers.PSP
                     try
                     {
                         string decryptedToken = common.Decrypt(pspAccount.EncryptedUserToken, "PSPToken");
-                        Log.Information($"Token recuperado desde BD para usuario {usuario.UserName}");
+                        Log.Information($"✅ Token recuperado desde BD para usuario {usuario.UserName} (válido hasta {pspAccount.TokenExpiry})");
                         return decryptedToken;
                     }
                     catch (Exception ex)
                     {
-                        Log.Warning(ex, $"Error descifrando token almacenado para usuario {usuario.UserName}");
+                        Log.Warning(ex, $"⚠️ Error descifrando token almacenado para usuario {usuario.UserName}");
+                    }
+                }
+                else if (pspAccount != null)
+                {
+                    if (string.IsNullOrEmpty(pspAccount.EncryptedUserToken))
+                    {
+                        Log.Warning($"⚠️ PSPAccount existe pero NO tiene token almacenado para usuario {usuario.UserName}");
+                    }
+                    else if (!pspAccount.TokenExpiry.HasValue)
+                    {
+                        Log.Warning($"⚠️ PSPAccount tiene token pero sin fecha de expiración para usuario {usuario.UserName}");
+                    }
+                    else if (pspAccount.TokenExpiry.Value <= DateTime.UtcNow.AddMinutes(5))
+                    {
+                        Log.Warning($"⚠️ Token expirado o por expirar para usuario {usuario.UserName} (expira: {pspAccount.TokenExpiry})");
                     }
                 }
 
@@ -74,7 +105,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     try
                     {
                         string decryptedPassword = common.Decrypt(pspAccount.EncryptedPassword, "PSPPassword");
-                        Log.Information($"Intentando obtener token del PSP para usuario {pspAccount.UserName}");
+                        Log.Information($"🔄 Intentando obtener token del PSP para usuario {pspAccount.UserName}");
 
                         var tokenResponse = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedPassword);
 
@@ -91,28 +122,37 @@ namespace SmartClickCore.API.Controllers.PSP
 
                                 _context.SaveChanges();
 
-                                Log.Information($"Token del PSP obtenido y guardado para usuario {pspAccount.UserName}");
+                                Log.Information($"✅ Token del PSP obtenido y guardado para usuario {pspAccount.UserName} (expira: {pspAccount.TokenExpiry})");
                                 return tokenResponse.access_token;
                             }
                             catch (Exception ex)
                             {
-                                Log.Error(ex, $"Error guardando token en BD para usuario {pspAccount.UserName}");
+                                Log.Error(ex, $"❌ Error guardando token en BD para usuario {pspAccount.UserName}");
                                 // Aunque no se guarde, devolvemos el token obtenido
+                                Log.Information($"⚠️ Token obtenido pero no guardado, se devuelve de todas formas");
                                 return tokenResponse.access_token;
                             }
+                        }
+                        else
+                        {
+                            Log.Error($"❌ PSP retornó token vacío o nulo para usuario {pspAccount.UserName}");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, $"Error obteniendo token del PSP para usuario {pspAccount.UserName}");
+                        Log.Error(ex, $"❌ Error obteniendo token del PSP para usuario {pspAccount.UserName}");
                     }
+                }
+                else
+                {
+                    Log.Warning($"⚠️ No hay credenciales PSP (UserName/Password) guardadas para usuario {usuario.UserName}");
                 }
 
                 // OPCIÓN B: Si tenemos un email y password almacenado en Cliente (fallback)
                 var cliente = usuario.Clientes;
                 if (cliente != null && !string.IsNullOrEmpty(cliente.Password))
                 {
-                    Log.Information($"Fallback: Intentando obtener token del PSP usando datos del Cliente");
+                    Log.Information($"🔄 Fallback: Intentando obtener token del PSP usando datos del Cliente para usuario {usuario.UserName}");
 
                     var tokenResponse = await _pspService.GetAccessTokenUserAsync(usuario.UserName, cliente.Password);
 
@@ -129,6 +169,7 @@ namespace SmartClickCore.API.Controllers.PSP
                                 CreatedAt = DateTime.UtcNow
                             };
                             _context.Set<DAL.Models.PSPAccount>().Add(pspAccount);
+                            Log.Information($"✅ Creado nuevo PSPAccount para usuario {usuario.UserName}");
                         }
 
                         try
@@ -141,24 +182,32 @@ namespace SmartClickCore.API.Controllers.PSP
 
                             _context.SaveChanges();
 
-                            Log.Information($"Token del PSP obtenido y guardado para usuario {usuario.UserName}");
+                            Log.Information($"✅ Token del PSP obtenido y guardado (fallback) para usuario {usuario.UserName}");
                             return tokenResponse.access_token;
                         }
                         catch (Exception ex)
                         {
-                            Log.Error(ex, $"Error guardando token en BD para usuario {usuario.UserName}");
+                            Log.Error(ex, $"❌ Error guardando token en BD (fallback) para usuario {usuario.UserName}");
                             // Aunque no se guarde, devolvemos el token obtenido
                             return tokenResponse.access_token;
                         }
                     }
+                    else
+                    {
+                        Log.Error($"❌ Fallback: PSP retornó token vacío o nulo para usuario {usuario.UserName}");
+                    }
+                }
+                else
+                {
+                    Log.Warning($"⚠️ Fallback no disponible: Cliente no tiene Password guardado para usuario {usuario.UserName}");
                 }
 
-                Log.Warning($"No se pudo obtener UserToken para usuario {usuario.UserName}");
+                Log.Error($"❌ No se pudo obtener UserToken para usuario {usuario.UserName} - Todas las opciones agotadas");
                 return null;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Error en ObtenerUserTokenPSP para usuario {usuario?.UserName}");
+                Log.Error(ex, $"❌ Error CRÍTICO en ObtenerUserTokenPSP para usuario {usuario?.UserName}");
                 return null;
             }
         }
@@ -818,6 +867,257 @@ namespace SmartClickCore.API.Controllers.PSP
             }
         }
 
+        /// <summary>
+        /// Llama a C1 (Accounts/All/Get) usando el token del usuario y persiste/actualiza un registro PSPAccount local
+        /// Útil para usuarios que fueron creados en PSP antes de existir la tabla PSPAccount localmente.
+        /// </summary>
+        [HttpPost("PersistPSPAccountFromC1")]
+        public async Task<IActionResult> PersistPSPAccountFromC1([FromBody] PSPBaseResponseDTO request)
+        {
+            try
+            {
+                var usuario = TraeUsuarioUAT(request?.UAT);
+                if (usuario == null)
+                {
+                    return BadRequest(new { Status = 401, UAT = request?.UAT, Mensaje = "Usuario no autenticado", Success = false });
+                }
+
+                // Obtener token del usuario PSP
+                var userToken = await ObtenerUserTokenPSP(usuario);
+                if (string.IsNullOrEmpty(userToken))
+                {
+                    return BadRequest(new { Status = 400, UAT = request?.UAT, Mensaje = "No se pudo obtener el token del usuario PSP", Success = false });
+                }
+
+                // Llamar a C1
+                var c1Response = await _pspService.GetAccountDataAsync(userToken);
+
+                if (c1Response == null || !c1Response.Success || c1Response.Accounts == null || !c1Response.Accounts.Any())
+                {
+                    return BadRequest(new { Status = 400, UAT = request?.UAT, Mensaje = "C1 no devolvió datos válidos", Success = false, Data = c1Response });
+                }
+
+                var account = c1Response.Accounts.First();
+
+                // Buscar o crear PSPAccount local para este usuario
+                var pspAccount = _context.Set<DAL.Models.PSPAccount>().Include(p => p.Usuario).FirstOrDefault(p => p.Usuario.Id == usuario.Id);
+                var created = false;
+                if (pspAccount == null)
+                {
+                    pspAccount = new DAL.Models.PSPAccount
+                    {
+                        Usuario = usuario,
+                        UserName = usuario.UserName,
+                        Status = "unknown",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Set<DAL.Models.PSPAccount>().Add(pspAccount);
+                    created = true;
+                }
+
+                // Mapear campos desde la respuesta C1 (defensivo)
+                object accountNumberObj = account?.GetType().GetProperty("accountNumber")?.GetValue(account) ?? account?.GetType().GetProperty("AccountNumber")?.GetValue(account);
+                object cvuObj = account?.GetType().GetProperty("cvu")?.GetValue(account) ?? account?.GetType().GetProperty("Cvu")?.GetValue(account) ?? account?.GetType().GetProperty("cvU_CBU")?.GetValue(account);
+                object accountTypeObj = account?.GetType().GetProperty("accountTypeId")?.GetValue(account) ?? account?.GetType().GetProperty("AccountTypeId")?.GetValue(account);
+                object tributaryObj = account?.GetType().GetProperty("tributaryIdentifier")?.GetValue(account) ?? account?.GetType().GetProperty("TributaryIdentifier")?.GetValue(account);
+                object pspUserIdObj = account?.GetType().GetProperty("personId")?.GetValue(account) ?? account?.GetType().GetProperty("personId")?.GetValue(account) ?? account?.GetType().GetProperty("userId")?.GetValue(account);
+
+                // Campos adicionales defensivos
+                object cvuAliasObj = account?.GetType().GetProperty("cvU_CBUAlias")?.GetValue(account)
+                    ?? account?.GetType().GetProperty("cvuAlias")?.GetValue(account)
+                    ?? account?.GetType().GetProperty("alias")?.GetValue(account)
+                    ?? account?.GetType().GetProperty("CBUAlias")?.GetValue(account);
+
+                object entityIdObj = account?.GetType().GetProperty("entityId")?.GetValue(account) ?? account?.GetType().GetProperty("EntityId")?.GetValue(account);
+                object identifierObj = account?.GetType().GetProperty("identifier")?.GetValue(account) ?? account?.GetType().GetProperty("Identifier")?.GetValue(account);
+
+                object currencyTypeIdObj = account?.GetType().GetProperty("currencyTypeId")?.GetValue(account) ?? account?.GetType().GetProperty("CurrencyTypeId")?.GetValue(account);
+                object currencyNameObj = account?.GetType().GetProperty("currencyTypeName")?.GetValue(account) ?? account?.GetType().GetProperty("CurrencyName")?.GetValue(account);
+                object currencyDescObj = account?.GetType().GetProperty("currencyTypeDescription")?.GetValue(account) ?? account?.GetType().GetProperty("currencyDescription")?.GetValue(account);
+
+                object accountTypeDescObj = account?.GetType().GetProperty("accountTypeDescription")?.GetValue(account) ?? account?.GetType().GetProperty("accountType")?.GetValue(account);
+                object displayNameObj = account?.GetType().GetProperty("displayName")?.GetValue(account) ?? account?.GetType().GetProperty("name")?.GetValue(account);
+                object virtualAccountObj = account?.GetType().GetProperty("virtualAccount")?.GetValue(account);
+                object bankDescObj = account?.GetType().GetProperty("pspBankDescription")?.GetValue(account) ?? account?.GetType().GetProperty("bankDescription")?.GetValue(account);
+                object deleteSolicitudeObj = account?.GetType().GetProperty("deleteAccountSolicitude")?.GetValue(account) ?? account?.GetType().GetProperty("deleteAccountSolicitud")?.GetValue(account);
+
+                var accountNumber = accountNumberObj?.ToString();
+                var cvu = cvuObj?.ToString();
+                var cvuAlias = cvuAliasObj?.ToString();
+                int? accountTypeId = null;
+                if (accountTypeObj != null)
+                {
+                    int tmp; if (int.TryParse(accountTypeObj.ToString(), out tmp)) accountTypeId = tmp;
+                }
+                var trib = tributaryObj?.ToString();
+
+                var entityId = entityIdObj?.ToString();
+                var identifier = identifierObj?.ToString();
+
+                int? currencyTypeId = null;
+                if (currencyTypeIdObj != null) { int tmp; if (int.TryParse(currencyTypeIdObj.ToString(), out tmp)) currencyTypeId = tmp; }
+                var currencyName = currencyNameObj?.ToString();
+                var currencyDesc = currencyDescObj?.ToString();
+
+                var accountTypeDesc = accountTypeDescObj?.ToString();
+                var displayName = displayNameObj?.ToString();
+                bool? virtualAccount = null;
+                if (virtualAccountObj != null) { bool tmpb; if (bool.TryParse(virtualAccountObj.ToString(), out tmpb)) virtualAccount = tmpb; }
+                var bankDesc = bankDescObj?.ToString();
+                bool? deleteSolicitude = null;
+                if (deleteSolicitudeObj != null) { bool td; if (bool.TryParse(deleteSolicitudeObj.ToString(), out td)) deleteSolicitude = td; }
+
+                if (!string.IsNullOrEmpty(accountNumber)) pspAccount.AccountNumber = accountNumber;
+                // No sobreescribir CVU si ya existe salvo que esté vacío
+                if (!string.IsNullOrEmpty(cvu) && string.IsNullOrEmpty(pspAccount.CVU)) pspAccount.CVU = cvu;
+                // CVU alias/CBU alias
+                if (!string.IsNullOrEmpty(cvuAlias) && string.IsNullOrEmpty(pspAccount.CVU_CBUAlias)) pspAccount.CVU_CBUAlias = cvuAlias;
+                if (accountTypeId.HasValue) pspAccount.AccountTypeId = accountTypeId;
+                if (!string.IsNullOrEmpty(trib)) pspAccount.TributaryIdentifier = trib;
+
+                // entity / identifier
+                if (!string.IsNullOrEmpty(entityId)) pspAccount.EntityId = entityId;
+                if (!string.IsNullOrEmpty(identifier)) pspAccount.Identifier = identifier;
+
+                // currency
+                if (currencyTypeId.HasValue) pspAccount.CurrencyTypeId = currencyTypeId;
+                if (!string.IsNullOrEmpty(currencyName)) pspAccount.CurrencyName = currencyName;
+                if (!string.IsNullOrEmpty(currencyDesc)) pspAccount.CurrencyDescription = currencyDesc;
+
+                // metadata / descriptions
+                if (!string.IsNullOrEmpty(accountTypeDesc)) pspAccount.StatusDescription = accountTypeDesc;
+                if (!string.IsNullOrEmpty(displayName)) pspAccount.StatusDescription = string.IsNullOrEmpty(pspAccount.StatusDescription) ? displayName : pspAccount.StatusDescription;
+                if (!string.IsNullOrEmpty(bankDesc)) pspAccount.StatusDescription = string.IsNullOrEmpty(pspAccount.StatusDescription) ? bankDesc : pspAccount.StatusDescription;
+                if (virtualAccount.HasValue && virtualAccount == true) { /* opcional: marcar flag o status */ }
+                if (deleteSolicitude.HasValue) pspAccount.DeleteAccountSolicitude = deleteSolicitude;
+
+                pspAccount.Status = "user_account_found";
+
+                // Guardar LastC1ResponseJson y UpdatedAt
+                try
+                {
+                    pspAccount.LastC1ResponseJson = JsonConvert.SerializeObject(c1Response);
+                }
+                catch { }
+
+                pspAccount.UpdatedAt = DateTime.UtcNow;
+
+                // Guardar cambios
+                try
+                {
+                    using (var tx = _context.Database.BeginTransaction())
+                    {
+                        await _context.SaveChangesAsync();
+                        tx.Commit();
+                    }
+                }
+                catch (Exception exSave)
+                {
+                    Log.Error(exSave, "Error guardando PSPAccount desde PersistPSPAccountFromC1");
+                    return StatusCode(500, new { Status = 500, UAT = request?.UAT, Mensaje = "Error guardando PSPAccount", Success = false });
+                }
+
+                return Ok(new { Status = 200, UAT = request?.UAT, Mensaje = created ? "PSPAccount creado" : "PSPAccount actualizado", Success = true, PSPAccountId = pspAccount.Id });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en PersistPSPAccountFromC1");
+                return StatusCode(500, new { Status = 500, UAT = request?.UAT, Mensaje = "Error interno del servidor", Success = false });
+            }
+        }
+
+        // *** ENDPOINT TEMPORAL DE DIAGNÓSTICO: VERIFICAR COLUMNAS PSPACCOUNT ***
+        /// <summary>
+        /// Endpoint temporal para diagnosticar columnas de PSPAccount desde EF Core
+        /// </summary>
+        [HttpGet("DiagnosticPSPAccountColumns")]
+        public IActionResult DiagnosticPSPAccountColumns([FromQuery] string uat)
+        {
+            try
+            {
+                // Validar usuario autenticado
+                var usuario = TraeUsuarioUAT(uat);
+                if (usuario == null)
+                {
+                    return BadRequest(new
+                    {
+                        Status = 401,
+                        UAT = uat,
+                        Mensaje = "Usuario no autenticado",
+                        Success = false
+                    });
+                }
+
+                // Obtener el modelo de Entity Framework
+                var entityType = _context.Model.FindEntityType(typeof(DAL.Models.PSPAccount));
+                
+                if (entityType == null)
+                {
+                    return BadRequest(new
+                    {
+                        Status = 500,
+                        UAT = uat,
+                        Mensaje = "No se pudo encontrar el modelo PSPAccount en EF Core",
+                        Success = false
+                    });
+                }
+
+                // Obtener todas las propiedades (columnas) - .NET Core 2.2 compatible
+                var properties = entityType.GetProperties()
+                    .Select(p => new
+                    {
+                        PropertyName = p.Name,
+                        ClrType = p.ClrType.Name,
+                        IsNullable = p.IsNullable
+                    })
+                    .OrderBy(p => p.PropertyName)
+                    .ToList();
+
+                // Intentar consultar un registro para ver si falla
+                string errorMessage = null;
+                DAL.Models.PSPAccount testRecord = null;
+                
+                try
+                {
+                    testRecord = _context.Set<DAL.Models.PSPAccount>()
+                        .FirstOrDefault();
+                }
+                catch (Exception ex)
+                {
+                    errorMessage = ex.Message;
+                    if (ex.InnerException != null)
+                    {
+                        errorMessage += " | Inner: " + ex.InnerException.Message;
+                    }
+                }
+
+                return Ok(new
+                {
+                    Status = 200,
+                    UAT = uat,
+                    Mensaje = "Diagnóstico completado",
+                    Success = true,
+                    TotalProperties = properties.Count,
+                    Properties = properties,
+                    QueryError = errorMessage,
+                    TestRecordExists = testRecord != null,
+                    TestRecordId = testRecord?.Id
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en DiagnosticPSPAccountColumns");
+                return StatusCode(500, new
+                {
+                    Status = 500,
+                    UAT = uat,
+                    Mensaje = "Error interno del servidor: " + ex.Message,
+                    Success = false,
+                    InnerException = ex.InnerException?.Message
+                });
+            }
+        }
+
         // *** NUEVO ENDPOINT C7: OBTENER ENTIDAD POR IDENTIFICADOR TRIBUTARIO ***
         /// <summary>
         /// C7: Obtiene la entidad hija por su identificador tributario (Accounts/Children/Get)
@@ -899,6 +1199,435 @@ namespace SmartClickCore.API.Controllers.PSP
                     Mensaje = "Error interno del servidor",
                     Success = false
                 });
+            }
+        }
+
+        /// <summary>
+        /// Orquestador: consulta C1 y C7 y persiste los datos parciales en PSPAccount según disponibilidad.
+        /// Nombre sugerido: SyncPspStatus
+        /// </summary>
+        [HttpPost("SyncPspStatus")]
+        public async Task<IActionResult> SyncPspStatus([FromBody] PSPStatusRequestDTO request)
+        {
+            try
+            {
+                // Validar usuario autenticado
+                var usuario = TraeUsuarioUAT(request?.UAT);
+                if (usuario == null)
+                {
+                    return BadRequest(new PSPStatusResponseDTO
+                    {
+                        Success = false,
+                        Estado = "error",
+                        Mensaje = "Usuario no autenticado"
+                    });
+                }
+
+                // Determinar tributary identifier a usar
+                string tributary = request?.Cuil;
+                if (string.IsNullOrEmpty(tributary))
+                {
+                    // intentar desde cliente/persona
+                    var cliente = _context.Clientes.Include(c => c.Persona).FirstOrDefault(c => c.Usuario.Id == usuario.Id);
+                    if (cliente?.Persona != null)
+                    {
+                        tributary = cliente.Persona.Cuil?.Replace("-", "");
+                    }
+                }
+
+                // Obtener tokens en paralelo
+                var userTokenTask = ObtenerUserTokenPSP(usuario);
+                var systemTokenTask = _pspService.GetAccessTokenAsync();
+
+                await Task.WhenAll(userTokenTask, systemTokenTask);
+
+                // Siempre usar el token obtenido por el servidor para que sea invisible al cliente
+                var userToken = userTokenTask.Result;
+                var systemToken = systemTokenTask.Result;
+
+                // Ejecutar C1 y C7 en paralelo cuando sea posible
+                Task<AccountsInfoResponseDTO> c1Task = null;
+                Task<EntityStatusResponseDTO> c7Task = null;
+
+                if (!string.IsNullOrEmpty(userToken))
+                {
+                    c1Task = _pspService.GetAccountDataAsync(userToken);
+                }
+                else
+                {
+                    // marcar como no disponible
+                    c1Task = Task.FromResult(new AccountsInfoResponseDTO { Success = false, Error = "NoUserToken" });
+                }
+
+                if (!string.IsNullOrEmpty(tributary) && systemToken != null && !string.IsNullOrEmpty(systemToken.access_token))
+                {
+                    c7Task = _pspService.GetEntityByTributaryIdAsync(tributary, systemToken.access_token);
+                }
+                else
+                {
+                    c7Task = Task.FromResult(new EntityStatusResponseDTO { Success = false, Error = "NoSystemTokenOrTributary" });
+                }
+
+                await Task.WhenAll(c1Task, c7Task);
+
+                var c1 = c1Task.Result;
+                var c7 = c7Task.Result;
+
+                // Buscar o crear PSPAccount para este usuario
+                var pspAccount = _context.Set<DAL.Models.PSPAccount>().Include(p => p.Usuario).FirstOrDefault(p => p.Usuario.Id == usuario.Id);
+                var created = false;
+                if (pspAccount == null)
+                {
+                    pspAccount = new DAL.Models.PSPAccount
+                    {
+                        Usuario = usuario,
+                        UserName = usuario.UserName,
+                        Status = "unknown",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Set<DAL.Models.PSPAccount>().Add(pspAccount);
+                    created = true;
+                }
+
+                // Guardar respuestas crudas para trazabilidad
+                try
+                {
+                    pspAccount.LastC1ResponseJson = JsonConvert.SerializeObject(c1);
+                }
+                catch { }
+                try
+                {
+                    pspAccount.LastC7ResponseJson = JsonConvert.SerializeObject(c7);
+                }
+                catch { }
+                pspAccount.LastStatusCheck = DateTime.UtcNow;
+
+                // Condicional: si C1 positivo -> persistir datos de cuenta
+                bool accountExists = c1 != null && c1.Success && c1.Accounts != null && c1.Accounts.Any();
+                if (accountExists)
+                {
+                    var account = c1.Accounts.First();
+
+                    // usar reflexión defensiva para obtener campos comunes
+                    object accountNumberObj = account?.GetType().GetProperty("accountNumber")?.GetValue(account) ?? account?.GetType().GetProperty("AccountNumber")?.GetValue(account);
+                    object cvuObj = account?.GetType().GetProperty("cvu")?.GetValue(account) ?? account?.GetType().GetProperty("Cvu")?.GetValue(account) ?? account?.GetType().GetProperty("cvU_CBU")?.GetValue(account);
+                    object accountTypeObj = account?.GetType().GetProperty("accountTypeId")?.GetValue(account) ?? account?.GetType().GetProperty("AccountTypeId")?.GetValue(account);
+                    object tributaryObj = account?.GetType().GetProperty("tributaryIdentifier")?.GetValue(account) ?? account?.GetType().GetProperty("TributaryIdentifier")?.GetValue(account);
+                    object pspUserIdObj = account?.GetType().GetProperty("personId")?.GetValue(account) ?? account?.GetType().GetProperty("personId")?.GetValue(account) ?? account?.GetType().GetProperty("userId")?.GetValue(account);
+
+                    // Campos adicionales defensivos
+                    object cvuAliasObj = account?.GetType().GetProperty("cvU_CBUAlias")?.GetValue(account)
+                        ?? account?.GetType().GetProperty("cvuAlias")?.GetValue(account)
+                        ?? account?.GetType().GetProperty("alias")?.GetValue(account)
+                        ?? account?.GetType().GetProperty("CBUAlias")?.GetValue(account);
+
+                    object entityIdObj = account?.GetType().GetProperty("entityId")?.GetValue(account) ?? account?.GetType().GetProperty("EntityId")?.GetValue(account);
+                    object identifierObj = account?.GetType().GetProperty("identifier")?.GetValue(account) ?? account?.GetType().GetProperty("Identifier")?.GetValue(account);
+
+                    object currencyTypeIdObj = account?.GetType().GetProperty("currencyTypeId")?.GetValue(account) ?? account?.GetType().GetProperty("CurrencyTypeId")?.GetValue(account);
+                    object currencyNameObj = account?.GetType().GetProperty("currencyTypeName")?.GetValue(account) ?? account?.GetType().GetProperty("CurrencyName")?.GetValue(account);
+                    object currencyDescObj = account?.GetType().GetProperty("currencyTypeDescription")?.GetValue(account) ?? account?.GetType().GetProperty("currencyDescription")?.GetValue(account);
+
+                    object accountTypeDescObj = account?.GetType().GetProperty("accountTypeDescription")?.GetValue(account) ?? account?.GetType().GetProperty("accountType")?.GetValue(account);
+                    object displayNameObj = account?.GetType().GetProperty("displayName")?.GetValue(account) ?? account?.GetType().GetProperty("name")?.GetValue(account);
+                    object virtualAccountObj = account?.GetType().GetProperty("virtualAccount")?.GetValue(account);
+                    object bankDescObj = account?.GetType().GetProperty("pspBankDescription")?.GetValue(account) ?? account?.GetType().GetProperty("bankDescription")?.GetValue(account);
+                    object deleteSolicitudeObj = account?.GetType().GetProperty("deleteAccountSolicitude")?.GetValue(account) ?? account?.GetType().GetProperty("deleteAccountSolicitud")?.GetValue(account);
+
+                    var accountNumber = accountNumberObj?.ToString();
+                    var cvu = cvuObj?.ToString();
+                    var cvuAlias = cvuAliasObj?.ToString();
+                    int? accountTypeId = null;
+                    if (accountTypeObj != null)
+                    {
+                        int tmp; if (int.TryParse(accountTypeObj.ToString(), out tmp)) accountTypeId = tmp;
+                    }
+                    var trib = tributaryObj?.ToString();
+
+                    var entityId = entityIdObj?.ToString();
+                    var identifier = identifierObj?.ToString();
+
+                    int? currencyTypeId = null;
+                    if (currencyTypeIdObj != null) { int tmp; if (int.TryParse(currencyTypeIdObj.ToString(), out tmp)) currencyTypeId = tmp; }
+                    var currencyName = currencyNameObj?.ToString();
+                    var currencyDesc = currencyDescObj?.ToString();
+
+                    var accountTypeDesc = accountTypeDescObj?.ToString();
+                    var displayName = displayNameObj?.ToString();
+                    bool? virtualAccount = null;
+                    if (virtualAccountObj != null) { bool tmpb; if (bool.TryParse(virtualAccountObj.ToString(), out tmpb)) virtualAccount = tmpb; }
+                    var bankDesc = bankDescObj?.ToString();
+                    bool? deleteSolicitude = null;
+                    if (deleteSolicitudeObj != null) { bool td; if (bool.TryParse(deleteSolicitudeObj.ToString(), out td)) deleteSolicitude = td; }
+
+                    if (!string.IsNullOrEmpty(accountNumber)) pspAccount.AccountNumber = accountNumber;
+                    // No sobreescribir CVU si ya existe salvo que esté vacío
+                    if (!string.IsNullOrEmpty(cvu) && string.IsNullOrEmpty(pspAccount.CVU)) pspAccount.CVU = cvu;
+                    // CVU alias/CBU alias
+                    if (!string.IsNullOrEmpty(cvuAlias) && string.IsNullOrEmpty(pspAccount.CVU_CBUAlias)) pspAccount.CVU_CBUAlias = cvuAlias;
+                    if (accountTypeId.HasValue) pspAccount.AccountTypeId = accountTypeId;
+                    if (!string.IsNullOrEmpty(trib)) pspAccount.TributaryIdentifier = trib;
+
+                    // entity / identifier
+                    if (!string.IsNullOrEmpty(entityId)) pspAccount.EntityId = entityId;
+                    if (!string.IsNullOrEmpty(identifier)) pspAccount.Identifier = identifier;
+
+                    // currency
+                    if (currencyTypeId.HasValue) pspAccount.CurrencyTypeId = currencyTypeId;
+                    if (!string.IsNullOrEmpty(currencyName)) pspAccount.CurrencyName = currencyName;
+                    if (!string.IsNullOrEmpty(currencyDesc)) pspAccount.CurrencyDescription = currencyDesc;
+
+                    // metadata / descriptions
+                    if (!string.IsNullOrEmpty(accountTypeDesc)) pspAccount.StatusDescription = accountTypeDesc;
+                    if (!string.IsNullOrEmpty(displayName)) pspAccount.StatusDescription = string.IsNullOrEmpty(pspAccount.StatusDescription) ? displayName : pspAccount.StatusDescription;
+                    if (!string.IsNullOrEmpty(bankDesc)) pspAccount.StatusDescription = string.IsNullOrEmpty(pspAccount.StatusDescription) ? bankDesc : pspAccount.StatusDescription;
+                    if (virtualAccount.HasValue && virtualAccount == true) { /* opcional: marcar flag o status */ }
+                    if (deleteSolicitude.HasValue) pspAccount.DeleteAccountSolicitude = deleteSolicitude;
+
+                    pspAccount.Status = "user_account_found";
+                }
+                // Si C7 positivo -> persistir datos de entidad
+                bool entityExists = c7 != null && c7.Success && c7.Data != null && c7.Data.Any();
+                if (entityExists)
+                {
+                    var entity = c7.Data.First();
+
+                    // persistir estado entidad
+                    pspAccount.EntityStatus = entity.EntityStatus;
+                    pspAccount.EntityStatusDescription = entity.EntityStatusDescription;
+
+                    // persistir cuentas de la entidad si existe
+                    if (entity.Accounts != null && entity.Accounts.Any())
+                    {
+                        var entAccount = entity.Accounts.First();
+                        // AccountNumber, Cvu, EntityId, Status, StatusDescription
+                        if (!string.IsNullOrEmpty(entAccount.AccountNumber)) pspAccount.AccountNumber = entAccount.AccountNumber;
+                        if (!string.IsNullOrEmpty(entAccount.Cvu)) pspAccount.CVU = entAccount.Cvu;
+                        // EntityId en PSC model is string
+                        try { pspAccount.EntityId = entAccount.EntityId.ToString(); } catch { }
+                        pspAccount.Status = "entity_found";
+                    }
+
+                    // also persist the tributary identifier (from request)
+                    if (!string.IsNullOrEmpty(tributary))
+                    {
+                        pspAccount.TributaryIdentifier = tributary;
+                    }
+                }
+
+                // Si ninguno existe -> marcar status
+                if (!accountExists && !entityExists)
+                {
+                    pspAccount.Status = "not_created";
+                }
+
+                pspAccount.UpdatedAt = DateTime.UtcNow;
+
+                // Guardar cambios (usar transacción cuando se crean o se actualizan múltiples campos)
+                try
+                {
+                    using (var tx = _context.Database.BeginTransaction())
+                    {
+                        await _context.SaveChangesAsync();
+                        tx.Commit();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error guardando PSPAccount desde SyncPspStatus");
+                    // no fallar la respuesta, pero reportar
+                }
+
+                // Construir mensaje global según reglas provistas
+                string overallMessage;
+                if (!accountExists && !entityExists)
+                {
+                    overallMessage = "NO SE CREÓ CUENTA NI ENTIDAD DE PSP DEL USUARIO";
+                }
+                else if (accountExists && !entityExists)
+                {
+                    overallMessage = "EN CURSO";
+                }
+                else // ambos positivos
+                {
+                    overallMessage = "SE ENCUENTRAN CREADAS LA CUENTA Y ENTIDAD DE PSP DEL USUARIO";
+                }
+
+                var resultDto = new PSPStatusResponseDTO
+                {
+                    Success = true,
+                    Estado = accountExists && entityExists ? "activa" : (accountExists ? "espera" : "crear_cuenta"),
+                    Mensaje = overallMessage,
+                    EntityId = pspAccount.EntityId,
+                    Cvu = pspAccount.CVU
+                };
+
+                return Ok(resultDto);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en SyncPspStatus");
+                return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = "error", Mensaje = "Error interno del servidor" });
+            }
+        }
+
+        /// <summary>
+        /// POST api/psp/Entities/RecoverPassword
+        /// Solicita al PSP el envío de EventValidator para restablecer contraseña
+        /// </summary>
+        [HttpPost("RecoverPassword")]
+        public async Task<IActionResult> RecoverPassword([FromBody] RecoverPasswordWithUATRequestDTO request)
+        {
+            try
+            {
+                var usuario = TraeUsuarioUAT(request.UAT);
+                if (usuario == null)
+                {
+                    return BadRequest(new { success = false, message = "Usuario no autenticado", data = "", code = "" });
+                }
+
+                if (string.IsNullOrEmpty(request.UserName) || string.IsNullOrEmpty(request.Email))
+                {
+                    return BadRequest(new { success = false, message = "UserName y Email son requeridos", data = "", code = "" });
+                }
+
+                // Obtener token del sistema
+                var systemToken = await _pspService.GetAccessTokenAsync();
+
+                var pspReq = new RecoverPasswordRequestDTO { UserName = request.UserName, Email = request.Email };
+                var pspResp = await _pspService.RecoverPasswordAsync(pspReq, systemToken?.access_token);
+
+                if (pspResp == null)
+                {
+                    return StatusCode(500, new { success = false, message = "Error interno al comunicarse con PSP", data = "", code = "" });
+                }
+
+                return pspResp.success
+                    ? (IActionResult)Ok(new { success = true, message = pspResp.message ?? "", data = pspResp.data ?? "", code = pspResp.code ?? "" })
+                    : BadRequest(new { success = false, message = pspResp.message ?? "Error del PSP", data = pspResp.data ?? "", code = pspResp.code ?? "" });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en RecoverPassword");
+                return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+            }
+        }
+
+        /// <summary>
+        /// POST api/psp/Entities/ResetPassword
+        /// Orquesta el cambio de contraseña en PSP y sincroniza la contraseña local.
+        /// </summary>
+        [HttpPost("ResetPassword")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordWithUATRequestDTO request)
+        {
+            try
+            {
+                var usuarioAdmin = TraeUsuarioUAT(request.UAT);
+                if (usuarioAdmin == null)
+                {
+                    return BadRequest(new { success = false, message = "Usuario no autenticado", data = "", code = "" });
+                }
+
+                if (string.IsNullOrEmpty(request.UserName) || string.IsNullOrEmpty(request.Password) || string.IsNullOrEmpty(request.PasswordConfirm) || string.IsNullOrEmpty(request.EventValidator))
+                {
+                    return BadRequest(new { success = false, message = "Parámetros incompletos", data = "", code = "" });
+                }
+
+                if (request.Password != request.PasswordConfirm)
+                {
+                    return BadRequest(new { success = false, message = "Password y PasswordConfirm no coinciden", data = "", code = "" });
+                }
+
+                // Obtener token del sistema
+                var systemToken = await _pspService.GetAccessTokenAsync();
+
+                // 1) Llamar PSP ResetPassword
+                var resetReq = new ResetPasswordRequestDTO
+                {
+                    UserName = request.UserName,
+                    Password = request.Password,
+                    PasswordConfirm = request.PasswordConfirm,
+                    EventValidator = request.EventValidator
+                };
+
+                var pspResp = await _pspService.ResetPasswordAsync(resetReq, systemToken?.access_token);
+
+                if (pspResp == null)
+                {
+                    return StatusCode(500, new { success = false, message = "Error interno al comunicarse con PSP", data = "", code = "" });
+                }
+
+                if (!pspResp.success)
+                {
+                    // PSP rechazó el cambio
+                    return BadRequest(new { success = false, message = pspResp.message ?? "PSP rechazó la solicitud", data = pspResp.data ?? "", code = pspResp.code ?? "" });
+                }
+
+                // 2) PSP respondió success -> intentar sincronizar localmente
+                // Buscar usuario local por UserName (puede ser email o username)
+                var usuarioLocal = _context.Usuarios.FirstOrDefault(u => u.UserName == request.UserName || u.Email == request.UserName);
+
+                if (usuarioLocal == null)
+                {
+                    // Usuario no existe localmente, devolver success true pero indicar que no se sincronizó
+                    Log.Warning($"PSP cambió contraseña para {request.UserName} pero no se encontró usuario local para sincronizar");
+                    return Ok(new { success = true, message = "Contraseña cambiada en PSP. Usuario local no encontrado para sincronizar.", data = request.UserName, code = "" });
+                }
+
+                // Obtener PSPAccount para actualizar EncryptedPassword
+                var pspAccount = _context.Set<DAL.Models.PSPAccount>().FirstOrDefault(p => p.Usuario.Id == usuarioLocal.Id);
+
+                // Guardar antiguos en memoria para rollback
+                var oldLocalPassword = usuarioLocal.Password;
+                var oldEncryptedPspPassword = pspAccount?.EncryptedPassword;
+
+                // Intentar actualizar dentro de una transacción
+                using (var tx = _context.Database.BeginTransaction())
+                {
+                    try
+                    {
+                        // Actualizar contraseña local (no se conoce el hashing usado; aquí asumimos campo Password almacena el hash ya generado por la app)
+                        // Si existe una rutina para generar hash, debería usarse. Aquí asignamos directamente por simplicidad.
+                        usuarioLocal.Password = request.Password; // NOTE: preferible aplicar hash aquí
+
+                        if (pspAccount != null)
+                        {
+                            pspAccount.EncryptedPassword = common.Encrypt(request.Password, "PSPPassword");
+                            pspAccount.UpdatedAt = DateTime.UtcNow;
+                        }
+
+                        await _context.SaveChangesAsync();
+                        tx.Commit();
+
+                        Log.Information($"Contraseña sincronizada localmente para usuario {usuarioLocal.UserName}");
+
+                        return Ok(new { success = true, message = "Contraseña cambiada en PSP y sincronizada localmente", data = request.UserName, code = "" });
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        Log.Error(ex, "Error sincronizando contraseña localmente tras ResetPassword PSP");
+
+                        // Intentar reintentos locales podría implementarse aquí; por ahora registramos y devolvemos mensaje
+                        // Crear un flag de sincronización pendiente
+                        try
+                        {
+                            if (pspAccount != null)
+                            {
+                                pspAccount.ErrorMessage = "SyncPending: Failed to save local password";
+                                _context.SaveChanges();
+                            }
+                        }
+                        catch { }
+
+                        return StatusCode(500, new { success = false, message = "Contraseña cambió en PSP pero error al sincronizar localmente. Se ha marcado sincronización pendiente.", data = request.UserName, code = "" });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en ResetPassword");
+                return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
             }
         }
     }

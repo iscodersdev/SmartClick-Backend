@@ -88,5 +88,15 @@ namespace BusinessCore.Services
         /// C7: Obtiene la entidad hija por su identificador tributario.
         /// </summary>
         Task<EntityStatusResponseDTO> GetEntityByTributaryIdAsync(string tributaryIdentifier, string systemToken);
+
+        /// <summary>
+        /// Solicita al PSP recuperar la contraseña (envía EventValidator al usuario)
+        /// </summary>
+        Task<SimplePspResponseDTO> RecoverPasswordAsync(RecoverPasswordRequestDTO request, string systemToken);
+
+        /// <summary>
+        /// Resetea la contraseña en el PSP usando EventValidator
+        /// </summary>
+        Task<SimplePspResponseDTO> ResetPasswordAsync(ResetPasswordRequestDTO request, string systemToken);
     }
 }
