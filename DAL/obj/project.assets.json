@@ -17340,39 +17340,32 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\dullk\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {},
-    "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet\\": {},
-    "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
+    "/home/martin/.nuget/packages/": {},
+    "/usr/lib/dotnet/sdk/NuGetFallbackFolder": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\DAL.csproj",
+      "projectUniqueName": "/home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/DAL/DAL.csproj",
       "projectName": "DAL",
-      "projectPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\DAL.csproj",
-      "packagesPath": "C:\\Users\\dullk\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\DAL\\obj\\",
+      "projectPath": "/home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/DAL/DAL.csproj",
+      "packagesPath": "/home/martin/.nuget/packages/",
+      "outputPath": "/home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/DAL/obj/",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
-        "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet\\",
-        "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        "/usr/lib/dotnet/sdk/NuGetFallbackFolder"
       ],
       "configFilePaths": [
-        "C:\\Users\\dullk\\source\\repos\\SmartClick-Backend\\NuGet.Config",
-        "C:\\Users\\dullk\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Xamarin.Offline.config"
+        "/home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/NuGet.config",
+        "/home/martin/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "netcoreapp2.2"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "https://api.nuget.org/v3/index.json": {},
-        "https://www.nuget.org/api/v2": {}
+        "/usr/lib/dotnet/library-packs": {},
+        "http://186.189.235.156/nugetCps/nuget": {},
+        "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "netcoreapp2.2": {
@@ -17390,7 +17383,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "9.0.100"
     },
     "frameworks": {
       "netcoreapp2.2": {
@@ -17422,16 +17415,23 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.111/RuntimeIdentifierGraph.json"
       }
     }
   },
   "logs": [
     {
+      "code": "NU1801",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Failed to retrieve information about 'Commons' from remote source 'http://186.189.235.156/nugetCps/nuget/FindPackagesById()?id='Commons'&semVerLevel=2.0.0'.",
+      "libraryId": "Commons"
+    },
+    {
       "code": "NU1603",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "DAL depende de Commons (>= 1.3.14), pero no se encontró Commons 1.3.14. Commons 1.3.15 se resolvió en su lugar.",
+      "message": "DAL depends on Commons (>= 1.3.14) but Commons 1.3.14 was not found. Commons 1.3.15 was resolved instead.",
       "libraryId": "Commons",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"
@@ -17441,7 +17441,7 @@
       "code": "NU1903",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "El paquete \"Microsoft.NETCore.App\" 2.2.0 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-2xjx-v99w-gqf3",
+      "message": "Package 'Microsoft.NETCore.App' 2.2.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-2xjx-v99w-gqf3",
       "libraryId": "Microsoft.NETCore.App",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"
@@ -17451,7 +17451,7 @@
       "code": "NU1903",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "El paquete \"Microsoft.NETCore.App\" 2.2.0 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-6px8-22w5-w334",
+      "message": "Package 'Microsoft.NETCore.App' 2.2.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-6px8-22w5-w334",
       "libraryId": "Microsoft.NETCore.App",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"
@@ -17461,7 +17461,7 @@
       "code": "NU1902",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "El paquete \"Microsoft.NETCore.App\" 2.2.0 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-x5qj-9vmx-7g6g",
+      "message": "Package 'Microsoft.NETCore.App' 2.2.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-x5qj-9vmx-7g6g",
       "libraryId": "Microsoft.NETCore.App",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"
