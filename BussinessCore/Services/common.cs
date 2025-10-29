@@ -288,8 +288,8 @@ namespace SmartClickCore
             }
             try
             {
-                string usuario = "39ad53001@smtp-brevo.com";
-                string password = "K90kxAdQmTtjpJHv";
+                string usuario = "8f0e79001@smtp-brevo.com";
+                string password = "zx37QwV6YpatZBIj";
                 var origen = new MailAddress("sender@servicemailing.com.ar", "SmartClick");
                 // string host = "smtp-relay.sendinblue.com";
                 string host = "smtp-relay.brevo.com";
