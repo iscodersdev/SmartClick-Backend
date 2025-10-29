@@ -36,6 +36,8 @@ artifacts/
 
 # NuGet packages
 *.nupkg
+packages/
+NuGet.config
 
 # Logs
 *.log
