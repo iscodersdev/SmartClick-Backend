@@ -17363,6 +17363,7 @@
         "netcoreapp2.2"
       ],
       "sources": {
+        "/app/packages": {},
         "/usr/lib/dotnet/library-packs": {},
         "http://186.189.235.156/nugetCps/nuget": {},
         "https://api.nuget.org/v3/index.json": {}
@@ -17420,6 +17421,13 @@
     }
   },
   "logs": [
+    {
+      "code": "NU1801",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "The local source '/app/packages' doesn't exist.",
+      "libraryId": "Commons"
+    },
     {
       "code": "NU1801",
       "level": "Warning",
