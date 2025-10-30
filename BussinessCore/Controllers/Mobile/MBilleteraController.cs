@@ -169,6 +169,26 @@ namespace BussinessCore.API.Controllers.Billetera
 
         }
 
+        [HttpPost("ValidarBilletera")]
+        public async Task<IActionResult> ValidarBilletera([FromBody] ValidarBilleteraDTO validarBilleteraDTO)
+        {
+            try
+            {
+                var billetaraDestuno = TraeBilleteraCVU(validarBilleteraDTO.CVU);
+                if (billetaraDestuno==null)
+                {
+
+                }
+                return new JsonResult(new RespuestaAPI { Status = 500, UAT = validarBilleteraDTO.UAT, Mensaje = "Error en consulta de movimientos" });
+            }
+            catch (Exception e)
+            {
+                Log.Error($"Error en consulta de movimientos - {e.Message}");
+                return new JsonResult(new RespuestaAPI { Status = 500, UAT = validarBilleteraDTO.UAT, Mensaje = "Error en consulta de movimientos" });
+            }
+
+        }
+
 
     }
 

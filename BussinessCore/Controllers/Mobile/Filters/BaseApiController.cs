@@ -77,6 +77,11 @@ namespace BussinessCore.API.Controllers
             return _context.Billeteras.Where(b => b.Cliente.Usuario.Id == usuario.Id).FirstOrDefault();
         }
 
+        public PSPAccount TraeAccountPSP(Usuario usuario)
+        {
+            return _context.PSPAccounts.Where(b => b.Usuario.Id == usuario.Id).FirstOrDefault();
+        }
+
         public DAL.Models.Core.Billetera TraeBilleteraCVU(string cvu)
         {
             return _context.Billeteras.Where(b => b.CVU == cvu).FirstOrDefault();

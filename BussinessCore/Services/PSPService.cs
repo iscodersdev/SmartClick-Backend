@@ -13,7 +13,7 @@ using System.Threading;
 
 namespace BusinessCore.Services
 {
-    public class PSPService : IPSPService
+    public partial class PSPService : IPSPService
     {
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
@@ -1177,130 +1177,130 @@ namespace BusinessCore.Services
             }
         }
 
-        public async Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken, string localCuit = null)
-        {
-            if (_testMode)
-            {
-                _logger.LogInformation("?? MODO PRUEBA: Simulando CreateTransaction");
-                return new TransactionResultDTO
-                {
-                    Success = true,
-                    TransactionId = 12345,
-                    Message = "?? SIMULACI�N: Transacci�n creada (modo prueba)",
-                    RawResponse = "{ \"data\": { \"transactionId\": 12345, \"messageResultTransfer\": \"Transacci�n pendiente de validaci�n\" } }"
-                };
-            }
+        //public async Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken, string localCuit = null)
+        //{
+        //    if (_testMode)
+        //    {
+        //        _logger.LogInformation("?? MODO PRUEBA: Simulando CreateTransaction");
+        //        return new TransactionResultDTO
+        //        {
+        //            Success = true,
+        //            TransactionId = 12345,
+        //            Message = "?? SIMULACI�N: Transacci�n creada (modo prueba)",
+        //            RawResponse = "{ \"data\": { \"transactionId\": 12345, \"messageResultTransfer\": \"Transacci�n pendiente de validaci�n\" } }"
+        //        };
+        //    }
 
-            try
-            {
-                if (request == null)
-                {
-                    return new TransactionResultDTO { Success = false, Error = "Request null" };
-                }
+        //    try
+        //    {
+        //        if (request == null)
+        //        {
+        //            return new TransactionResultDTO { Success = false, Error = "Request null" };
+        //        }
 
-                // Si es externa, validar que el titular coincida con los CUITs del usuario
-                if (request.isExternal)
-                {
-                    if (string.IsNullOrEmpty(userToken))
-                    {
-                        return new TransactionResultDTO { Success = false, Error = "UserToken requerido para transacciones externas" };
-                    }
+        //        // Si es externa, validar que el titular coincida con los CUITs del usuario
+        //        if (request.isExternal)
+        //        {
+        //            if (string.IsNullOrEmpty(userToken))
+        //            {
+        //                return new TransactionResultDTO { Success = false, Error = "UserToken requerido para transacciones externas" };
+        //            }
 
-                    List<string> userCuids = null;
+        //            List<string> userCuids = null;
 
-                    if (!string.IsNullOrEmpty(localCuit))
-                    {
-                        userCuids = new List<string> { NormalizeTributary(localCuit) };
-                        _logger.LogInformation("Usando localCuit para validaci�n de titularidad");
-                    }
-                    else
-                    {
-                        // Obtener CUITs del usuario desde PSP
-                        var accountsInfo = await GetAccountsInfoAsync(userToken);
-                        if (!accountsInfo.Success || accountsInfo.Accounts == null || !accountsInfo.Accounts.Any())
-                        {
-                            return new TransactionResultDTO { Success = false, Error = "No se pudo obtener informaci�n de cuentas del usuario para validar CUIT" };
-                        }
+        //            if (!string.IsNullOrEmpty(localCuit))
+        //            {
+        //                userCuids = new List<string> { NormalizeTributary(localCuit) };
+        //                _logger.LogInformation("Usando localCuit para validaci�n de titularidad");
+        //            }
+        //            else
+        //            {
+        //                // Obtener CUITs del usuario desde PSP
+        //                var accountsInfo = await GetAccountsInfoAsync(userToken);
+        //                if (!accountsInfo.Success || accountsInfo.Accounts == null || !accountsInfo.Accounts.Any())
+        //                {
+        //                    return new TransactionResultDTO { Success = false, Error = "No se pudo obtener informaci�n de cuentas del usuario para validar CUIT" };
+        //                }
 
-                        userCuids = accountsInfo.Accounts
-                            .Where(a => !string.IsNullOrEmpty(a.tributaryIdentifier))
-                            .Select(a => NormalizeTributary(a.tributaryIdentifier))
-                            .Distinct()
-                            .ToList();
-                    }
+        //                userCuids = accountsInfo.Accounts
+        //                    .Where(a => !string.IsNullOrEmpty(a.tributaryIdentifier))
+        //                    .Select(a => NormalizeTributary(a.tributaryIdentifier))
+        //                    .Distinct()
+        //                    .ToList();
+        //            }
 
-                    // Validar cuenta externa
-                    var lookup = await ValidateExternalAccountAsync(request.destinationAccount.accountNumber, userToken);
-                    if (lookup == null || !lookup.success || lookup.data == null)
-                    {
-                        return new TransactionResultDTO { Success = false, Error = "Cuenta externa no encontrada o error en validaci�n" };
-                    }
+        //            // Validar cuenta externa
+        //            var lookup = await ValidateExternalAccountAsync(request.destinationAccount.accountNumber, userToken);
+        //            if (lookup == null || !lookup.success || lookup.data == null)
+        //            {
+        //                return new TransactionResultDTO { Success = false, Error = "Cuenta externa no encontrada o error en validaci�n" };
+        //            }
 
-                    var externalTrib = NormalizeTributary(lookup.data.tributaryIdentifier);
-                    if (!userCuids.Contains(externalTrib))
-                    {
-                        return new TransactionResultDTO { Success = false, Error = "La cuenta externa no pertenece al mismo CUIT/CUIL que el usuario autenticado" };
-                    }
-                }
+        //            var externalTrib = NormalizeTributary(lookup.data.tributaryIdentifier);
+        //            if (!userCuids.Contains(externalTrib))
+        //            {
+        //                return new TransactionResultDTO { Success = false, Error = "La cuenta externa no pertenece al mismo CUIT/CUIL que el usuario autenticado" };
+        //            }
+        //        }
 
-                // Construir payload y llamar PSP
-                var jsonRequest = JsonConvert.SerializeObject(request);
-                var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+        //        // Construir payload y llamar PSP
+        //        var jsonRequest = JsonConvert.SerializeObject(request);
+        //        var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
 
-                _httpClient.DefaultRequestHeaders.Clear();
-                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
-                {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
-                }
+        //        _httpClient.DefaultRequestHeaders.Clear();
+        //        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
+        //        if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+        //        {
+        //            _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+        //        }
 
-                // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
-                var url = $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add";
-                _logger.LogInformation($"Llamando PSP CreateTransaction - URL: {url}");
+        //        // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
+        //        var url = $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add";
+        //        _logger.LogInformation($"Llamando PSP CreateTransaction - URL: {url}");
 
-                var response = await _httpClient.PostAsync(url, content);
-                var responseContent = await response.Content.ReadAsStringAsync();
+        //        var response = await _httpClient.PostAsync(url, content);
+        //        var responseContent = await response.Content.ReadAsStringAsync();
 
-                _logger.LogInformation($"PSP CreateTransaction - StatusCode: {response.StatusCode}");
-                _logger.LogInformation($"PSP CreateTransaction - Content: {responseContent}");
+        //        _logger.LogInformation($"PSP CreateTransaction - StatusCode: {response.StatusCode}");
+        //        _logger.LogInformation($"PSP CreateTransaction - Content: {responseContent}");
 
-                if (response.IsSuccessStatusCode)
-                {
-                    // Intentar deserializar respuesta para extraer transactionId
-                    try
-                    {
-                        var dynamicResp = JsonConvert.DeserializeObject<dynamic>(responseContent);
-                        int? transactionId = null;
-                        try
-                        {
-                            transactionId = dynamicResp.data.transactionId;
-                        }
-                        catch { }
+        //        if (response.IsSuccessStatusCode)
+        //        {
+        //            // Intentar deserializar respuesta para extraer transactionId
+        //            try
+        //            {
+        //                var dynamicResp = JsonConvert.DeserializeObject<dynamic>(responseContent);
+        //                int? transactionId = null;
+        //                try
+        //                {
+        //                    transactionId = dynamicResp.data.transactionId;
+        //                }
+        //                catch { }
 
-                        return new TransactionResultDTO
-                        {
-                            Success = true,
-                            TransactionId = transactionId,
-                            Message = dynamicResp?.data?.messageResultTransfer ?? "Transacci�n enviada",
-                            RawResponse = responseContent
-                        };
-                    }
-                    catch (JsonException)
-                    {
-                        return new TransactionResultDTO { Success = true, Message = "Transacci�n creada (respuesta no JSON)", RawResponse = responseContent };
-                    }
-                }
-                else
-                {
-                    return new TransactionResultDTO { Success = false, Error = $"Error del PSP: {response.StatusCode}", Message = responseContent, RawResponse = responseContent };
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Excepci�n en CreateTransactionAsync");
-                return new TransactionResultDTO { Success = false, Error = ex.Message };
-            }
-        }
+        //                return new TransactionResultDTO
+        //                {
+        //                    Success = true,
+        //                    TransactionId = transactionId,
+        //                    Message = dynamicResp?.data?.messageResultTransfer ?? "Transacci�n enviada",
+        //                    RawResponse = responseContent
+        //                };
+        //            }
+        //            catch (JsonException)
+        //            {
+        //                return new TransactionResultDTO { Success = true, Message = "Transacci�n creada (respuesta no JSON)", RawResponse = responseContent };
+        //            }
+        //        }
+        //        else
+        //        {
+        //            return new TransactionResultDTO { Success = false, Error = $"Error del PSP: {response.StatusCode}", Message = responseContent, RawResponse = responseContent };
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "Excepci�n en CreateTransactionAsync");
+        //        return new TransactionResultDTO { Success = false, Error = ex.Message };
+        //    }
+        //}
 
         private string NormalizeTributary(string t)
         {

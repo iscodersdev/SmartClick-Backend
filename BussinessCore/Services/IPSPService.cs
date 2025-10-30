@@ -1,6 +1,8 @@
-using System.Threading.Tasks;
 using DAL.DTOs.PSP;
+using DAL.Models;
+using DAL.Models.PSP;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace BusinessCore.Services
 {
@@ -77,7 +79,7 @@ namespace BusinessCore.Services
         /// Crea una transacción (transferencia) en el PSP. El userToken debe ser el token del usuario que autoriza la transferencia.
         /// Se puede pasar localCuit para evitar consultar las cuentas del PSP cuando ya se validó localmente.
         /// </summary>
-        Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken, string localCuit = null);
+        //Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken, string localCuit = null);
 
         /// <summary>
         /// C1: Consulta los datos de la cuenta del usuario logueado.
@@ -98,5 +100,32 @@ namespace BusinessCore.Services
         /// Resetea la contraseña en el PSP usando EventValidator
         /// </summary>
         Task<SimplePspResponseDTO> ResetPasswordAsync(ResetPasswordRequestDTO request, string systemToken);
+
+        /// <summary>
+        /// Valida una cuenta externa en el PSP
+        /// </summary>
+        /// <param name="CBU">CBU de la cuenta destino</param>
+        /// <param name="userToken">Token PSP de la cuenta logueada</param>
+        /// <returns></returns>
+        Task<ExternalAccountDataDTO> ValidarCuentaExternaAsync(string CBU, string userToken);
+
+        /// <summary>
+        /// Genera una solicitud de transferencia en el PSP
+        /// </summary>
+        /// <param name="cuentaOrigen"></param>
+        /// <param name="cuentaDestino"></param>
+        /// <param name="transferenciaExterna"></param>
+        /// <param name="monto"></param>
+        /// <param name="userToken"></param>
+        /// <returns></returns>
+        Task<TransactionResponseDTO> SolicitudDeTransferenciaAsync(PSPAccount cuentaOrigen, ExternalAccountDataDTO cuentaDestino, bool transferenciaExterna, string monto, string userToken);
+
+        /// <summary>
+        /// Confirma una solicitud de transferencia en el PSP
+        /// </summary>
+        /// <param name="confirmarTransferencia"></param>
+        /// <param name="userToken"></param>
+        /// <returns></returns>
+        Task<FinalConfirmationResponseDTO> ConfirmarTransferenciaAsync(TransactionConfirmationRequestDTO confirmarTransferencia, string userToken);
     }
 }

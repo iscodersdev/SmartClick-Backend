@@ -1,21 +1,25 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using BusinessCore.Services;
+using BussinessCore.API.Filters;
+using Commons.Extensions;
+using DAL.Data;
+using DAL.DTOs.Plenario;
+using DAL.Mobile;
+using DAL.Models;
+using DAL.Models.Core;
+using DAL.Models.PSP;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Org.BouncyCastle.Ocsp;
+using Serilog;
+using SmartClickCore;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using DAL.Models;
-using DAL.Data;
-using Microsoft.Extensions.Configuration;
-using System.Data.SqlClient;
-using Serilog;
-using BussinessCore.API.Filters;
-using System.Data;
-using Microsoft.AspNetCore.Http;
-using Commons.Extensions;
-using System.Globalization;
-using DAL.Mobile;
-using DAL.Models.Core;
-using BusinessCore.Services;
 
 namespace BussinessCore.API.Controllers.Billetera
 {
@@ -25,15 +29,14 @@ namespace BussinessCore.API.Controllers.Billetera
     public class MEnviosController : BaseApiController
     {
         private readonly NotificacionAPIService _notificacionAPIService;
+        private readonly IPSPService _pspService;
 
-        public MEnviosController(SmartClickContext context, NotificacionAPIService notificacionAPIService) : base(context)
+        public MEnviosController(SmartClickContext context, NotificacionAPIService notificacionAPIService, IPSPService pspService) : base(context)
         {
             _notificacionAPIService = notificacionAPIService;
+            _pspService = pspService;
         }
-        //public MEnviosController(SmartClickContext context) : base(context)
-        //{
-            
-        //}
+
 
         [HttpPost("EnvioBilletera")]
         public async Task<IActionResult> EnvioBilletera([FromBody] EnvioBilleteraDTO envioBilleteraDTO)
@@ -43,23 +46,64 @@ namespace BussinessCore.API.Controllers.Billetera
                 if (envioBilleteraDTO.Monto.Contains(","))
                 {
                     Log.Error($"Error de monto debe usar puntos para decimales");
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en monto de envio, debe usar el punto para decimales" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en monto de envio, debe usar el punto para decimales" });
                 }
 
                 if (!Decimal.TryParse(envioBilleteraDTO.Monto, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat, out decimal montoEnvio))
                 {
                     Log.Error($"Error de monto en envio entre billeteras");
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en monto de envio" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en monto de envio" });
                 }
 
-                var billeteraOrigen = TraeBilletera(TraeUsuarioUAT(envioBilleteraDTO.UAT));
+
+                var usuario = TraeUsuarioUAT(envioBilleteraDTO.UAT);
+
+                var billeteraOrigen = TraeBilletera(usuario);
                 if (!billeteraOrigen.ChequeaDebito(montoEnvio))
                 {
                     Log.Error($"Error el monto supera el saldo");
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "El monto supera su saldo" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "El monto supera su saldo" });
                 }
 
                 var billeteraDestino = _context.Billeteras.Where(b => b.CVU == envioBilleteraDTO.CVU).FirstOrDefault();
+                if (billeteraDestino==null) // no es una billetera de Smart-click
+                {
+                    var pspAccount = TraeAccountPSP(usuario);
+                    string decryptedToken = common.DescifrarPassword(pspAccount.EncryptedPassword);
+
+                    var AccesToken = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedToken); //Revisar utilizar end point
+
+                    var pspResp = await _pspService.ValidarCuentaExternaAsync(envioBilleteraDTO.CVU, AccesToken.access_token);
+
+                    if (pspResp.Success)
+                    {
+                        var solicitudTransferencia = _pspService.SolicitudDeTransferenciaAsync(pspAccount, pspResp, true, envioBilleteraDTO.Monto, AccesToken.access_token).Result;
+
+                        TransactionConfirmationRequestDTO confirmarTrans = new TransactionConfirmationRequestDTO()
+                        {
+                            Guid = new ConfirmationGuidDTO()
+                            {
+                                Key = solicitudTransferencia.Guid.Key,
+                            },                           
+                            OTP = 999999,
+                            TransactionId = solicitudTransferencia.Data.TransactionId,
+                            IsExternal = true
+                        };
+
+                        if (solicitudTransferencia.Success)
+                        {
+                            var confirmarTransferencia = _pspService.ConfirmarTransferenciaAsync(confirmarTrans, AccesToken.access_token).Result;
+                            if (!confirmarTransferencia.Success)
+                            {
+                                return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+confirmarTransferencia.Message });
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+pspResp.Mensaje });
+                    }
+                }
 
                 var movimientoDestino = new MovimientoBilletera
                 {
@@ -106,13 +150,13 @@ namespace BussinessCore.API.Controllers.Billetera
                 await _context.SaveChangesAsync();
                 _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Envio de dinero", $"Ha enviado ${montoEnvio} exitosamente");
                 _notificacionAPIService.Envia_Push(billeteraDestino.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${montoEnvio} en su billetera");
-                return new JsonResult(new RespuestaAPI { Status = 200, UAT = envioBilleteraDTO.UAT, Mensaje = "Envio realizado" });
+                return new JsonResult(new DAL.Models.RespuestaAPI { Status = 200, UAT = envioBilleteraDTO.UAT, Mensaje = "Envio realizado" });
 
             }
             catch (Exception e)
             {
                 Log.Error($"Error en envio entre billeteras - {e.Message}");
-                return new JsonResult(new RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
+                return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
             }
         }
 
@@ -125,13 +169,13 @@ namespace BussinessCore.API.Controllers.Billetera
                 if (ingresoDineroDTO.Monto.Contains(","))
                 {
                     Log.Error($"Error de monto debe usar puntos para decimales");
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = ingresoDineroDTO.UAT, Mensaje = "Error en monto de envio, debe usar el punto para decimales" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = ingresoDineroDTO.UAT, Mensaje = "Error en monto de envio, debe usar el punto para decimales" });
                 }
 
                 if (!Decimal.TryParse(ingresoDineroDTO.Monto, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat, out decimal montoIngreso))
                 {
                     Log.Error($"Error de monto en ingreso de dinero");
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = ingresoDineroDTO.UAT, Mensaje = "Error en monto de ingreso" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = ingresoDineroDTO.UAT, Mensaje = "Error en monto de ingreso" });
                 }
 
                 var movimiento = new MovimientoBilletera
@@ -163,17 +207,17 @@ namespace BussinessCore.API.Controllers.Billetera
                     _context.Update(billetera);
                     _context.SaveChanges();
                     _notificacionAPIService.Envia_Push(billetera.Cliente.Usuario.DeviceId, "Ingreso de dinero", $"Ha ingresado ${montoIngreso} en su billetera");
-                    return new JsonResult(new RespuestaAPI { Status = 200, UAT = ingresoDineroDTO.UAT, Mensaje = "Ingreso de dinero efectuado" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 200, UAT = ingresoDineroDTO.UAT, Mensaje = "Ingreso de dinero efectuado" });
                 }
                 else
                 {
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = ingresoDineroDTO.UAT, Mensaje = "No se pudo registrar el ingreso" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = ingresoDineroDTO.UAT, Mensaje = "No se pudo registrar el ingreso" });
                 }
             }
             catch (Exception e)
             {
                 Log.Error($"Error en el ingreso de dinero - {e.Message}");
-                return new JsonResult(new RespuestaAPI { Status = 400, UAT = ingresoDineroDTO.UAT, Mensaje = "Error en el ingreso de dinero" });
+                return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = ingresoDineroDTO.UAT, Mensaje = "Error en el ingreso de dinero" });
             }
 
         }
@@ -184,16 +228,17 @@ namespace BussinessCore.API.Controllers.Billetera
             try
             {
 
+
                 if (retiroDineroDTO.Monto.Contains(","))
                 {
                     Log.Error($"Error de monto debe usar puntos para decimales");
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "Error en monto, debe usar el punto para decimales" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "Error en monto, debe usar el punto para decimales" });
                 }
 
                 if (!Decimal.TryParse(retiroDineroDTO.Monto, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat, out decimal montoRetiro))
                 {
                     Log.Error($"Error de monto en retiro de dinero");
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "Error en monto" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "Error en monto" });
                 }
 
                 var billetera = TraeBilletera(TraeUsuarioUAT(retiroDineroDTO.UAT));
@@ -201,7 +246,7 @@ namespace BussinessCore.API.Controllers.Billetera
                 if (!billetera.ChequeaDebito(montoRetiro))
                 {
                     Log.Error($"Error el monto supera el saldo");
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "El monto supera su saldo" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "El monto supera su saldo" });
                 }
 
                 var movimiento = new MovimientoBilletera
@@ -232,17 +277,17 @@ namespace BussinessCore.API.Controllers.Billetera
                     _context.Update(billetera);
                     _context.SaveChanges();
                     _notificacionAPIService.Envia_Push(billetera.Cliente.Usuario.DeviceId, "Ingreso de dinero", $"Ha retirado ${montoRetiro} en su billetera");
-                    return new JsonResult(new RespuestaAPI { Status = 200, UAT = retiroDineroDTO.UAT, Mensaje = "Retiro de dinero efectuado" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 200, UAT = retiroDineroDTO.UAT, Mensaje = "Retiro de dinero efectuado" });
                 }
                 else
                 {
-                    return new JsonResult(new RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "No se pudo registrar el retiro" });
+                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "No se pudo registrar el retiro" });
                 }
             }
             catch (Exception e)
             {
                 Log.Error($"Error en el ingreso de dinero - {e.Message}");
-                return new JsonResult(new RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "Error en el retiro de dinero" });
+                return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "Error en el retiro de dinero" });
             }
 
         }

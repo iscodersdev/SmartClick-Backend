@@ -406,54 +406,46 @@ namespace DAL.DTOs.PSP
     }
 
     // Add transaction-related DTOs
-    public class AccountRefDTO
-    {
-        public string accountNumber { get; set; }
-        public int accountTypeId { get; set; }
-        public string tributaryIdentifierType { get; set; }
-        public string tributaryIdentifier { get; set; }
-        public int currencyTypeId { get; set; }
-        public string name { get; set; }
-        public bool isExternal { get; set; }
-    }
+    
 
-    public class TransactionRequestDTO
-    {
-        public string currencyTypeId { get; set; }
-        public decimal balance { get; set; }
-        public int transactionTypeId { get; set; }
-        public string availabilityDate { get; set; }
-        public string concept { get; set; }
-        public string validationCode { get; set; }
-        public bool isExternal { get; set; }
-        public AccountRefDTO originAccount { get; set; }
-        public AccountRefDTO destinationAccount { get; set; }
-    }
+    //public class TransactionResultDTO
+    //{
+    //    public bool Success { get; set; }
+    //    public int? TransactionId { get; set; }
+    //    public string Message { get; set; }
+    //    public string RawResponse { get; set; }
+    //    public string Error { get; set; }
+    //}
 
-    public class TransactionResultDTO
-    {
-        public bool Success { get; set; }
-        public int? TransactionId { get; set; }
-        public string Message { get; set; }
-        public string RawResponse { get; set; }
-        public string Error { get; set; }
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     /// <summary>
     /// Request DTO para crear transacción con UAT
     /// </summary>
-    public class TransactionWithUATRequestDTO : PSPBaseResponseDTO
-    {
-        public TransactionRequestDTO Transaction { get; set; }
-        public string UserToken { get; set; } // Token del usuario PSP que autoriza la transferencia
-    }
+    //public class TransactionWithUATRequestDTO : PSPBaseResponseDTO
+    //{
+    //    public TransactionRequestDTO Transaction { get; set; }
+    //    public string UserToken { get; set; } // Token del usuario PSP que autoriza la transferencia
+    //}
 
     /// <summary>
     /// Response DTO para crear transacción con UAT
     /// </summary>
-    public class TransactionWithUATResponseDTO : PSPBaseResponseDTO
-    {
-        public int? TransactionId { get; set; }
-        public string RawResponse { get; set; }
-    }
+    //public class TransactionWithUATResponseDTO : PSPBaseResponseDTO
+    //{
+    //    public int? TransactionId { get; set; }
+    //    public string RawResponse { get; set; }
+    //}
 }

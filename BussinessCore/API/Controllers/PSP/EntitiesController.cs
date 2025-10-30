@@ -71,7 +71,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 {
                     try
                     {
-                        string decryptedToken = common.Decrypt(pspAccount.EncryptedUserToken, "PSPToken");
+                        string decryptedToken = common.DescifrarPassword(pspAccount.EncryptedUserToken);
                         Log.Information($"✅ Token recuperado desde BD para usuario {usuario.UserName} (válido hasta {pspAccount.TokenExpiry})");
                         return decryptedToken;
                     }
@@ -104,7 +104,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 {
                     try
                     {
-                        string decryptedPassword = common.Decrypt(pspAccount.EncryptedPassword, "PSPPassword");
+                        string decryptedPassword = common.DescifrarPassword(pspAccount.EncryptedPassword);
                         Log.Information($"🔄 Intentando obtener token del PSP para usuario {pspAccount.UserName}");
 
                         var tokenResponse = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedPassword);
@@ -114,7 +114,7 @@ namespace SmartClickCore.API.Controllers.PSP
                             // Guardar el nuevo token en la BD
                             try
                             {
-                                pspAccount.EncryptedUserToken = common.Encrypt(tokenResponse.access_token, "PSPToken");
+                                pspAccount.EncryptedUserToken = common.CifrarPassword(tokenResponse.access_token);
                                 pspAccount.TokenExpiry = tokenResponse.expires_in > 0
                                     ? (DateTime?)DateTime.UtcNow.AddSeconds(tokenResponse.expires_in)
                                     : null;
@@ -174,7 +174,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
                         try
                         {
-                            pspAccount.EncryptedUserToken = common.Encrypt(tokenResponse.access_token, "PSPToken");
+                            pspAccount.EncryptedUserToken = common.CifrarPassword(tokenResponse.access_token);
                             pspAccount.TokenExpiry = tokenResponse.expires_in > 0
                                 ? (DateTime?)DateTime.UtcNow.AddSeconds(tokenResponse.expires_in)
                                 : null;
@@ -312,7 +312,7 @@ namespace SmartClickCore.API.Controllers.PSP
                                 {
                                     Usuario = usuarioLocal,
                                     UserName = request.user.userName,
-                                    EncryptedPassword = common.Encrypt(request.user.password, "PSPPassword"),
+                                    EncryptedPassword = common.CifrarPassword(request.user.password),
                                     PSPUserId = pspResponse.UserId?.ToString(),
                                     Status = "active",
                                     CreatedAt = DateTime.UtcNow
@@ -323,18 +323,18 @@ namespace SmartClickCore.API.Controllers.PSP
 
                                 Log.Information($"✅ Credenciales PSP guardadas automáticamente para usuario {usuarioLocal.UserName}");
                             }
-                            else
-                            {
-                                // Actualizar PSPAccount existente
-                                pspAccountExistente.UserName = request.user.userName;
-                                pspAccountExistente.EncryptedPassword = common.Encrypt(request.user.password, "PSPPassword");
-                                pspAccountExistente.PSPUserId = pspResponse.UserId?.ToString();
-                                pspAccountExistente.UpdatedAt = DateTime.UtcNow;
+                            //else
+                            //{
+                            //    // Actualizar PSPAccount existente
+                            //    pspAccountExistente.UserName = request.user.userName;
+                            //    pspAccountExistente.EncryptedPassword = common.Encrypt(request.user.password, "PSPPassword");
+                            //    pspAccountExistente.PSPUserId = pspResponse.UserId?.ToString();
+                            //    pspAccountExistente.UpdatedAt = DateTime.UtcNow;
 
-                                _context.SaveChanges();
+                            //    _context.SaveChanges();
 
-                                Log.Information($"✅ Credenciales PSP actualizadas automáticamente para usuario {usuarioLocal.UserName}");
-                            }
+                            //    Log.Information($"✅ Credenciales PSP actualizadas automáticamente para usuario {usuarioLocal.UserName}");
+                            //}
                         }
                         else
                         {
@@ -357,7 +357,7 @@ namespace SmartClickCore.API.Controllers.PSP
                             var pspAccountToUpdate = _context.Set<DAL.Models.PSPAccount>().FirstOrDefault(p => p.Usuario.UserName == request.user.email || p.Usuario.Email == request.user.email);
                             if (pspAccountToUpdate != null)
                             {
-                                pspAccountToUpdate.EncryptedUserToken = common.Encrypt(pspResponseToken.access_token, "PSPToken");
+                                pspAccountToUpdate.EncryptedUserToken = common.CifrarPassword(pspResponseToken.access_token);
                                 pspAccountToUpdate.TokenExpiry = pspResponseToken.expires_in > 0
                                     ? (DateTime?)DateTime.UtcNow.AddSeconds(pspResponseToken.expires_in)
                                     : null;
@@ -1592,7 +1592,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
                         if (pspAccount != null)
                         {
-                            pspAccount.EncryptedPassword = common.Encrypt(request.Password, "PSPPassword");
+                            pspAccount.EncryptedPassword = common.CifrarPassword(request.Password);
                             pspAccount.UpdatedAt = DateTime.UtcNow;
                         }
 

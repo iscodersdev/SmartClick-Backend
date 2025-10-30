@@ -19,6 +19,7 @@ using System.Net.Mail;
 using Excel.FinancialFunctions;
 using System.Globalization;
 using Humanizer;
+using Microsoft.SqlServer.Management.SqlParser.SqlCodeDom;
 
 namespace SmartClickCore
 {
@@ -432,7 +433,7 @@ namespace SmartClickCore
               cTransform.TransformFinalBlock(toEncryptArray, 0,
               toEncryptArray.Length);
             tdes.Dispose();
-            return Convert.ToBase64String(resultArray, 0, resultArray.Length);
+            return sin_simbolos(Convert.ToBase64String(resultArray, 0, resultArray.Length));
         }
         
         public static string Decrypt(string toDecrypt, string secretKey)
@@ -464,6 +465,63 @@ namespace SmartClickCore
                 return String.Empty;
             }
         }
+
+        private static byte[] DerivarClave(byte[] sal)
+        {
+            int KeySize = 32; // Clave de 256 bits para AES
+            int IvSize = 16;  // IV de 128 bits para AES
+
+            // La clave se define estáticamente (AÚN DEBERÍA ESTAR EN KEY VAULT)
+            string CLAVE_SECRETA_STRING = "Cadena de cifrado PSP";
+            // Usamos PBKDF2 para convertir la frase en una clave criptográficamente fuerte.
+            // Usaremos un número mínimo de iteraciones (por defecto es 1000).
+            // Puedes aumentar este número (e.g., a 10000) para mayor seguridad a costa de rendimiento.
+            using (var pbkdf2 = new Rfc2898DeriveBytes(CLAVE_SECRETA_STRING, sal, 1000, HashAlgorithmName.SHA256))
+            {
+                return pbkdf2.GetBytes(KeySize);
+            }
+        }
+
+
+        public static string CifrarPassword(string toEncrypt)
+        {
+            string secretKey = "LyqECxbSySWAuCOi";
+            byte[] keyArray;
+            byte[] toEncryptArray = UTF8Encoding.UTF8.GetBytes(toEncrypt);
+            var md5Serv = System.Security.Cryptography.MD5.Create();
+            keyArray = md5Serv.ComputeHash(UTF8Encoding.UTF8.GetBytes(secretKey));
+            md5Serv.Dispose();
+            var tdes = System.Security.Cryptography.TripleDES.Create();
+            tdes.Key = keyArray;
+            tdes.Mode = CipherMode.ECB;
+            tdes.Padding = PaddingMode.PKCS7;
+            ICryptoTransform cTransform = tdes.CreateEncryptor();
+            byte[] resultArray =
+              cTransform.TransformFinalBlock(toEncryptArray, 0,
+              toEncryptArray.Length);
+            tdes.Dispose();
+            return Convert.ToBase64String(resultArray, 0, resultArray.Length);
+        }
+
+        public static string DescifrarPassword(string toDecrypt)
+        {
+            string secretKey = "LyqECxbSySWAuCOi";
+            byte[] keyArray;
+            byte[] toDecryptArray = Convert.FromBase64String(toDecrypt);
+            var md5Serv = System.Security.Cryptography.MD5.Create();
+            keyArray = md5Serv.ComputeHash(UTF8Encoding.UTF8.GetBytes(secretKey));
+            md5Serv.Dispose();
+            var tdes = System.Security.Cryptography.TripleDES.Create();
+            tdes.Key = keyArray;
+            tdes.Mode = CipherMode.ECB;
+            tdes.Padding = PaddingMode.PKCS7;
+            ICryptoTransform cTransform = tdes.CreateDecryptor();
+            byte[] resultArray = cTransform.TransformFinalBlock(toDecryptArray, 0, toDecryptArray.Length);
+            tdes.Dispose();
+            return UTF8Encoding.UTF8.GetString(resultArray);
+        }
+
+
         public static string cuerpoHTML(string titulo, string texto, string cliente)
         {
             string sHTML = "";

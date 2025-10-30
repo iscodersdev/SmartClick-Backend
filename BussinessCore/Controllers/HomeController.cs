@@ -25,6 +25,8 @@ namespace SmartClickCore.Controllers
         }
         public IActionResult Index()
         {
+            var eee = common.CifrarPassword("Abcd1234");
+
 
             //ViewBag.Breadcrumb = breadcumb;
             //ActualizaPersonaUser();
