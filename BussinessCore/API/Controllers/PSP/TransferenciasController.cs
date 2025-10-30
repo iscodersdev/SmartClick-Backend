@@ -26,11 +26,13 @@ namespace SmartClickCore.API.Controllers.PSP
     {
         private readonly IPSPService _pspService;
         private readonly SmartClickContext _context;
+        private readonly NotificacionAPIService _notificacionAPIService;
 
-        public TransferenciasController(SmartClickContext context, IPSPService pspService)
+        public TransferenciasController(SmartClickContext context, NotificacionAPIService notificacionAPIService, IPSPService pspService)
         {
             _context = context;
             _pspService = pspService;
+            _notificacionAPIService = notificacionAPIService;
         }
 
         // Método corregido para buscar usuario por UAT
@@ -266,56 +268,91 @@ namespace SmartClickCore.API.Controllers.PSP
         }
 
 
-        ///// <summary>
-        ///// POST api/psp/Transferencias/GenerarTransferencia
-        ///// Valida cuantas externas
-        ///// </summary>
-        //[HttpPost("GenerarTransferencia")]
-        //public async Task<IActionResult> GenerarTransferencia([FromBody] ValidarCuantaExterna request)
-        //{
-        //    try
-        //    {
-        //        var usuario = TraeUsuarioUAT(request.UAT);
-        //        if (usuario == null)
-        //        {
-        //            return BadRequest(new { success = false, message = "Usuario no autenticado", data = "", code = "" });
-        //        }
+        /// <summary>
+        /// POST api/psp/Transferencias/GenerarTransferencia
+        /// Valida cuantas externas
+        /// </summary>
+        [HttpPost("VerificarTransferenciaPSP")]
+        public async Task<IActionResult> VerificarTransferenciaPSP([FromBody] RecibirTransferenciaWebhookDTO request)
+        {
+            try
+            {
+                PSPAccount account = _context.PSPAccounts.Where(x=>x.AccountNumber == request.accountNumber).FirstOrDefault();
+                if (account==null)
+                {
+                    return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+                }
 
-        //        if (string.IsNullOrEmpty(request.CBU))
-        //        {
-        //            return BadRequest(new { success = false, message = "Parámetros incompletos", data = "", code = "" });
-        //        }
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
 
-        //        var billeteraOrigen = TraeBilleteraCVU(request.CBU);
-        //        if (!billeteraOrigen.ChequeaDebito(montoEnvio))
-        //        {
-        //            Log.Error($"Error el monto supera el saldo");
-        //            return new JsonResult(new RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "El monto supera su saldo" });
-        //        }
+                ExternalAccountDataDTO cuantaDestino = new ExternalAccountDataDTO
+                {
+                    IdentificadorTributario = cuentaRecaudadora.TributaryIdentifier,
+                    CUIT = cuentaRecaudadora.TributaryIdentifier,
+                        NumeroDeCuenta = cuentaRecaudadora.AccountNumber,
+                        Nombre = "Cuenta Recaudadora",
+                        TipoCuentaId = 1,
+                        TipoMonedaId = 1,
+                    };
+                var token = _pspService.GetAccessTokenAsync();
+                var solicitud = await _pspService.SolicitudDeTransferenciaAsync(account, cuantaDestino, false, request.balance.ToString(), token.Result.access_token);
 
-        //        // Obtener token del usuario PSP
-        //        var userToken = await ObtenerUserTokenPSP(usuario);
-        //        if (string.IsNullOrEmpty(userToken))
-        //        {
-        //            return BadRequest(new { Status = 400, UAT = request?.UAT, Mensaje = "No se pudo obtener el token del usuario PSP", Success = false });
-        //        }
+                if (solicitud.Success)
+                {
+                    TransactionConfirmationRequestDTO confirmarTrans = new TransactionConfirmationRequestDTO()
+                    {
+                        Guid = new ConfirmationGuidDTO()
+                        {
+                            Key = solicitud.Guid.Key
+                        },
+                        OTP = 999999,
+                        TransactionId = solicitud.Data.TransactionId,
+                        IsExternal = true
+                    };
 
-        //        var pspResp = await _pspService.ValidarCuentaExternaAsync(request.CBU, userToken);
-        //        if (pspResp.Status==200)
-        //        {
-        //            return Ok(pspResp);
-        //        }
-        //        else
-        //        {
-        //            return StatusCode(pspResp.Status, new { success = false, message = pspResp.Mensaje, data = "", code = "" });
-        //        }
+                    var transferencia = await _pspService.ConfirmarTransferenciaAsync(confirmarTrans, token.Result.access_token);
 
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Log.Error(ex, "Error en ResetPassword");
-        //        return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
-        //    }
-        //}
+                    PSPAccount pspAccountDestino = _context.PSPAccounts.Where(x => x.AccountNumber == request.destinationAccount.accountNumber).FirstOrDefault();
+                    DAL.Models.Core.Billetera billeteraOrigen = _context.Billeteras.Where(x => x.Cliente.Usuario.Id == pspAccountDestino.Usuario.Id).FirstOrDefault();
+
+                    if (transferencia.Success)
+                    {
+                        var movimientoOrigen = new MovimientoBilletera
+                        {
+                            CBU = billeteraOrigen.CVU,
+                            Fecha = DateTime.Now,
+                            Monto = request.balance,
+                            OrigenAsociado = new OrigenMovimiento
+                            {
+                                TipoOrigen = TipoOrigenMovimiento.Billetera,
+                                IdAsociado =  0,
+                                Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
+                            },
+                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
+                        };
+
+                        billeteraOrigen.Saldo += request.balance;
+                        billeteraOrigen.Movimientos.Add(movimientoOrigen);
+                        await _context.SaveChangesAsync();
+                        _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${request.balance} en su billetera");
+
+                        return Ok(new { success = true, message = "Transferencia realizada con éxito", data = transferencia.Data, code = "" });
+                    }
+                    else
+                    {
+                        return StatusCode(500, new { success = false, message = transferencia.Message, data = "", code = "" });
+                    }
+                }
+                else
+                {
+                    return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+                }      
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error en ResetPassword");
+                return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+            }
+        }
     }
 }

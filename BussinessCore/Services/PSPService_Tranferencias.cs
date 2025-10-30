@@ -29,9 +29,10 @@ namespace BusinessCore.Services
         {
             try
             {
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/a/multicuenta/api/v1/Person/ContactNotebook/Get"); 
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Person/ContactNotebook/Get"); 
                 requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", userToken);
-                requestMessage.Headers.Add("X-client_id", _clientId);
+                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
 
                 var requestBody = new { textSearch = CBU };
                 var jsonContent = JsonConvert.SerializeObject(requestBody);
@@ -88,10 +89,11 @@ namespace BusinessCore.Services
         {
             try
             {
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add");
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add");
 
                 requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", userToken);
-                requestMessage.Headers.Add("X-client_id", _clientId);
+                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
 
                 TransactionRequestDTO transactionRequestDTO = new TransactionRequestDTO()
                 {
@@ -149,10 +151,11 @@ namespace BusinessCore.Services
         {
             try
             {
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Confirmation");
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Confirmation");
 
                 requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", userToken);
-                requestMessage.Headers.Add("X-client_id", _clientId);
+                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
 
                 var jsonContent = JsonConvert.SerializeObject(confirmarTransferencia);
                 requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -190,13 +193,13 @@ namespace BusinessCore.Services
             try
             {
 
-                DatosEstructura datos = _context.DatosEstructura.Where(x => x.Convenio == "PSP").FirstOrDefault();
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
                 TokenResponseDTO token = await GetAccessTokenAsync();
 
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add");
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add");
 
                 requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.access_token);
-                requestMessage.Headers.Add("X-client_id", _clientId);
+                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
 
                 TransactionRequestDTO transactionRequestDTO = new TransactionRequestDTO()
                 {
@@ -206,7 +209,7 @@ namespace BusinessCore.Services
                     isExternal = false,
                     originAccount = new AccountRefDTO()
                     {
-                        accountNumber = datos.Entidad,
+                        accountNumber = cuentaRecaudadora.AccountNumber,
                         accountTypeId = 0
                     },
                     destinationAccount = new AccountRefDTO()
@@ -227,10 +230,10 @@ namespace BusinessCore.Services
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var requestMessageConfirmacion = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Confirmation");
+                    var requestMessageConfirmacion = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Confirmation");
 
                     requestMessageConfirmacion.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.access_token);
-                    requestMessageConfirmacion.Headers.Add("X-client_id", _clientId);
+                    requestMessageConfirmacion.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
 
                     TransactionConfirmationRequestDTO confirmarTrans = new TransactionConfirmationRequestDTO()
                     {

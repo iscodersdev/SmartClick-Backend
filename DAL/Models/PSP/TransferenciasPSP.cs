@@ -155,6 +155,16 @@ namespace DAL.Models.PSP
         public string Code { get; set; }
     }
 
+    /*-------------------- Webhook-------------------------*/
+
+    public class RecibirTransferenciaWebhookDTO
+    {
+        public string accountNumber { get; set; } //Número de cuenta.
+        public decimal balance { get; set; }
+        public AccountRefDTO originAccount { get; set; }
+        public AccountRefDTO destinationAccount { get; set; }
+    }
+
     #endregion
 
 
