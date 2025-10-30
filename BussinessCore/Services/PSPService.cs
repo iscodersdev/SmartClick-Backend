@@ -1,5 +1,7 @@
+using Castle.Core.Internal;
 using DAL.Data;
 using DAL.DTOs.PSP;
+using DAL.Migrations;
 using DAL.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -21,11 +23,6 @@ namespace BusinessCore.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<PSPService> _logger;
         private readonly SmartClickContext _context;
-        private readonly string _baseUrl;
-        private readonly string _clientId;
-        private readonly string _clientSecret;
-        private readonly string _username;
-        private readonly string _password;
         private readonly bool _testMode;
 
         public PSPService(SmartClickContext context, HttpClient httpClient, IConfiguration configuration, ILogger<PSPService> logger)
@@ -34,11 +31,11 @@ namespace BusinessCore.Services
             _configuration = configuration;
             _logger = logger;
             _context = context;
-            _baseUrl = _configuration["PSP:BaseUrl"];
-            _clientId = _configuration["PSP:ClientId"];
-            _clientSecret = _configuration["PSP:ClientSecret"];
-            _username = _configuration["PSP:Username"];
-            _password = _configuration["PSP:Password"];
+            //cuentaRecaudadora.BaseUrl = _configuration["PSP:BaseUrl"];
+            //cuentaRecaudadora.ClientId = _configuration["PSP:ClientId"];
+            //_clientSecret = _configuration["PSP:ClientSecret"];
+            //_username = _configuration["PSP:Username"];
+            //_password = _configuration["PSP:Password"];
             _testMode = _configuration.GetValue<bool>("PSP:TestMode", true); // Por defecto en modo test
         }
 
@@ -66,15 +63,14 @@ namespace BusinessCore.Services
                     return new TokenResponseDTO();
                 }
 
-                DatosEstructura datos = _context.DatosEstructura.Where(x => x.Convenio == "PSP").FirstOrDefault();
-                
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();                
 
                 var tokenRequest = new TokenRequestDTO
                 {
-                    username = datos.URLReportes,
-                    password = datos.CredencialReportes,
-                    client_secret = datos.NombreDependencia,
-                    client_id = datos.NombreDependencia
+                    username = cuentaRecaudadora.Username,
+                    password = cuentaRecaudadora.Password,
+                    client_secret = cuentaRecaudadora.ClientSecret,
+                    client_id = cuentaRecaudadora.ClientId
                 };
 
                 // Convertir a form-encoded - SOLO incluir campos que tenemos
@@ -86,14 +82,14 @@ namespace BusinessCore.Services
                 };
 
                 // SOLO agregar ClientId/ClientSecret si est�n configurados
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    formParams.Add(new KeyValuePair<string, string>("client_id", _clientId));
+                    formParams.Add(new KeyValuePair<string, string>("client_id", cuentaRecaudadora.ClientId));
                 }
 
-                if (!string.IsNullOrEmpty(_clientSecret) && !_clientSecret.Contains("TU_CLIENT_SECRET"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientSecret))
                 {
-                    formParams.Add(new KeyValuePair<string, string>("client_secret", _clientSecret));
+                    formParams.Add(new KeyValuePair<string, string>("client_secret", cuentaRecaudadora.ClientSecret));
                 }
 
                 var formContent = new FormUrlEncodedContent(formParams);
@@ -101,13 +97,13 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Clear();
 
                 // SOLO agregar header X-client_id si tenemos ClientId v�lido
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                 }
 
                 // URL CORREGIDA seg�n la lista proporcionada
-                var response = await _httpClient.PostAsync($"{_baseUrl}/a/api/api/Account/Token", formContent);
+                var response = await _httpClient.PostAsync($"{cuentaRecaudadora.BaseUrl}/a/api/api/Account/Token", formContent);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -133,6 +129,7 @@ namespace BusinessCore.Services
 
         public async Task<TokenResponseDTO> GetAccessTokenUserAsync(string username, string password)
         {
+            CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
             if (_testMode)
             {
                 _logger.LogInformation("?? MODO PRUEBA: Simulando obtenci�n de token");
@@ -157,8 +154,8 @@ namespace BusinessCore.Services
                 {
                     username = username,
                     password = password,
-                    client_secret = _clientSecret,
-                    client_id = _clientId
+                    client_secret = cuentaRecaudadora.ClientSecret,
+                    client_id = cuentaRecaudadora.ClientId
                 };
 
                 // Convertir a form-encoded - SOLO incluir campos que tenemos
@@ -170,14 +167,14 @@ namespace BusinessCore.Services
                 };
 
                 // SOLO agregar ClientId/ClientSecret si est�n configurados
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    formParams.Add(new KeyValuePair<string, string>("client_id", _clientId));
+                    formParams.Add(new KeyValuePair<string, string>("client_id", cuentaRecaudadora.ClientId));
                 }
 
-                if (!string.IsNullOrEmpty(_clientSecret) && !_clientSecret.Contains("TU_CLIENT_SECRET"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientSecret))
                 {
-                    formParams.Add(new KeyValuePair<string, string>("client_secret", _clientSecret));
+                    formParams.Add(new KeyValuePair<string, string>("client_secret", cuentaRecaudadora.ClientSecret));
                 }
 
                 var formContent = new FormUrlEncodedContent(formParams);
@@ -185,13 +182,13 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Clear();
 
                 // SOLO agregar header X-client_id si tenemos ClientId v�lido
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                 }
 
                 // URL CORREGIDA seg�n la lista proporcionada
-                var response = await _httpClient.PostAsync($"{_baseUrl}/a/api/api/Account/Token", formContent);
+                var response = await _httpClient.PostAsync($"{cuentaRecaudadora.BaseUrl}/a/api/api/Account/Token", formContent);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -231,6 +228,9 @@ namespace BusinessCore.Services
 
             try
             {
+
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
+
                 var tokenResponse = await GetAccessTokenAsync();
                 if (string.IsNullOrEmpty(tokenResponse.access_token))
                 {
@@ -249,7 +249,7 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
 
                 // URL CORREGIDA seg�n la lista proporcionada
-                var response = await _httpClient.PostAsync($"{_baseUrl}/a/api/api/Account", content);
+                var response = await _httpClient.PostAsync($"{cuentaRecaudadora.BaseUrl}/a/api/api/Account", content);
 
                 var responseContent = await response.Content.ReadAsStringAsync();
                 _logger.LogInformation($"PSP Response Content: {responseContent}");
@@ -308,6 +308,9 @@ namespace BusinessCore.Services
 
             try
             {
+
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
+
                 // PASO 2: Validar que tenemos un token de usuario
                 if (string.IsNullOrEmpty(userToken))
                 {
@@ -328,15 +331,15 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
                 
                 // Header adicional si tenemos ClientId v�lido
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                 }
 
                 _logger.LogInformation($"Ejecutando SelfRegistration en PSP - CUIT: {request.tributaryIdentifier}");
 
                 // PASO 5: Realizar la llamada HTTP - URL CORREGIDA
-                var response = await _httpClient.PostAsync($"{_baseUrl}/a/multicuenta/api/v1/Accounts/SelfRegistration", content);
+                var response = await _httpClient.PostAsync($"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/SelfRegistration", content);
 
                 // PASO 6: Procesar la respuesta
                 if (response.IsSuccessStatusCode)
@@ -412,6 +415,8 @@ namespace BusinessCore.Services
         {
             try
             {
+
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
                 // Obtener token del sistema primero
                 var tokenResponse = await GetAccessTokenAsync();
                 if (string.IsNullOrEmpty(tokenResponse.access_token))
@@ -432,15 +437,15 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"bearer {tokenResponse.access_token}");
                 
                 // Agregar X-client_id si est� configurado
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                 }
 
                 _logger.LogInformation($"Creando entidad y usuario en PSP REAL - CUIT: {request.entity.tributaryIdentifier}, UserName: {request.person.userName}");
 
                 // Realizar la llamada HTTP al PSP - URL CORREGIDA
-                var response = await _httpClient.PostAsync($"{_baseUrl}/a/multicuenta/api/v1/Entities/Persons/New", content);
+                var response = await _httpClient.PostAsync($"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Entities/Persons/New", content);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -567,6 +572,8 @@ namespace BusinessCore.Services
 
             try
             {
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
+
                 // PASO 2: Validar par�metros requeridos
                 if (string.IsNullOrEmpty(identifier))
                 {
@@ -614,15 +621,15 @@ namespace BusinessCore.Services
                     _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
                     
                     // Header adicional si tenemos ClientId v�lido
-                    if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                    if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                     {
-                        _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                        _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                     }
 
                     _logger.LogInformation($"Subiendo archivos al PSP - Identifier: {identifier}, Archivos: {string.Join(", ", files.Keys)}");
 
                     // PASO 5: Realizar la llamada HTTP - URL CORREGIDA seg�n la lista proporcionada
-                    var response = await _httpClient.PostAsync($"{_baseUrl}/a/multicuenta/api/v1/Entities/File?entityId={identifier}", formData);
+                    var response = await _httpClient.PostAsync($"{cuentaRecaudadora.ClientId}/a/multicuenta/api/v1/Entities/File?entityId={identifier}", formData);
 
                     // PASO 6: Procesar la respuesta
                     if (response.IsSuccessStatusCode)
@@ -750,7 +757,8 @@ namespace BusinessCore.Services
 
             try
             {
-                var url = $"{_baseUrl}/a/api/api/RecoverPassword";
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
+                var url = $"{cuentaRecaudadora.BaseUrl}/a/api/api/RecoverPassword";
 
                 var payload = JsonConvert.SerializeObject(new { UserName = request.UserName, Email = request.Email });
                 var headers = new Dictionary<string, string>();
@@ -759,9 +767,9 @@ namespace BusinessCore.Services
                 {
                     headers["Authorization"] = $"Bearer {systemToken}";
                 }
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    headers["X-client_id"] = _clientId;
+                    headers["X-client_id"] = cuentaRecaudadora.ClientId;
                 }
 
                 return await PostWithRetriesAsync(url, payload, headers);
@@ -784,7 +792,8 @@ namespace BusinessCore.Services
 
             try
             {
-                var url = $"{_baseUrl}/a/api/api/ResetPassword";
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
+                var url = $"{cuentaRecaudadora.BaseUrl}/a/api/api/ResetPassword";
 
                 var payload = JsonConvert.SerializeObject(new
                 {
@@ -799,9 +808,9 @@ namespace BusinessCore.Services
                 {
                     headers["Authorization"] = $"Bearer {systemToken}";
                 }
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    headers["X-client_id"] = _clientId;
+                    headers["X-client_id"] = cuentaRecaudadora.ClientId;
                 }
 
                 return await PostWithRetriesAsync(url, payload, headers);
@@ -820,11 +829,9 @@ namespace BusinessCore.Services
         {
             try
             {
-                // No se requiere autenticaci�n ni headers especiales
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
                 _httpClient.DefaultRequestHeaders.Clear();
-
-                // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
-                var response = await _httpClient.GetAsync($"{_baseUrl}/a/multicuenta/api/v1/Province");
+                var response = await _httpClient.GetAsync($"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Province");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -895,6 +902,7 @@ namespace BusinessCore.Services
 
             try
             {
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
                 _httpClient.DefaultRequestHeaders.Clear();
 
                 // Obtener token antes de llamar
@@ -912,13 +920,13 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenResponse.access_token}");
 
                 // Si tu API requiere X-client_id, agr�galo tambi�n
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                 }
 
                 // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
-                var response = await _httpClient.GetAsync($"{_baseUrl}/a/multicuenta/api/v1/City?provinceId={provinceId}");
+                var response = await _httpClient.GetAsync($"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/City?provinceId={provinceId}");
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -966,6 +974,7 @@ namespace BusinessCore.Services
         {
             try
             {
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
                 // Validar que tenemos un token de usuario
                 if (string.IsNullOrEmpty(userToken))
                 {
@@ -982,17 +991,17 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
                 
                 // Header adicional si tenemos ClientId v�lido
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                 }
 
-                var requestUrl = $"{_baseUrl}/a/multicuenta/api/v1/Accounts/All/Get";
+                var requestUrl = $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/All/Get";
                 _logger.LogInformation($"?? LLAMADA PSP - URL: {requestUrl}");
                 _logger.LogInformation($"?? HEADERS - Authorization: Bearer {userToken.Substring(0, Math.Min(20, userToken.Length))}...");
-                if (!string.IsNullOrEmpty(_clientId))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _logger.LogInformation($"?? HEADERS - X-client_id: {_clientId}");
+                    _logger.LogInformation($"?? HEADERS - X-client_id: {cuentaRecaudadora.ClientId}");
                 }
 
                 // Realizar la llamada HTTP al endpoint real del PSP
@@ -1077,11 +1086,12 @@ namespace BusinessCore.Services
             {
                 return true; // En modo test no necesitamos credenciales reales
             }
+            CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
 
             // NUEVA VALIDACI�N: Solo requiere BaseUrl, Username y Password
-            return !string.IsNullOrEmpty(_baseUrl) &&
-                   !string.IsNullOrEmpty(_username) &&
-                   !string.IsNullOrEmpty(_password);
+            return !string.IsNullOrEmpty(cuentaRecaudadora.BaseUrl) &&
+                   !string.IsNullOrEmpty(cuentaRecaudadora.Username) &&
+                   !string.IsNullOrEmpty(cuentaRecaudadora.Password);
             // ClientId y ClientSecret ahora son OPCIONALES
         }
         
@@ -1117,6 +1127,7 @@ namespace BusinessCore.Services
 
             try
             {
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
                 string tokenToUse = null;
 
                 if (!string.IsNullOrEmpty(userToken))
@@ -1143,21 +1154,21 @@ namespace BusinessCore.Services
                 _httpClient.DefaultRequestHeaders.Clear();
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {tokenToUse}");
 
-                if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+                    _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                 }
 
                 // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
-                var url = $"{_baseUrl}/a/multicuenta/api/v1/Person/ContactNotebook/Get";
+                var url = $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Person/ContactNotebook/Get";
                 _logger.LogInformation("?? Llamando PSP ValidateExternalAccount");
                 _logger.LogInformation($"?? URL completa: {url}");
-                _logger.LogInformation($"?? BaseUrl: {_baseUrl}");
+                _logger.LogInformation($"?? BaseUrl: {cuentaRecaudadora.BaseUrl}");
                 _logger.LogInformation($"?? TextSearch: {textSearch}");
                 _logger.LogInformation($"?? Authorization: Bearer {tokenToUse.Substring(0, Math.Min(20, tokenToUse.Length))}...");
-                if (!string.IsNullOrEmpty(_clientId))
+                if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId))
                 {
-                    _logger.LogInformation($"?? X-client_id: {_clientId}");
+                    _logger.LogInformation($"?? X-client_id: {cuentaRecaudadora.ClientId}");
                 }
 
                 var response = await _httpClient.PostAsync(url, content);
@@ -1256,13 +1267,13 @@ namespace BusinessCore.Services
 
         //        _httpClient.DefaultRequestHeaders.Clear();
         //        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {userToken}");
-        //        if (!string.IsNullOrEmpty(_clientId) && !_clientId.Contains("TU_CLIENT_ID"))
+        //        if (!string.IsNullOrEmpty(cuentaRecaudadora.ClientId) && !cuentaRecaudadora.ClientId.Contains("TU_CLIENT_ID"))
         //        {
-        //            _httpClient.DefaultRequestHeaders.Add("X-client_id", _clientId);
+        //            _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
         //        }
 
         //        // URL CORREGIDA - Ahora BaseUrl no incluye "/a", agregarlo donde corresponde
-        //        var url = $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add";
+        //        var url = $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add";
         //        _logger.LogInformation($"Llamando PSP CreateTransaction - URL: {url}");
 
         //        var response = await _httpClient.PostAsync(url, content);
@@ -1320,9 +1331,11 @@ namespace BusinessCore.Services
             // Implementación de la llamada a C1: /Accounts/All/Get
             try
             {
-                var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/a/multicuenta/api/v1/Accounts/All/Get");
+
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
+                var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/All/Get");
                 requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", userToken);
-                requestMessage.Headers.Add("X-client_id", _clientId);
+                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
 
                 var response = await _httpClient.SendAsync(requestMessage);
                 var content = await response.Content.ReadAsStringAsync();
@@ -1354,9 +1367,10 @@ namespace BusinessCore.Services
             // Implementación de la llamada a C7: /Accounts/Children/Get
             try
             {
-                var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/a/multicuenta/api/v1/Accounts/Children/Get?TributaryIdentifier={tributaryIdentifier}");
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
+                var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Children/Get?TributaryIdentifier={tributaryIdentifier}");
                 requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", systemToken);
-                requestMessage.Headers.Add("X-client_id", _clientId);
+                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
 
                 _logger.LogInformation($"🔍 Llamando PSP C7 - URL: {requestMessage.RequestUri}");
                 _logger.LogInformation($"🔍 CUIL/CUIT consultado: {tributaryIdentifier}");

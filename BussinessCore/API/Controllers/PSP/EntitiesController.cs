@@ -226,6 +226,8 @@ namespace SmartClickCore.API.Controllers.PSP
         {
             try
             {
+                CuentasRecaudadoras cuentasRecaudadoras = _context.CuentasRecaudadoras.Where(c => c.Activo).FirstOrDefault();
+                request.entity.parentId = Convert.ToInt32(cuentasRecaudadoras.ParentId);
                 // Validar usuario administrador autenticado
                 var usuario = TraeUsuarioUAT(request.UAT);
                 if (usuario == null)
