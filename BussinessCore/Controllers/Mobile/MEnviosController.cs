@@ -43,6 +43,7 @@ namespace BussinessCore.API.Controllers.Billetera
         {
             try
             {
+                DAL.Models.Core.Billetera billeteraDestino = new DAL.Models.Core.Billetera();
                 if (envioBilleteraDTO.Monto.Contains(","))
                 {
                     Log.Error($"Error de monto debe usar puntos para decimales");
@@ -65,8 +66,20 @@ namespace BussinessCore.API.Controllers.Billetera
                     return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "El monto supera su saldo" });
                 }
 
-                var billeteraDestino = _context.Billeteras.Where(b => b.CVU == envioBilleteraDTO.CVU).FirstOrDefault();
-                if (billeteraDestino==null) // no es una billetera de Smart-click
+                var pspAccountDestino = _context.PSPAccounts.Where(b => b.CVU == envioBilleteraDTO.CVU).FirstOrDefault();
+
+                if (pspAccountDestino!=null)
+                {
+                    billeteraDestino = _context.Billeteras.Where(b => b.Cliente.Id == pspAccountDestino.Cliente.Id).FirstOrDefault();
+
+                    if (billeteraDestino==null)
+                    {
+                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error no existe Billetera" });
+                    }
+                }
+                
+
+                if (pspAccountDestino==null) // no es una billetera de Smart-click
                 {
                     var pspAccount = TraeAccountPSP(usuario);
                     string decryptedToken = common.DescifrarPassword(pspAccount.EncryptedPassword);
@@ -104,40 +117,48 @@ namespace BussinessCore.API.Controllers.Billetera
                         return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+pspResp.Mensaje });
                     }
                 }
-
-                var movimientoDestino = new MovimientoBilletera
+                else
                 {
-                    CBU = billeteraOrigen.CVU,
-                    Fecha = DateTime.Now,
-                    Monto = montoEnvio,
-                    OrigenAsociado = new OrigenMovimiento
+                    var movimientoDestino = new MovimientoBilletera
                     {
-                        TipoOrigen = TipoOrigenMovimiento.Billetera,
-                        IdAsociado = billeteraOrigen.Id,
-                        Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
-                    },
-                    TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDinero)
-                };
-                billeteraDestino.Saldo += montoEnvio;
-                billeteraDestino.Movimientos.Add(movimientoDestino);
-                billeteraDestino.Contactos.Add(new ContactosBilletera
-                {
-                    ClienteContacto = billeteraOrigen.Cliente,
-                    Detalle = billeteraOrigen.Cliente.Persona?.GetNombreCompleto()
-                });
+                        CBU = billeteraOrigen.CVU,
+                        Fecha = DateTime.Now,
+                        Monto = montoEnvio,
+                        OrigenAsociado = new OrigenMovimiento
+                        {
+                            TipoOrigen = TipoOrigenMovimiento.Billetera,
+                            IdAsociado = billeteraOrigen.Id,
+                            Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
+                        },
+                        TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDinero)
+                    };
+
+
+                    billeteraDestino.Saldo += montoEnvio;
+                    billeteraDestino.Movimientos.Add(movimientoDestino);
+                    billeteraDestino.Contactos.Add(new ContactosBilletera
+                    {
+                        ClienteContacto = billeteraOrigen.Cliente,
+                        Detalle = billeteraOrigen.Cliente.Persona?.GetNombreCompleto()
+                    });
+                    _context.Update(billeteraDestino);
+                }          
+
+
                 var movimientoOrigen = new MovimientoBilletera
                 {
-                    CBU = billeteraDestino.CVU,
+                    CBU = billeteraDestino!=null ? billeteraDestino.CVU : envioBilleteraDTO.CVU,
                     Fecha = DateTime.Now,
                     Monto = montoEnvio,
                     OrigenAsociado = new OrigenMovimiento
                     {
                         TipoOrigen = TipoOrigenMovimiento.Billetera,
-                        IdAsociado = billeteraDestino.Id,
+                        IdAsociado = billeteraDestino!=null? billeteraDestino.Id:0,
                         Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
                     },
                     TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
                 };
+
                 billeteraOrigen.Saldo -= montoEnvio;
                 billeteraOrigen.Movimientos.Add(movimientoOrigen);
                 billeteraOrigen.Contactos.Add(new ContactosBilletera
@@ -145,7 +166,9 @@ namespace BussinessCore.API.Controllers.Billetera
                     ClienteContacto = billeteraDestino.Cliente,
                     Detalle = billeteraDestino.Cliente.Persona?.GetNombreCompleto()
                 });
-                _context.Update(billeteraDestino);
+
+
+
                 _context.Update(billeteraOrigen);
                 await _context.SaveChangesAsync();
                 _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Envio de dinero", $"Ha enviado ${montoEnvio} exitosamente");
