@@ -1,15 +1,17 @@
-using System;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
+using DAL.Data;
+using DAL.DTOs.PSP;
+using DAL.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using DAL.DTOs.PSP;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BusinessCore.Services
 {
@@ -18,6 +20,7 @@ namespace BusinessCore.Services
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
         private readonly ILogger<PSPService> _logger;
+        private readonly SmartClickContext _context;
         private readonly string _baseUrl;
         private readonly string _clientId;
         private readonly string _clientSecret;
@@ -25,11 +28,12 @@ namespace BusinessCore.Services
         private readonly string _password;
         private readonly bool _testMode;
 
-        public PSPService(HttpClient httpClient, IConfiguration configuration, ILogger<PSPService> logger)
+        public PSPService(SmartClickContext context, HttpClient httpClient, IConfiguration configuration, ILogger<PSPService> logger)
         {
             _httpClient = httpClient;
             _configuration = configuration;
             _logger = logger;
+            _context = context;
             _baseUrl = _configuration["PSP:BaseUrl"];
             _clientId = _configuration["PSP:ClientId"];
             _clientSecret = _configuration["PSP:ClientSecret"];
@@ -62,12 +66,15 @@ namespace BusinessCore.Services
                     return new TokenResponseDTO();
                 }
 
+                DatosEstructura datos = _context.DatosEstructura.Where(x => x.Convenio == "PSP").FirstOrDefault();
+                
+
                 var tokenRequest = new TokenRequestDTO
                 {
-                    username = _username,
-                    password = _password,
-                    client_secret = _clientSecret,
-                    client_id = _clientId
+                    username = datos.URLReportes,
+                    password = datos.CredencialReportes,
+                    client_secret = datos.NombreDependencia,
+                    client_id = datos.NombreDependencia
                 };
 
                 // Convertir a form-encoded - SOLO incluir campos que tenemos

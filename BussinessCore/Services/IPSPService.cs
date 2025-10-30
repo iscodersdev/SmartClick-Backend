@@ -127,5 +127,15 @@ namespace BusinessCore.Services
         /// <param name="userToken"></param>
         /// <returns></returns>
         Task<FinalConfirmationResponseDTO> ConfirmarTransferenciaAsync(TransactionConfirmationRequestDTO confirmarTransferencia, string userToken);
+
+
+        /// <summary>
+        /// Enviart transferencia desde cuenta recaudadora
+        /// </summary>
+        /// <param name="cuentaOrigen"></param>
+        /// <param name="monto"></param>
+        /// <param name="userToken"></param>
+        /// <returns></returns>
+        Task<FinalConfirmationResponseDTO> TransferenciaCuentaRecaudadoraAsync(PSPAccount cuentaOrigen, string monto);
     }
 }

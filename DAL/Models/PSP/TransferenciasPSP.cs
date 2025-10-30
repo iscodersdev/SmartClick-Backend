@@ -77,7 +77,7 @@ namespace DAL.Models.PSP
 
     public class TransactionRequestDTO
     {
-        public string currencyTypeId { get; set; }
+        public string currencyTypeId { get; set; } = "1";
         public decimal balance { get; set; }
         public int transactionTypeId { get; set; }
         public string availabilityDate { get; set; }

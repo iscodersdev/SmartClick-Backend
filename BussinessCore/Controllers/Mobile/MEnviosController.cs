@@ -43,7 +43,7 @@ namespace BussinessCore.API.Controllers.Billetera
         {
             try
             {
-                DAL.Models.Core.Billetera billeteraDestino = new DAL.Models.Core.Billetera();
+                DAL.Models.Core.Billetera billeteraDestino = null;
                 if (envioBilleteraDTO.Monto.Contains(","))
                 {
                     Log.Error($"Error de monto debe usar puntos para decimales");
@@ -80,9 +80,17 @@ namespace BussinessCore.API.Controllers.Billetera
                 
 
                 if (pspAccountDestino==null) // no es una billetera de Smart-click
-                {
+                {                    
                     var pspAccount = TraeAccountPSP(usuario);
                     string decryptedToken = common.DescifrarPassword(pspAccount.EncryptedPassword);
+
+                    var respuestaRecaudadora = _pspService.TransferenciaCuentaRecaudadoraAsync(pspAccount, envioBilleteraDTO.Monto).Result;
+
+                    if (!respuestaRecaudadora.Success)
+                    {
+                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
+                    }
+
 
                     var AccesToken = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedToken); //Revisar utilizar end point
 
@@ -164,7 +172,7 @@ namespace BussinessCore.API.Controllers.Billetera
                 billeteraOrigen.Contactos.Add(new ContactosBilletera
                 {
                     ClienteContacto = billeteraDestino.Cliente,
-                    Detalle = billeteraDestino.Cliente.Persona?.GetNombreCompleto()
+                    Detalle = billeteraDestino!=null? billeteraDestino.Cliente.Persona?.GetNombreCompleto() : ""
                 });
 
 
