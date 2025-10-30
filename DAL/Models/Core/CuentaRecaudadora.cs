@@ -15,7 +15,8 @@ namespace DAL.Models
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
         public string BaseUrl { get; set; }
-        public bool Activo { get; set; }     
+        public bool Activo { get; set; }   
+        public string ParentId { get; set; }
 
     }
 
