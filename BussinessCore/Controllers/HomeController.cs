@@ -24,10 +24,7 @@ namespace SmartClickCore.Controllers
             _plenarioService = plenarioService;
         }
         public IActionResult Index()
-        {
-            var eee = common.CifrarPassword("Abcd1234");
-
-
+        {           
             //ViewBag.Breadcrumb = breadcumb;
             //ActualizaPersonaUser();
             ////var establecimiento = GetEstablecimiento();

@@ -35,6 +35,11 @@ namespace SmartClickCore.API.Controllers.PSP
         {
             return _context.UAT.Where(u => u.Token == uat).Select(u => u.Cliente.Usuario).FirstOrDefault();
         }
+        public PSPAccount TraeAccountPSP(Usuario usuario)
+        {
+            return _context.PSPAccounts.Where(b => b.Usuario.Id == usuario.Id).FirstOrDefault();
+        }
+
 
         // *** NUEVO MÉTODO HELPER: OBTENER O REFRESCAR TOKEN DEL USUARIO PSP ***
         /// <summary>
@@ -64,37 +69,37 @@ namespace SmartClickCore.API.Controllers.PSP
                 }
 
                 // 2. Si existe y tiene token válido (no expirado), usarlo
-                if (pspAccount != null &&
-                    !string.IsNullOrEmpty(pspAccount.EncryptedUserToken) &&
-                    pspAccount.TokenExpiry.HasValue &&
-                    pspAccount.TokenExpiry.Value > DateTime.UtcNow.AddMinutes(5)) // Buffer de 5 minutos
-                {
-                    try
-                    {
-                        string decryptedToken = common.DescifrarPassword(pspAccount.EncryptedUserToken);
-                        Log.Information($"✅ Token recuperado desde BD para usuario {usuario.UserName} (válido hasta {pspAccount.TokenExpiry})");
-                        return decryptedToken;
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, $"⚠️ Error descifrando token almacenado para usuario {usuario.UserName}");
-                    }
-                }
-                else if (pspAccount != null)
-                {
-                    if (string.IsNullOrEmpty(pspAccount.EncryptedUserToken))
-                    {
-                        Log.Warning($"⚠️ PSPAccount existe pero NO tiene token almacenado para usuario {usuario.UserName}");
-                    }
-                    else if (!pspAccount.TokenExpiry.HasValue)
-                    {
-                        Log.Warning($"⚠️ PSPAccount tiene token pero sin fecha de expiración para usuario {usuario.UserName}");
-                    }
-                    else if (pspAccount.TokenExpiry.Value <= DateTime.UtcNow.AddMinutes(5))
-                    {
-                        Log.Warning($"⚠️ Token expirado o por expirar para usuario {usuario.UserName} (expira: {pspAccount.TokenExpiry})");
-                    }
-                }
+                //if (pspAccount != null &&
+                //    !string.IsNullOrEmpty(pspAccount.EncryptedUserToken) &&
+                //    pspAccount.TokenExpiry.HasValue &&
+                //    pspAccount.TokenExpiry.Value > DateTime.UtcNow.AddMinutes(5)) // Buffer de 5 minutos
+                //{
+                //    try
+                //    {
+                //        string decryptedToken = common.DescifrarPassword(pspAccount.EncryptedUserToken);
+                //        Log.Information($"✅ Token recuperado desde BD para usuario {usuario.UserName} (válido hasta {pspAccount.TokenExpiry})");
+                //        return decryptedToken;
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        Log.Warning(ex, $"⚠️ Error descifrando token almacenado para usuario {usuario.UserName}");
+                //    }
+                //}
+                //else if (pspAccount != null)
+                //{
+                //    if (string.IsNullOrEmpty(pspAccount.EncryptedUserToken))
+                //    {
+                //        Log.Warning($"⚠️ PSPAccount existe pero NO tiene token almacenado para usuario {usuario.UserName}");
+                //    }
+                //    else if (!pspAccount.TokenExpiry.HasValue)
+                //    {
+                //        Log.Warning($"⚠️ PSPAccount tiene token pero sin fecha de expiración para usuario {usuario.UserName}");
+                //    }
+                //    else if (pspAccount.TokenExpiry.Value <= DateTime.UtcNow.AddMinutes(5))
+                //    {
+                //        Log.Warning($"⚠️ Token expirado o por expirar para usuario {usuario.UserName} (expira: {pspAccount.TokenExpiry})");
+                //    }
+                //}
 
                 // 3. Si no hay token válido, necesitamos obtener uno del PSP
                 // OPCIÓN A: Si tenemos username y password PSP almacenados en PSPAccount
@@ -807,6 +812,7 @@ namespace SmartClickCore.API.Controllers.PSP
             {
                 // Validar usuario autenticado
                 var usuario = TraeUsuarioUAT(request.UAT);
+
                 if (usuario == null)
                 {
                     return BadRequest(new AccountsInfoWithUATResponseDTO
@@ -1225,13 +1231,22 @@ namespace SmartClickCore.API.Controllers.PSP
 
                 // Determinar tributary identifier a usar
                 string tributary = request?.Cuil;
+
                 if (string.IsNullOrEmpty(tributary))
                 {
                     // intentar desde cliente/persona
                     var cliente = _context.Clientes.Include(c => c.Persona).FirstOrDefault(c => c.Usuario.Id == usuario.Id);
-                    if (cliente?.Persona != null)
+                    if (cliente != null)
                     {
-                        tributary = cliente.Persona.Cuil?.Replace("-", "");
+                        var account = _context.PSPAccounts.Where(x => x.Cliente.Id== cliente.Id).FirstOrDefault();
+                        if (account!=null)
+                        {
+                            tributary = account.TributaryIdentifier;
+                        }
+                    }
+                    else
+                    {
+                        return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = "error", Mensaje = "Error no se encontro la relación cliente psp" });
                     }
                 }
 
@@ -1259,9 +1274,9 @@ namespace SmartClickCore.API.Controllers.PSP
                     c1Task = Task.FromResult(new AccountsInfoResponseDTO { Success = false, Error = "NoUserToken" });
                 }
 
-                if (!string.IsNullOrEmpty(tributary) && systemToken != null && !string.IsNullOrEmpty(systemToken.access_token))
+                if (!string.IsNullOrEmpty(tributary) && userToken != null && !string.IsNullOrEmpty(userToken))
                 {
-                    c7Task = _pspService.GetEntityByTributaryIdAsync(tributary, systemToken.access_token);
+                    c7Task = _pspService.GetEntityByTributaryIdAsync(tributary, userToken);
                 }
                 else
                 {
