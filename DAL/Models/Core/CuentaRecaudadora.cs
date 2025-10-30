@@ -6,6 +6,7 @@ namespace DAL.Models
 {
     public class CuentasRecaudadoras
     {
+        public int Id { get; set; }
         public string AccountNumber { get; set; }
         public string Username { get; set; }
         public string Password { get; set; }
