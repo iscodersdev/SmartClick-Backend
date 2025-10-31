@@ -19,6 +19,7 @@ using System.Net.Mail;
 using Excel.FinancialFunctions;
 using System.Globalization;
 using Humanizer;
+using Microsoft.SqlServer.Management.SqlParser.SqlCodeDom;
 
 namespace SmartClickCore
 {
@@ -226,6 +227,8 @@ namespace SmartClickCore
             imageIn.Save(ms, System.Drawing.Imaging.ImageFormat.Gif);
             return ms.ToArray();
         }
+
+
         public static bool EnviarMail(string destinatario, string titulo, string texto, string cliente, byte[] Adjunto = null, string NombreArchivo = null)
         {
             MailAPI mail = new MailAPI();
@@ -233,12 +236,31 @@ namespace SmartClickCore
             mail.Html = texto;
             mail.Titulo = titulo;
             DateTime oFec = DateTime.Now;
-            var code = Encrypt(mail.Titulo + mail.Html, "SendMail"); ;
-            mail.Token =code;
-//            var resultado=  EnviarMailGmail(mail);
+            var code = Encrypt(mail.Titulo + mail.Html, "SendMail");
+            mail.Token = code;
+            //            var resultado=  EnviarMailGmail(mail);
             var resultado = EnviarMailSendinBlue(mail);
             return true;
         }
+
+
+        //public static bool EnviarMail(string destinatario, string titulo, string texto, string cliente, byte[] Adjunto = null, string NombreArchivo = null)
+        //{
+        //    MailAPI mail = new MailAPI();
+        //    mail.Mail = destinatario;
+        //    mail.Html = texto;
+        //    mail.Titulo = titulo;
+        //    DateTime oFec = DateTime.Now;
+        //    var code = Encrypt(mail.Titulo + mail.Html, "SendMail");
+        //    mail.Token = code;
+        //    //            var resultado=  EnviarMailGmail(mail);
+        //    var resultado = EnviarMailSendinBlue(mail);
+        //    return resultado; // ✅ RETORNAR EL RESULTADO REAL EN LUGAR DE 'true'
+        //}
+
+
+
+
 
         public static decimal CalculaCFT(double capital,int cantidadcuotas,double montocuota)
         {
@@ -267,24 +289,23 @@ namespace SmartClickCore
             }
             try
             {
-                string usuario = "albarracin_sergio@hotmail.com";
-                string password = "w2cPVg3n9Xq6C7KO";
-                //string usuario = "novedades@ampromm.org.ar";
-                //string password = "BWSNmr7qGLdHYKz2";
-                var origen = new MailAddress("noresponder@SmartClick.org.ar", "SmartClick");
-                string host = "smtp-relay.sendinblue.com";
+                string usuario = "8f0e79001@smtp-brevo.com";
+                string password = "zx37QwV6YpatZBIj";
+                var origen = new MailAddress("sender@servicemailing.com.ar", "SmartClick");
+                // string host = "smtp-relay.sendinblue.com";
+                string host = "smtp-relay.brevo.com";
                 int puerto = 587;
                 bool ssl = true;
                 NetworkCredential credenciales = new NetworkCredential(usuario, password);
-                MailMessage correo = new MailMessage("noresponder@SmartClick.org.ar", mail.Mail, mail.Titulo, cuerpoHTMLGmail(mail.Titulo, mail.Html, ""));
+                MailMessage correo = new MailMessage("sender@servicemailing.com.ar", mail.Mail, mail.Titulo, cuerpoHTMLGmail(mail.Titulo, mail.Html, ""));
                 correo.From = origen;
                 correo.IsBodyHtml = true;
                 SmtpClient servicio = new SmtpClient(host, puerto);
-                servicio.UseDefaultCredentials = true;
+                servicio.UseDefaultCredentials = false;
                 servicio.Credentials = credenciales;
                 servicio.EnableSsl = ssl;
-                string token="";
-                servicio.SendAsync(correo,token);
+                string token = "";
+                servicio.SendAsync(correo, token);
             }
             catch
             {
@@ -293,6 +314,10 @@ namespace SmartClickCore
             return true;
 
         }
+
+      
+
+
         public static bool EnviarMailGmail(MailAPI mail)
         {
             if (mail.Mail == null)
@@ -410,6 +435,24 @@ namespace SmartClickCore
             tdes.Dispose();
             return sin_simbolos(Convert.ToBase64String(resultArray, 0, resultArray.Length));
         }
+        
+        public static string Decrypt(string toDecrypt, string secretKey)
+        {
+            byte[] keyArray;
+            byte[] toDecryptArray = Convert.FromBase64String(toDecrypt);
+            var md5Serv = System.Security.Cryptography.MD5.Create();
+            keyArray = md5Serv.ComputeHash(UTF8Encoding.UTF8.GetBytes(secretKey));
+            md5Serv.Dispose();
+            var tdes = System.Security.Cryptography.TripleDES.Create();
+            tdes.Key = keyArray;
+            tdes.Mode = CipherMode.ECB;
+            tdes.Padding = PaddingMode.PKCS7;
+            ICryptoTransform cTransform = tdes.CreateDecryptor();
+            byte[] resultArray = cTransform.TransformFinalBlock(toDecryptArray, 0, toDecryptArray.Length);
+            tdes.Dispose();
+            return UTF8Encoding.UTF8.GetString(resultArray);
+        }
+        
         public static string sin_simbolos(String cadena)
         {
             try
@@ -422,6 +465,63 @@ namespace SmartClickCore
                 return String.Empty;
             }
         }
+
+        private static byte[] DerivarClave(byte[] sal)
+        {
+            int KeySize = 32; // Clave de 256 bits para AES
+            int IvSize = 16;  // IV de 128 bits para AES
+
+            // La clave se define estáticamente (AÚN DEBERÍA ESTAR EN KEY VAULT)
+            string CLAVE_SECRETA_STRING = "Cadena de cifrado PSP";
+            // Usamos PBKDF2 para convertir la frase en una clave criptográficamente fuerte.
+            // Usaremos un número mínimo de iteraciones (por defecto es 1000).
+            // Puedes aumentar este número (e.g., a 10000) para mayor seguridad a costa de rendimiento.
+            using (var pbkdf2 = new Rfc2898DeriveBytes(CLAVE_SECRETA_STRING, sal, 1000, HashAlgorithmName.SHA256))
+            {
+                return pbkdf2.GetBytes(KeySize);
+            }
+        }
+
+
+        public static string CifrarPassword(string toEncrypt)
+        {
+            string secretKey = "LyqECxbSySWAuCOi";
+            byte[] keyArray;
+            byte[] toEncryptArray = UTF8Encoding.UTF8.GetBytes(toEncrypt);
+            var md5Serv = System.Security.Cryptography.MD5.Create();
+            keyArray = md5Serv.ComputeHash(UTF8Encoding.UTF8.GetBytes(secretKey));
+            md5Serv.Dispose();
+            var tdes = System.Security.Cryptography.TripleDES.Create();
+            tdes.Key = keyArray;
+            tdes.Mode = CipherMode.ECB;
+            tdes.Padding = PaddingMode.PKCS7;
+            ICryptoTransform cTransform = tdes.CreateEncryptor();
+            byte[] resultArray =
+              cTransform.TransformFinalBlock(toEncryptArray, 0,
+              toEncryptArray.Length);
+            tdes.Dispose();
+            return Convert.ToBase64String(resultArray, 0, resultArray.Length);
+        }
+
+        public static string DescifrarPassword(string toDecrypt)
+        {
+            string secretKey = "LyqECxbSySWAuCOi";
+            byte[] keyArray;
+            byte[] toDecryptArray = Convert.FromBase64String(toDecrypt);
+            var md5Serv = System.Security.Cryptography.MD5.Create();
+            keyArray = md5Serv.ComputeHash(UTF8Encoding.UTF8.GetBytes(secretKey));
+            md5Serv.Dispose();
+            var tdes = System.Security.Cryptography.TripleDES.Create();
+            tdes.Key = keyArray;
+            tdes.Mode = CipherMode.ECB;
+            tdes.Padding = PaddingMode.PKCS7;
+            ICryptoTransform cTransform = tdes.CreateDecryptor();
+            byte[] resultArray = cTransform.TransformFinalBlock(toDecryptArray, 0, toDecryptArray.Length);
+            tdes.Dispose();
+            return UTF8Encoding.UTF8.GetString(resultArray);
+        }
+
+
         public static string cuerpoHTML(string titulo, string texto, string cliente)
         {
             string sHTML = "";

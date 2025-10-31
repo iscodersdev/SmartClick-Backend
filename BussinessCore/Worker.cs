@@ -8,17 +8,18 @@ using DAL.Models;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SmartClickCore
 {
     public class Worker : BackgroundService
     {
         private readonly ILogger<Worker> _logger;
-        public SmartClickContext _context;
+        private readonly IServiceProvider _serviceProvider;
 
-        public Worker(ILogger<Worker> logger, SmartClickContext context)
+        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider)
         {
-            _context = context;
+            _serviceProvider = serviceProvider;
             _logger = logger;
         }
 
@@ -26,14 +27,18 @@ namespace SmartClickCore
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                ActualizaPrestamo();
-                ConfirmarPrestamo();
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<SmartClickContext>();
+                    ActualizaPrestamo(context);
+                    ConfirmarPrestamo(context);
+                }
                 await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
             }
         }
 
 
-        private void ActualizaPrestamo()
+        private void ActualizaPrestamo(SmartClickContext _context)
         {
 
             // var Prestamos = _context.Prestamos.Where(x => new[] { 1,2,3,6,7 }.Contains(x.EstadoActual.Id)).OrderByDescending(x => x.FechaSolicitado).ToList();
@@ -112,7 +117,7 @@ namespace SmartClickCore
         }
 
 
-        private void ConfirmarPrestamo()
+        private void ConfirmarPrestamo(SmartClickContext _context)
         {
             var fechaDesde = DateTime.Now.AddMonths(-1); // Fecha de hace un mes
             var fechaHasta = DateTime.Now; // Fecha actual

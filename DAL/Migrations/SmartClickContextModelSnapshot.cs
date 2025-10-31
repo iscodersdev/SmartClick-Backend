@@ -1105,6 +1105,37 @@ namespace DAL.Migrations
                     b.ToTable("CuentasCorrientes");
                 });
 
+            modelBuilder.Entity("DAL.Models.CuentasRecaudadoras", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<string>("AccountNumber");
+
+                    b.Property<bool>("Activo");
+
+                    b.Property<string>("BaseUrl");
+
+                    b.Property<string>("ClientId");
+
+                    b.Property<string>("ClientSecret");
+
+                    b.Property<string>("ParentId");
+
+                    b.Property<string>("Password");
+
+                    b.Property<string>("TributaryIdentifier");
+
+                    b.Property<string>("TributaryIdentifierType");
+
+                    b.Property<string>("Username");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CuentasRecaudadoras");
+                });
+
             modelBuilder.Entity("DAL.Models.CuotaSocial", b =>
                 {
                     b.Property<int>("Id")
@@ -1768,6 +1799,110 @@ namespace DAL.Migrations
                     b.HasIndex("ProvinciaId");
 
                     b.ToTable("Organismos");
+                });
+
+            modelBuilder.Entity("DAL.Models.PSPAccount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<string>("AccountNumber");
+
+                    b.Property<int?>("AccountTypeId");
+
+                    b.Property<string>("CVU");
+
+                    b.Property<string>("CVU_CBUAlias");
+
+                    b.Property<int?>("ClienteId");
+
+                    b.Property<DateTime>("CreatedAt");
+
+                    b.Property<string>("CurrencyDescription");
+
+                    b.Property<string>("CurrencyName");
+
+                    b.Property<string>("CurrencySymbol");
+
+                    b.Property<int?>("CurrencyTypeId");
+
+                    b.Property<bool?>("DeleteAccountSolicitude");
+
+                    b.Property<string>("EncryptedPassword")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EncryptedUserToken")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EntityId");
+
+                    b.Property<int?>("EntityStatus");
+
+                    b.Property<string>("EntityStatusDescription");
+
+                    b.Property<string>("ErrorMessage");
+
+                    b.Property<string>("Identifier");
+
+                    b.Property<string>("LastC1ResponseJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastC7ResponseJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastStatusCheck");
+
+                    b.Property<string>("PSPUserId");
+
+                    b.Property<string>("RequestId");
+
+                    b.Property<string>("Status");
+
+                    b.Property<string>("StatusDescription");
+
+                    b.Property<DateTime?>("TokenExpiry");
+
+                    b.Property<string>("TributaryIdentifier");
+
+                    b.Property<string>("TributaryIdentifierType");
+
+                    b.Property<DateTime?>("UpdatedAt");
+
+                    b.Property<string>("UserName");
+
+                    b.Property<string>("UsuarioId");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("PSPAccounts");
+                });
+
+            modelBuilder.Entity("DAL.Models.PSPAccountFile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<string>("FileKey");
+
+                    b.Property<string>("FileName");
+
+                    b.Property<int>("PSPAccountId");
+
+                    b.Property<string>("StoragePath");
+
+                    b.Property<DateTime>("UploadedAt");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PSPAccountId");
+
+                    b.ToTable("PSPAccountFiles");
                 });
 
             modelBuilder.Entity("DAL.Models.Paises", b =>
@@ -3013,6 +3148,25 @@ namespace DAL.Migrations
                     b.HasOne("DAL.Models.Provincia", "Provincia")
                         .WithMany()
                         .HasForeignKey("ProvinciaId");
+                });
+
+            modelBuilder.Entity("DAL.Models.PSPAccount", b =>
+                {
+                    b.HasOne("DAL.Models.Clientes", "Cliente")
+                        .WithMany()
+                        .HasForeignKey("ClienteId");
+
+                    b.HasOne("DAL.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId");
+                });
+
+            modelBuilder.Entity("DAL.Models.PSPAccountFile", b =>
+                {
+                    b.HasOne("DAL.Models.PSPAccount", "PSPAccount")
+                        .WithMany("PSPAccountFiles")
+                        .HasForeignKey("PSPAccountId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("DAL.Models.Persona", b =>

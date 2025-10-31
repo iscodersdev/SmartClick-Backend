@@ -24,8 +24,7 @@ namespace SmartClickCore.Controllers
             _plenarioService = plenarioService;
         }
         public IActionResult Index()
-        {
-
+        {           
             //ViewBag.Breadcrumb = breadcumb;
             //ActualizaPersonaUser();
             ////var establecimiento = GetEstablecimiento();

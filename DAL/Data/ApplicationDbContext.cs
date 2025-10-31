@@ -8,6 +8,7 @@ using DAL.Models.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using System.IO;
 
 namespace DAL.Data
 {
@@ -126,11 +127,14 @@ namespace DAL.Data
 
 
         #endregion
+        // PSP integration tables
+        public DbSet<DAL.Models.PSPAccount> PSPAccounts { get; set; }
+        public DbSet<DAL.Models.PSPAccountFile> PSPAccountFiles { get; set; }
+        public DbSet<CuentasRecaudadoras> CuentasRecaudadoras { get; set; }
         public override List<IWorkSpace> GetIWorkSpaces()
         {
             return new List<IWorkSpace>();
         }
-
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -152,14 +156,39 @@ namespace DAL.Data
         public SmartClickContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<SmartClickContext>();
-            // optionsBuilder.UseSqlServer("Server=localhost;Database=SmartClickCore;Trusted_Connection=True;MultipleActiveResultSets=true");
-            //optionsBuilder.UseSqlServer("Server=localhost;Database=SmartClick;Trusted_Connection=True;MultipleActiveResultSets=true");
-            optionsBuilder.UseSqlServer("Server=186.189.235.119;Database=SmartClick_prod;user=sa;password=Crisis2040;MultipleActiveResultSets=true");
+
+            // Try to read the connection string from the Startup project appsettings.json (BussinessCore)
+            try
+            {
+                var startupPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "BussinessCore"));
+                var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
+                var config = new ConfigurationBuilder()
+                    .SetBasePath(startupPath)
+                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                    .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: false)
+                    .AddEnvironmentVariables()
+                    .Build();
+
+                var conn = config.GetConnectionString("SmartClick");
+                if (!string.IsNullOrEmpty(conn))
+                {
+                    optionsBuilder.UseSqlServer(conn);
+                }
+                else
+                {
+                    // fallback to previous hardcoded server if no config found
+                    optionsBuilder.UseSqlServer("Server=186.189.235.119;Database=SmartClick_prod;user=sa;password=Crisis2040;MultipleActiveResultSets=true");
+                }
+            }
+            catch
+            {
+                // if anything fails, use the previous hardcoded connection as fallback
+                optionsBuilder.UseSqlServer("Server=186.189.235.119;Database=SmartClick_prod;user=sa;password=Crisis2040;MultipleActiveResultSets=true");
+            }
 
             return new SmartClickContext(optionsBuilder.Options);
         }
     }
-
 
 
 }

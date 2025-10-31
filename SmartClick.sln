@@ -9,6 +9,11 @@ Project("{F14B399A-7131-4C87-9E4B-1186C45EF12D}") = "Reportes", "Reportes\Report
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmartClickCore", "BussinessCore\SmartClickCore.csproj", "{31E9BA92-14AF-4062-9076-25C5C040245C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Elementos de la solución", "Elementos de la solución", "{D107F4C8-89CC-BEA8-D3D7-CA6B7733353D}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
