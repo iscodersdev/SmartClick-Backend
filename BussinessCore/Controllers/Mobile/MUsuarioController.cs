@@ -126,20 +126,10 @@ namespace SmartClick.Controllers
                     Login.Mensaje = "eMail o Password Incorrectos";
                     return Login;
                 }
-        
-                // Validar que cliente.Persona no sea null
-                if (cliente.Persona == null)
-                {
-                    Login.Status = 500;
-                    Login.Mensaje = "Datos de persona no encontrados";
-                    return Login;
-                }
-        
+                Login.EsEjercito = false;
                 Login.Apellido = cliente.Persona.Apellido;
                 Login.Nombres = cliente.Persona.Nombres;
-        
-                // Usar operador de navegación condicional para evitar NullReferenceException
-                if (cliente.Persona.TipoPersona?.Organismo?.Id == 1)
+                if (cliente.Persona.TipoPersona.Organismo.APIEjercito == true)
                 {
                     Login.EsEjercito = true;
                 }
