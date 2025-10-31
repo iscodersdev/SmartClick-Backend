@@ -89,6 +89,11 @@ namespace DAL.Mobile
         public string CVU { get; set; }
         public string Monto { get; set; }
     }
+
+    public class ValidarBilleteraDTO : RespuestaAPI
+    {
+        public string CVU { get; set; }
+    }
     public class MTraeLocalidadesDTO
     {
         public int Status { get; set; }

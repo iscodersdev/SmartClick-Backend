@@ -119,8 +119,6 @@ namespace SmartClick.Controllers
             var result = _signInManager.PasswordSignInAsync(Login.Mail, Login.Password, Login.Recordarme, lockoutOnFailure: true);
             if (result.Result.Succeeded)
             {
-
-                //var cliente = _context.Clientes.FirstOrDefault(x => x.Usuario.UserName == Login.Mail && x.FechaBaja == null && (x.Empresa.Id == Login.EmpresaId || Login.EmpresaId == 0));
                 var cliente = _context.Clientes.FirstOrDefault(x => x.Usuario.UserName == Login.Mail && x.FechaBaja == null );
                 if (cliente == null)
                 {
@@ -128,11 +126,21 @@ namespace SmartClick.Controllers
                     Login.Mensaje = "eMail o Password Incorrectos";
                     return Login;
                 }
+                Login.EsEjercito = false;
                 Login.Apellido = cliente.Persona.Apellido;
                 Login.Nombres = cliente.Persona.Nombres;
-                Login.TipoPersonaId = cliente.Persona.TipoPersona.Id;
+                if (cliente.Persona.TipoPersona.Organismo.APIEjercito == true)
+                {
+                    Login.EsEjercito = true;
+                }
+                else
+                {
+                    Login.EsEjercito = false; // Por defecto es civil
+                }
+        
                 Login.Status = 200;
                 Login.UAT = SmartClickCore.common.Encrypt(DateTime.Now.ToString("ffffssmmHHddMMyyyy") + cliente.Id.ToString(), "SmartClick");
+        
                 if (cliente.TipoCliente == null)
                 {
                     Login.Categoria = "No Asociado Aun";
@@ -141,14 +149,17 @@ namespace SmartClick.Controllers
                 {
                     Login.Categoria = cliente.TipoCliente.Nombre;
                 }
+        
                 Login.Foto = cliente.Persona.Foto;
                 Login.Mail = cliente.Usuario.Email;
+        
                 if (Login.Mail != null)
                 {
                     string asteriscos = "***********************************************************************";
                     string[] correoinicial = Login.Mail.Split("@");
                     Login.MailOculto = Login.Mail.Substring(0, 2) + asteriscos.Substring(0, correoinicial[0].Length - 2) + "@" + correoinicial[1];
                 }
+        
                 Login.NumeroDocumento = Int64.Parse(cliente.Persona.NroDocumento);
                 Login.FondoMutual = cliente.Empresa.FondoMobile;
                 Login.Celular = cliente.Celular;
@@ -159,10 +170,18 @@ namespace SmartClick.Controllers
                 Login.Instagram = cliente.Empresa.Instagram;
                 Login.CelularEmpresa = cliente.Empresa.Telefono;
                 Login.BloquearPrestamos = cliente.BloquearPrestamos;
+        
+                // Validar TipoPersona antes de acceder a su Id
+                if (cliente.Persona.TipoPersona != null)
+                {
+                    Login.TipoPersonaId = cliente.Persona.TipoPersona.Id;
+                }
+        
                 if (cliente.Empresa != null)
                 {
                     Login.LogoMutual = cliente.Empresa.LogoMutual;
                 }
+        
                 if (cliente.NumeroCliente == null)
                 {
                     Login.NumeroCliente = "No cliente";
@@ -171,11 +190,13 @@ namespace SmartClick.Controllers
                 {
                     Login.NumeroCliente = cliente.NumeroCliente;
                 }
+        
                 Login.PrimerIngreso = false;
                 if (cliente.Usuario.DeviceId != Login.DeviceId)
                 {
                     Login.PrimerIngreso = true;
                 }
+        
                 cliente.Usuario.DeviceId = Login.DeviceId;
                 _context.Clientes.Update(cliente);
 
@@ -189,7 +210,6 @@ namespace SmartClick.Controllers
                 {
                     uat.Persona = persona;
                 }
-                
 
                 _context.UAT.Add(uat);
                 _context.SaveChanges();
@@ -389,10 +409,10 @@ namespace SmartClick.Controllers
             cliente.Celular = uat.Celular;
             cliente.Persona.FechaNacimiento = Convert.ToDateTime(uat.FechaNacimiento);
             //cliente.Persona.Mail = uat.Mail; *** Cambiar en la tabla User
-            //if (uat.Password1 != null)
-            //{
-            //    cliente.Password = uat.Password1;
-            //}
+            if (uat.Password1 != null)
+            {
+                cliente.Password = uat.Password1;
+            }
             _context.Clientes.Update(cliente);
             _context.SaveChanges();
             return uat;
@@ -468,7 +488,7 @@ namespace SmartClick.Controllers
                 uat.Mensaje = "Persona Sin Correo Declarado";
                 return uat;
             }
-            sHTML += $"Estimado: {cliente.Persona.Apellido},{cliente.Persona.Nombres}, para Poder Recuperar Su Contraseña <a href = 'http://web.SmartClick.com.ar/Identity/Account/ResetPassword?code=" + pass + "'> Haga Click Aqui</a>.";
+            sHTML += $"Estimado: {cliente.Persona.Apellido},{cliente.Persona.Nombres}, para Poder Recuperar Su Contraseña <a href = 'https://portalsmartclick.com.ar/Identity/Account/ResetPassword?code=" + pass + "'> Haga Click Aqui</a>.";
             //common.EnviarMail("acevedoruben@hotmail.com", "SmartClick - Recuperacion de Contraseña", sHTML, "");
             common.EnviarMail(cliente.Usuario.UserName, "SmartClick - Recuperacion de Contraseña", sHTML, "");
             uat.Status = 200;
@@ -738,7 +758,8 @@ namespace SmartClick.Controllers
 
                 html = "<br/>Sr: " + datoscge.Nombres + " " + datoscge.Apellido + "<br/><br/>";
                 html += "Su Token de Registro es: " + token.ToString() + "<br/><br/>";
-                common.EnviarMail(datoscge.Mail, "Token Registro SmartClick", html, "");
+                 common.EnviarMail(datoscge.Mail, "Token Registro SmartClick", html, "");
+               
                 return preregistro;
 
             }
@@ -801,6 +822,139 @@ namespace SmartClick.Controllers
             return preregistro;
 
         }
+
+        //[HttpPost]
+        //[Route("PreRegistro")]
+        //[EnableCors("CorsPolicy")]
+        //[AllowAnonymous]
+        //public MPreRegistroDTO PreRegistro([FromBody] MPreRegistroDTO Registro)
+        //{
+        //    var preregistro = new MPreRegistroDTO();
+        //    var usuario = _context.Usuarios.FirstOrDefault(x => x.UserName == Registro.eMail.Trim());
+        //    if (usuario != null && usuario.EmailConfirmed)
+        //    {
+        //        preregistro.Status = 500;
+        //        preregistro.Mensaje = "Socio Ya Ingresado, debera recuperar contraseña";
+        //        return preregistro;
+        //    }
+        //    int token = common.NiumeroRandom(100000, 999999);
+        //    string html = "";
+
+        //    var organismo = _context.Organismos.Find(Registro.OrganismoId);
+        //    if (organismo.APIEjercito == true)
+        //    {
+        //        var datoscge = SmartClickCore.SmartClick.TraeDatosPersona20CGE(_context.Empresas.FirstOrDefault(), Registro.eMail, _context, token);
+
+        //        if (datoscge.Status == 300)
+        //        {
+        //            preregistro.Status = 300;
+        //            preregistro.Mensaje = "No es personal de Ejercito";
+        //            return preregistro;
+        //        }
+        //        token = datoscge.Token;
+        //        preregistro.Apellido = datoscge.Apellido;
+        //        preregistro.Celular = datoscge.Celular;
+        //        preregistro.eMail = datoscge.Mail;
+        //        if (preregistro.eMail != null)
+        //        {
+        //            string asteriscos = "***********************************************************************";
+        //            string[] correoinicial = preregistro.eMail.Split("@");
+        //            preregistro.MailOculto = preregistro.eMail.Substring(0, 2) + asteriscos.Substring(0, correoinicial[0].Length - 2) + "@" + correoinicial[1];
+        //        }
+        //        preregistro.Mensaje = datoscge.Mensaje;
+        //        preregistro.Status = datoscge.Status;
+        //        preregistro.Nombres = datoscge.Nombres;
+        //        preregistro.NumeroDocumento = datoscge.NumeroDocumento;
+
+        //        html = "<br/>Sr: " + datoscge.Nombres + " " + datoscge.Apellido + "<br/><br/>";
+        //        html += "Su Token de Registro es: " + token.ToString() + "<br/><br/>";
+
+        //        bool mailEnviado = common.EnviarMail(datoscge.Mail, "Token Registro SmartClick", html, "");
+        //        if (mailEnviado)
+        //        {
+        //            preregistro.Mensaje = datoscge.Mensaje + " - Mail enviado";
+        //        }
+        //        else
+        //        {
+        //            preregistro.Mensaje = datoscge.Mensaje + " - ERROR al enviar mail";
+        //        }
+        //        return preregistro;
+        //    }
+
+        //    // SI ES OTRO ORGANISMO
+        //    var tipopersona = _context.TiposPersonas.Where(x => x.Organismo.Activo && x.Organismo.Id == Registro.OrganismoId).OrderBy(x => x.Organismo.Orden);
+        //    if (tipopersona != null)
+        //    {
+        //        List<MListaTipoPersonas> lista = new List<MListaTipoPersonas>();
+        //        foreach (var tipopers in tipopersona)
+        //        {
+        //            MListaTipoPersonas TipoPersona = new MListaTipoPersonas();
+        //            TipoPersona.Id = tipopers.Id;
+        //            TipoPersona.Descripcion = tipopers.nombre;
+        //            lista.Add(TipoPersona);
+        //        }
+        //        preregistro.TipoPersonas = lista;
+        //    }
+
+        //    preregistro.Status = 300;
+        //    preregistro.Mensaje = "No es personal de Ejercito";
+
+        //    if (usuario == null)
+        //    {
+        //        var user = new Usuario()
+        //        {
+        //            UserName = Registro.eMail,
+        //            Email = Registro.eMail,
+        //            Token = token
+        //        };
+        //        var result = _userService.CreateAsync(user, "12345678");
+        //        if (result.Result.Succeeded)
+        //        {
+        //            html = "<br/>Sr: " + Registro.eMail + "<br/><br/>";
+        //            html += "Su Token de Registro es: " + token.ToString() + "<br/><br/>";
+
+        //            bool mailEnviado1 = common.EnviarMail(Registro.eMail.Trim(), "Token Registro SmartClick", html, "");
+        //            if (mailEnviado1)
+        //            {
+        //                preregistro.Mensaje = "Usuario creado con Éxito - Mail enviado";
+        //            }
+        //            else
+        //            {
+        //                preregistro.Mensaje = "Usuario creado pero ERROR al enviar mail";
+        //            }
+        //            // ❌ ELIMINAR ESTA LÍNEA: preregistro.Mensaje = "Usuario creado con Exito";
+        //        }
+        //    }
+        //    else
+        //    {
+        //        if (!usuario.EmailConfirmed)
+        //        {
+        //            usuario.Token = token;
+        //            _context.Usuarios.Update(usuario);
+        //            _context.SaveChanges();
+        //            html = "<br/>Sr: " + Registro.eMail + "<br/><br/>";
+        //            html += "Su Token de Registro es: " + token.ToString() + "<br/><br/>";
+
+        //            bool mailEnviado2 = common.EnviarMail(Registro.eMail.Trim(), "Token Registro SmartClick", html, "");
+        //            if (mailEnviado2)
+        //            {
+        //                preregistro.Mensaje = "Envio email con Token - Mail enviado!!";
+        //            }
+        //            else
+        //            {
+        //                preregistro.Mensaje = "Token actualizado pero ERROR al enviar mail";
+        //            }
+        //            // ❌ ELIMINAR ESTA LÍNEA: preregistro.Mensaje = "Envio email con Token !!";
+        //        }
+        //        else
+        //        {
+        //            preregistro.Status = 500;
+        //            preregistro.Mensaje = "Socio Ya Ingresado, debera recuperar contraseña";
+        //        }
+        //    }
+
+        //    return preregistro;
+        //}
 
         [HttpPost]
         [Route("EliminarPreRegistro")]
@@ -897,7 +1051,6 @@ namespace SmartClick.Controllers
             {
                 user = new Usuario()
                 {
-
                     UserName = Registro.Mail,
                     Email = Registro.Mail
                 };
@@ -1176,5 +1329,46 @@ namespace SmartClick.Controllers
                 throw;
             }
         }
+
+
+        [HttpGet]
+        [Route("TraeTipoPersonas")]
+        [EnableCors("CorsPolicy")]
+        [AllowAnonymous]
+        public MListaTipoPersonasDTO TraeTipoPersonas()
+        {
+            MListaTipoPersonasDTO uat = new MListaTipoPersonasDTO();
+            try
+            {
+                var tipoPersona = _context.TiposPersonas.Select(x => new MListaTipoPersonas()
+                {
+                    Id = x.Id,
+                    Descripcion = x.nombre
+                }).ToList();
+
+                if (tipoPersona!=null)
+                {
+                    uat.TipoPersonas = tipoPersona;
+                    uat.Status = 200;
+                    uat.Mensaje = "Correcto";
+                }
+                else
+                {
+                    uat.Status = 204;
+                    uat.Mensaje = "No se encontraron Tipos de Personas.";
+                }
+
+                return uat;
+            }
+            catch (Exception e)
+            {
+                uat.Status = 500;
+                uat.Mensaje = "Error - "+e.Message;
+                return uat;
+            }
+
+
+        }
+
     }
 }

@@ -42,6 +42,7 @@ namespace DAL.Models
         public int TipoPersonaId { get; set; }
         public bool BloquearPrestamos { get; set; }
         public string CelularEmpresa { get; set; }
+        public bool EsEjercito { get; set; }
     }
     public class MRegistraPersonaDTO
     {
@@ -197,6 +198,14 @@ namespace DAL.Models
     {
         public int Id { get; set; }
         public string Descripcion { get; set; }
+
+    }
+
+    public class MListaTipoPersonasDTO
+    {
+        public int Status { get; set; }
+        public string Mensaje { get; set; }
+        public List<MListaTipoPersonas> TipoPersonas { get; set; }
 
     }
 }

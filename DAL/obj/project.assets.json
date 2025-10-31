@@ -7483,7 +7483,6 @@
       "path": "microsoft.applicationinsights/2.4.0",
       "files": [
         ".nupkg.metadata",
-        ".signature.p7s",
         "lib/net40/Microsoft.ApplicationInsights.XML",
         "lib/net40/Microsoft.ApplicationInsights.dll",
         "lib/net45/Microsoft.ApplicationInsights.XML",
@@ -9263,7 +9262,6 @@
       "path": "microsoft.data.edm/5.8.2",
       "files": [
         ".nupkg.metadata",
-        ".signature.p7s",
         "lib/net40/Microsoft.Data.Edm.dll",
         "lib/net40/Microsoft.Data.Edm.xml",
         "lib/net40/de/Microsoft.Data.Edm.resources.dll",
@@ -9329,7 +9327,6 @@
       "path": "microsoft.data.odata/5.8.2",
       "files": [
         ".nupkg.metadata",
-        ".signature.p7s",
         "lib/net40/Microsoft.Data.OData.dll",
         "lib/net40/Microsoft.Data.OData.xml",
         "lib/net40/de/Microsoft.Data.OData.resources.dll",
@@ -10237,7 +10234,6 @@
       "path": "microsoft.extensions.platformabstractions/1.1.0",
       "files": [
         ".nupkg.metadata",
-        ".signature.p7s",
         "lib/net451/Microsoft.Extensions.PlatformAbstractions.dll",
         "lib/net451/Microsoft.Extensions.PlatformAbstractions.xml",
         "lib/netstandard1.3/Microsoft.Extensions.PlatformAbstractions.dll",
@@ -11545,7 +11541,6 @@
       "path": "runtime.native.system.net.security/4.3.0",
       "files": [
         ".nupkg.metadata",
-        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/netstandard1.0/_._",
@@ -11554,11 +11549,12 @@
       ]
     },
     "runtime.native.System.Security.Cryptography.Apple/4.3.0": {
-      "sha512": "jwjwlEL0Elv6gwoyaokRn12nv/JE+UW/DXJEbzhjCPvGbef36StnHKc9XaZD/rGWqYicrphZ7eumR/jdmNcjRg==",
+      "sha512": "DloMk88juo0OuOWr56QG7MNchmafTLYWvABy36izkrLI5VledI0rq28KGs1i9wbpeT9NPQrx/wTf8U2vazqQ3Q==",
       "type": "package",
       "path": "runtime.native.system.security.cryptography.apple/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/netstandard1.0/_._",
@@ -11595,11 +11591,12 @@
       ]
     },
     "runtime.opensuse.42.1-x64.runtime.native.System.Security.Cryptography.OpenSsl/4.3.0": {
-      "sha512": "G2+96gYRbzp1JZCID6B+u2XJ0bs2wCubd6rE3+Tj436dKfnciF7YgsLi2VvLeJq6kxYyU4IJrVrpCvC8Yf6bhA==",
+      "sha512": "KeLz4HClKf+nFS7p/6Fi/CqyLXh81FpiGzcmuS8DGi9lUqSnZ6Es23/gv2O+1XVGfrbNmviF7CckBpavkBoIFQ==",
       "type": "package",
       "path": "runtime.opensuse.42.1-x64.runtime.native.system.security.cryptography.openssl/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "runtime.opensuse.42.1-x64.runtime.native.system.security.cryptography.openssl.4.3.0.nupkg.sha512",
@@ -11608,11 +11605,12 @@
       ]
     },
     "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.Apple/4.3.0": {
-      "sha512": "Kh9W4agE0r/hK8AX1LvyQI2NrKHBL8pO0gRoDTdDb0LL6Ta1Z2OtFx3lOaAE0ZpCUc/dt9Wzs3rA7a3IsKdOVA==",
+      "sha512": "kVXCuMTrTlxq4XOOMAysuNwsXWpYeboGddNGpIgNSZmv1b6r/s/DPk0fYMB7Q5Qo4bY68o48jt4T4y5BVecbCQ==",
       "type": "package",
       "path": "runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple.4.3.0.nupkg.sha512",
@@ -11635,11 +11633,12 @@
       ]
     },
     "runtime.rhel.7-x64.runtime.native.System.Security.Cryptography.OpenSsl/4.3.0": {
-      "sha512": "T5NvFgmHX0WH4c7lP72krsnk+IJI10vJf2j2twGE+5QBRA4RyRAgD+ZjEgdmpLOjW4B+nZGaadewTCUcR899OQ==",
+      "sha512": "nyFNiCk/r+VOiIqreLix8yN+q3Wga9+SE8BCgkf+2BwEKiNx6DyvFjCgkfV743/grxv8jHJ8gUK4XEQw7yzRYg==",
       "type": "package",
       "path": "runtime.rhel.7-x64.runtime.native.system.security.cryptography.openssl/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "runtime.rhel.7-x64.runtime.native.system.security.cryptography.openssl.4.3.0.nupkg.sha512",
@@ -11648,11 +11647,12 @@
       ]
     },
     "runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl/4.3.0": {
-      "sha512": "JGc0pAWRE8lB4Ucygk2pYSKbUPLlAIq6Bczf5/WF2D/VKJEPtYlVUMxk8fbl1zRfTWzSHi+VcFZlaPlWiNxeKg==",
+      "sha512": "ytoewC6wGorL7KoCAvRfsgoJPJbNq+64k2SqW6JcOAebWsFUvCCYgfzQMrnpvPiEl4OrblUlhF2ji+Q1+SVLrQ==",
       "type": "package",
       "path": "runtime.ubuntu.14.04-x64.runtime.native.system.security.cryptography.openssl/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "runtime.ubuntu.14.04-x64.runtime.native.system.security.cryptography.openssl.4.3.0.nupkg.sha512",
@@ -12163,11 +12163,12 @@
       ]
     },
     "System.Collections.NonGeneric/4.3.0": {
-      "sha512": "LE/oChpRvkSi3U25u0KnJcI44JeDZ1QJCyN4qFDx2uusEypdqR24w7lKYw21eYe5esuCBuc862wRmpF63Yy1KQ==",
+      "sha512": "prtjIEMhGUnQq6RnPEYLpFt8AtLbp9yq2zxOSrY7KJJZrw25Fi97IzBqY7iqssbM61Ek5b8f3MG/sG1N2sN5KA==",
       "type": "package",
       "path": "system.collections.nongeneric/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/MonoAndroid10/_._",
@@ -12883,11 +12884,12 @@
       ]
     },
     "System.Diagnostics.FileVersionInfo/4.3.0": {
-      "sha512": "6WVi7gArhxRiC+3qI5V2mFe1gHENj/F7xT5PQiy/lI/RsxXeivrt09WF0huwSQK2ubnmyyRFeA9z3w743/w32A==",
+      "sha512": "omCF64wzQ3Q2CeIqkD6lmmxeMZtGHUmzgFMPjfVaOsyqpR66p/JaZzManMw1s33osoAb5gqpncsjie67+yUPHQ==",
       "type": "package",
       "path": "system.diagnostics.fileversioninfo/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/MonoAndroid10/_._",
@@ -12968,7 +12970,6 @@
       "path": "system.diagnostics.process/4.3.0",
       "files": [
         ".nupkg.metadata",
-        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/MonoAndroid10/_._",
@@ -14245,7 +14246,6 @@
       "path": "system.net.security/4.3.0",
       "files": [
         ".nupkg.metadata",
-        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/MonoAndroid10/_._",
@@ -15483,11 +15483,12 @@
       ]
     },
     "System.Runtime.Serialization.Primitives/4.3.0": {
-      "sha512": "2Z5t70a2SwMsfQDp9KOclaZNyQhfIga2gppq9lIUDM1A4ohTshn4JqT7ir8bvIhXgorWKYDAr6rPzEbi/nTGKg==",
+      "sha512": "Wz+0KOukJGAlXjtKr+5Xpuxf8+c8739RI1C+A2BoQZT+wMCCoMDDdO8/4IRHfaVINqL78GO8dW8G2lW/e45Mcw==",
       "type": "package",
       "path": "system.runtime.serialization.primitives/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/MonoAndroid10/_._",
@@ -16203,7 +16204,6 @@
       "path": "system.spatial/5.8.2",
       "files": [
         ".nupkg.metadata",
-        ".signature.p7s",
         "lib/net40/System.Spatial.dll",
         "lib/net40/System.Spatial.xml",
         "lib/net40/de/System.Spatial.resources.dll",
@@ -17159,11 +17159,12 @@
       ]
     },
     "System.Xml.XmlSerializer/4.3.0": {
-      "sha512": "VShQJhOxgD/5M2Z1IWm1vMaSqlbjo1zdFf8H7Ahte6bTvSUhUko/gDpAVVhGgGgTDeue4QyNg1fu1Zz2GKSEuQ==",
+      "sha512": "MYoTCP7EZ98RrANESW05J5ZwskKDoN0AuZ06ZflnowE50LTpbR5yRg3tHckTVm5j/m47stuGgCrCHWePyHS70Q==",
       "type": "package",
       "path": "system.xml.xmlserializer/4.3.0",
       "files": [
         ".nupkg.metadata",
+        ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/MonoAndroid10/_._",
@@ -17339,35 +17340,32 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\jorge\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {},
-    "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
+    "/home/martin/.nuget/packages/": {},
+    "/usr/lib/dotnet/sdk/NuGetFallbackFolder": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\SmartClick\\DAL\\DAL.csproj",
+      "projectUniqueName": "/home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/DAL/DAL.csproj",
       "projectName": "DAL",
-      "projectPath": "D:\\SmartClick\\DAL\\DAL.csproj",
-      "packagesPath": "C:\\Users\\jorge\\.nuget\\packages\\",
-      "outputPath": "D:\\SmartClick\\DAL\\obj\\",
+      "projectPath": "/home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/DAL/DAL.csproj",
+      "packagesPath": "/home/martin/.nuget/packages/",
+      "outputPath": "/home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/DAL/obj/",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
-        "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        "/usr/lib/dotnet/sdk/NuGetFallbackFolder"
       ],
       "configFilePaths": [
-        "C:\\Users\\jorge\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/home/martin/Programacion/iscoders/SiempreClick/SmartClick-Backend/NuGet.config",
+        "/home/martin/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "netcoreapp2.2"
       ],
       "sources": {
-        "C:\\": {},
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "http://cps-ea.mil.ar/nugetcps/nuget": {},
+        "/app/packages": {},
+        "/usr/lib/dotnet/library-packs": {},
+        "http://186.189.235.156/nugetCps/nuget": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -17386,7 +17384,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.200"
+      "SdkAnalysisLevel": "9.0.100"
     },
     "frameworks": {
       "netcoreapp2.2": {
@@ -17418,40 +17416,30 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.111/RuntimeIdentifierGraph.json"
       }
     }
   },
   "logs": [
     {
-      "code": "Undefined",
+      "code": "NU1801",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "Acceso denegado a la ruta de acceso 'C:\\Archivos de programa'."
+      "message": "The local source '/app/packages' doesn't exist.",
+      "libraryId": "Commons"
     },
     {
-      "code": "Undefined",
+      "code": "NU1801",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "Acceso denegado a la ruta de acceso 'C:\\Config.Msi'."
-    },
-    {
-      "code": "Undefined",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Acceso denegado a la ruta de acceso 'C:\\Documents and Settings'."
-    },
-    {
-      "code": "Undefined",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Acceso denegado a la ruta de acceso 'C:\\System Volume Information'."
+      "message": "Failed to retrieve information about 'Commons' from remote source 'http://186.189.235.156/nugetCps/nuget/FindPackagesById()?id='Commons'&semVerLevel=2.0.0'.",
+      "libraryId": "Commons"
     },
     {
       "code": "NU1603",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "DAL depende de Commons (>= 1.3.14), pero no se encontró Commons 1.3.14. Commons 1.3.15 se resolvió en su lugar.",
+      "message": "DAL depends on Commons (>= 1.3.14) but Commons 1.3.14 was not found. Commons 1.3.15 was resolved instead.",
       "libraryId": "Commons",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"
@@ -17461,7 +17449,7 @@
       "code": "NU1903",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "El paquete \"Microsoft.NETCore.App\" 2.2.0 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-2xjx-v99w-gqf3",
+      "message": "Package 'Microsoft.NETCore.App' 2.2.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-2xjx-v99w-gqf3",
       "libraryId": "Microsoft.NETCore.App",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"
@@ -17471,7 +17459,7 @@
       "code": "NU1903",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "El paquete \"Microsoft.NETCore.App\" 2.2.0 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-6px8-22w5-w334",
+      "message": "Package 'Microsoft.NETCore.App' 2.2.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-6px8-22w5-w334",
       "libraryId": "Microsoft.NETCore.App",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"
@@ -17481,7 +17469,7 @@
       "code": "NU1902",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "El paquete \"Microsoft.NETCore.App\" 2.2.0 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-x5qj-9vmx-7g6g",
+      "message": "Package 'Microsoft.NETCore.App' 2.2.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-x5qj-9vmx-7g6g",
       "libraryId": "Microsoft.NETCore.App",
       "targetGraphs": [
         ".NETCoreApp,Version=v2.2"

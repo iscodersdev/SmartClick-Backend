@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
+﻿using BusinessCore.Services;
+using Commons.Extensions;
+using Commons.Identity.DummyData;
+using Commons.Identity.Services;
 using DAL.Data;
 using DAL.Models;
 using Microsoft.AspNetCore.Builder;
@@ -14,13 +13,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SmartClickCore.Services;
-using Newtonsoft.Json.Serialization;
-using BusinessCore.Services;
-using Commons.Identity.DummyData;
-using Commons.Extensions;
-using Commons.Identity.Services;
 using Microsoft.OpenApi.Models;
+using Newtonsoft.Json.Serialization;
+using SmartClickCore.Services;
+using Swashbuckle.AspNetCore.Swagger;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace SmartClickCore
 {
@@ -43,22 +46,74 @@ namespace SmartClickCore
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
 
-            services.AddCors(options =>
-            {
-                options.AddPolicy("CorsPolicy",
-                    builder => builder.AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader());
+           
 
-                options.AddPolicy("AllowSpecificOrigin",
-            builder =>
+            //services.AddCors(options =>
+            //{
+            //    options.AddPolicy("CorsPolicy",
+            //        builder => builder.AllowAnyOrigin()
+            //        .AllowAnyMethod()
+            //        .AllowAnyHeader());
+
+            //    options.AddPolicy("AllowSpecificOrigin",
+            //builder =>
+            //{
+            //    builder.WithOrigins("https://signature-hero.lovable.app",
+            //                        "https://siempreclick.netlify.app",
+            //                        "https://preview--smartclick-web-start.lovable.app",
+            //                        "https://firmaprever.netlify.app",
+            //                        "https://smartclick-web-start.lovable.app"
+            //        )
+            //           .AllowAnyHeader()
+            //           .AllowAnyMethod()
+            //           .AllowCredentials();
+            //});
+
+
+                services.AddCors(options =>
+                {
+                    options.AddPolicy("CorsPolicy",
+                        builder => builder.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+
+                    options.AddPolicy("AllowSpecificOrigin",
+                builder =>
+                {
+                    builder.WithOrigins("https://signature-hero.lovable.app",
+                                        "https://siempreclick.netlify.app",
+                                        "https://preview--smartclick-web-start.lovable.app",
+                                        "https://firmaprever.netlify.app",
+                                        "https://smartclick-web-start.lovable.app"
+                        )
+                           .AllowAnyHeader()
+                           .AllowAnyMethod()
+                           .AllowCredentials();
+                });
+
+
+
+                });
+
+            services.AddSwaggerGen(c =>
             {
-                builder.WithOrigins("https://signature-hero.lovable.app")
-                       .AllowAnyHeader()
-                       .AllowAnyMethod();
+                c.SwaggerDoc("v1", new Info
+                {
+                    Title = "API de PSP",
+                    Version = "v1",
+                    Description = "Documentación de los endpoints disponibles para la Utilizar PSP."
+                });
+
+                c.DocInclusionPredicate((docName, apiDesc) =>
+                {
+                    if (!apiDesc.TryGetMethodInfo(out var methodInfo)) return false;
+
+                    var controllerNamespace = methodInfo.DeclaringType.Namespace;
+                    return controllerNamespace.Contains("SmartClickCore.API.Controllers.PSP");
+                });
             });
 
-            });
+
             services.AddDbContext<SmartClickContext>(options =>
                 options.UseLazyLoadingProxies()
                         .UseSqlServer(
@@ -80,6 +135,10 @@ namespace SmartClickCore
             services.AddTransient<CGEService>();
             services.AddTransient<NotificacionAPIService>();
             services.AddTransient<PlenarioService>();
+            
+            // Registro de servicios PSP - CORREGIDO para .NET Core 2.2
+            services.AddSingleton<HttpClient>(provider => new HttpClient());
+            services.AddTransient<IPSPService, PSPService>();
 
             services.AddSession();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
@@ -100,6 +159,7 @@ namespace SmartClickCore
                 })
                 ;
 
+            services.AddHostedService<Worker>();
             services.Configure<IdentityOptions>(options =>
             {
                 options.Password.RequireDigit = false;
@@ -110,6 +170,62 @@ namespace SmartClickCore
             });
         }
 
+
+        //public void Configure(IApplicationBuilder app, IHostingEnvironment env, UserService<Usuario> userService, SmartClickContext context)
+        //{
+        //    // Asignacion de administradores por defecto
+        //    //var adminUserResult = context.Usuarios.Where(x => x.UserName == "ramperez" || x.UserName == "pperez" || x.UserName == "mkucsera" || x.UserName == "aballa").ToList();
+        //    //if (adminUserResult != null)
+        //    //{
+        //    //    foreach (Usuario a in adminUserResult)
+        //    //    {
+        //    //        if (usuario.GetClaimsAsync(a).Result.All(x => x.Type != "IsAdmin"))
+        //    //        {
+        //    //            usuario.AddClaimAsync(a, new Claim("IsAdmin", a.UserName));
+        //    //        }
+        //    //    }
+        //    //}
+
+        //    if (env.IsDevelopment())
+        //    {
+        //        app.UseDeveloperExceptionPage();
+        //        app.UseDatabaseErrorPage();
+        //        DummyAdmin.Initialize<Usuario>(userService).Wait();
+        //    }
+        //    else
+        //    {
+        //        //app.UseDeveloperExceptionPage();
+        //        app.UseDatabaseErrorPage();
+        //        app.UseHsts();                
+        //        //Provisorio
+        //        DummyAdmin.Initialize<Usuario>(userService).Wait();
+        //    }
+
+        //    app.UseSwagger();
+        //    app.UseSwaggerUI(c =>
+        //    {
+        //        string swaggerJsonBasePath = string.IsNullOrWhiteSpace(c.RoutePrefix) ? "." : "..";
+        //        c.SwaggerEndpoint($"{swaggerJsonBasePath}/swagger/v1/swagger.json", "My API");
+        //    });
+
+        //    //app.UseCors("CorsPolicy");
+        //    app.UseCors("AllowSpecificOrigin");
+        //    app.UseStaticFiles();
+        //    app.UseSession();
+        //    app.UseCommonsLibraryScripts();
+        //    app.UseAuthentication();
+        //    app.UseMvc(routes =>
+        //    {
+        //        routes.MapRoute(
+        //          name: "areas",
+        //          template: "{area:exists}/{controller=Home}/{action=Index}/{id?}"
+        //      );
+        //        routes.MapRoute(
+        //            name: "default",
+        //            template: "{controller=Home}/{action=Index}/{id?}");
+        //    });
+        //    app.UseCookiePolicy();
+        //}
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, UserService<Usuario> userService, SmartClickContext context)
         {
@@ -136,12 +252,19 @@ namespace SmartClickCore
             {
                 //app.UseDeveloperExceptionPage();
                 app.UseDatabaseErrorPage();
-                app.UseHsts();                
+                app.UseHsts();
                 //Provisorio
                 DummyAdmin.Initialize<Usuario>(userService).Wait();
             }
 
-  
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                string swaggerJsonBasePath = string.IsNullOrWhiteSpace(c.RoutePrefix) ? "." : "..";
+                c.SwaggerEndpoint($"{swaggerJsonBasePath}/swagger/v1/swagger.json", "My API");
+            });
+
+            // CAMBIO: Usar CorsPolicy en lugar de AllowSpecificOrigin para permitir cualquier origen
             app.UseCors("CorsPolicy");
             app.UseStaticFiles();
             app.UseSession();
@@ -159,5 +282,6 @@ namespace SmartClickCore
             });
             app.UseCookiePolicy();
         }
+
     }
 }

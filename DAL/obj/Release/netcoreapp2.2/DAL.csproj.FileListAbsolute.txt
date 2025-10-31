@@ -18,3 +18,14 @@ D:\SmartClick\DAL\obj\Release\netcoreapp2.2\DAL.AssemblyInfo.cs
 D:\SmartClick\DAL\obj\Release\netcoreapp2.2\DAL.csproj.CoreCompileInputs.cache
 D:\SmartClick\DAL\obj\Release\netcoreapp2.2\DAL.dll
 D:\SmartClick\DAL\obj\Release\netcoreapp2.2\DAL.pdb
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\bin\Release\netcoreapp2.2\DAL.deps.json
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\bin\Release\netcoreapp2.2\DAL.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\bin\Release\netcoreapp2.2\DAL.pdb
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Release\netcoreapp2.2\DAL.csproj.AssemblyReference.cache
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Release\netcoreapp2.2\DAL.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Release\netcoreapp2.2\DAL.AssemblyInfoInputs.cache
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Release\netcoreapp2.2\DAL.AssemblyInfo.cs
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Release\netcoreapp2.2\DAL.csproj.CoreCompileInputs.cache
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Release\netcoreapp2.2\DAL.sourcelink.json
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Release\netcoreapp2.2\DAL.dll
+C:\Users\dullk\source\repos\SmartClick-Backend\DAL\obj\Release\netcoreapp2.2\DAL.pdb

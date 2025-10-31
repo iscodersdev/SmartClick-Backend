@@ -1,0 +1,145 @@
+﻿@using Commons.HtmlHelpers
+@model DAL.Models.PrestamoDTO
+@{
+    ViewData["Title"] = "Editar Valores Prestamo: ";
+}
+<div class="row">
+    <div class="col-md-12">
+        <form asp-action="_Update" enctype="multipart/form-data">
+            @using (Html.BoxDefault(BoxColor.Info))
+            {
+                using (Html.BoxHeader("Información")) { }
+                using (Html.BoxBody())
+                {
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="Id" />
+                    <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="box box-success box-solid">
+                                    <div class="box-header text-center">
+                                        <h4 class="box-title text-center" style="font-size:20px;">DNI Frente</h4>
+                                    </div>
+                                    <div class="box-body">
+                                        <img class="img-thumbnail" src="@Model.DNIAnverso" alt="DNI Frente">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="box box-success box-solid">
+                                    <div class="box-header text-center">
+                                        <h4 class="box-title text-center" style="font-size:20px;">DNI Reverso</h4>
+                                    </div>
+                                    <div class="box-body">
+                                        <img class="img-thumbnail" src="@Model.FotoDNIReverso" alt="DNI Dorso">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="box box-success box-solid">
+                                    <div class="box-header text-center">
+                                        <h4 class="box-title text-center" style="font-size:20px;">Foto Con DNI</h4>
+                                    </div>
+                                    <div class="box-body">
+                                        <img class="img-thumbnail" src="@Model.FotoSosteniendoDNI" alt="DNI Dorso">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                using (Html.BoxFooter())
+                {
+                    <a asp-action="Index" class="btn btn-default">Cancelar</a>
+
+                }
+            }
+        </form>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $("#selectorCodeudorUpdate .bootstrap-select").hide();
+        $("#CodeudorSelectUpdate").select2({
+            language: {
+                inputTooShort: function () {
+                    return "Debe ingresar como mínimo 3 caracteres.";
+                },
+                errorLoading: function () {
+                    return "Hubo un error al traer los Clientes."
+                },
+                noResults: function () {
+                    return 'No se encontraron Clientes.';
+                },
+                searching: function () {
+                    return 'Buscando...';
+                }
+            },
+            ajax: {
+                url: "/Core/Clientes/ClienteCombo",
+                dataType: 'json',
+                data: function (params) {
+                    return {
+                        term: params.term,
+                        id: $("#Id").val()
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data
+                    };
+                },
+            },
+            placeholder: 'Ingrese un Cliente',
+            minimumInputLength: 3
+        });
+        let Codeudor = {
+            id: "@ViewBag.CodeudorId",
+            text:"@Html.Raw(ViewBag.CodeudorDescripcion)"
+        }
+        let DefaultCodeudor = new Option(Codeudor.text, Codeudor.id, true, false);
+        $("#CodeudorSelectUpdate").append(DefaultCodeudor).trigger("change");
+
+
+        $("#selectorDependeDeUpdate .bootstrap-select").hide();
+        $("#DependeDeSelectUpdate").select2({
+            language: {
+                inputTooShort: function () {
+                    return "Debe ingresar como mínimo 3 caracteres.";
+                },
+                errorLoading: function () {
+                    return "Hubo un error al traer los Clientes."
+                },
+                noResults: function () {
+                    return 'No se encontraron Clientes.';
+                },
+                searching: function () {
+                    return 'Buscando...';
+                }
+            },
+            ajax: {
+                url: "/Core/Clientes/ClienteCombo",
+                dataType: 'json',
+                data: function (params) {
+                    return {
+                        term: params.term,
+                        id: $("#Id").val()
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data
+                    };
+                },
+            },
+            placeholder: 'Ingrese un Cliente',
+            minimumInputLength: 3
+        });
+        let DependeDe = {
+            id: "@ViewBag.DependeDeId",
+            text:"@Html.Raw(ViewBag.DependeDeDescripcion)"
+        }
+        let DefaultDependeDe = new Option(DependeDe.text, DependeDe.id, true, false);
+        $("#DependeDeSelectUpdate").append(DefaultDependeDe).trigger("change");
+    });
+</script>

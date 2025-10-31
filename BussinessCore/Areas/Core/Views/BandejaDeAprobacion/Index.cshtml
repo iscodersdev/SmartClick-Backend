@@ -84,6 +84,7 @@
                 { data: "MontoPrestado", title: "Solicitado", sClass: "text-center" },
                 { data: "MontoCuota", title: "Cuota", sClass: "text-center" },
                 { data: "Saldo", title: "Saldo", render: $.fn.dataTable.render.number(',', '.', 2, '$'), sClass: "text-center" },
+                { data: "Canal", title: "Canal" },
                 { data: "Estado", title: "Estado Prestamo", sClass: "text-center" },
                 {
                     "title": "Acciones",
@@ -91,8 +92,9 @@
                     "sortable": false,
                     "render": function (data, type, row) {
                         var action = '';
-                        action = action + `<a datatoggle='tooltip' title='Ver Legajo' onclick="verLegajo(${row['Id']})" class="btn btn-info btn-xs"><i class="fa fa-print"></i></a>&nbsp;`;
+                      //  action = action + `<a datatoggle='tooltip' title='Ver Legajo' onclick="verLegajo(${row['Id']})" class="btn btn-info btn-xs"><i class="fa fa-print"></i></a>&nbsp;`;
                         action = action + `<a datatoggle='tooltip' title='Ver Datos Causante' onclick="verDatosPersona(${row['ClienteId']})" class="btn btn-primary btn-xs"><i class="fa fa-user"></i></a>&nbsp;`;
+                        action = action + `<a datatoggle='tooltip' title='Ver Fotos' onclick="verFotos(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-camera"></i></a>&nbsp;`;
                         // action = action + `<a datatoggle='tooltip' title='Ver Legajo Inaes' onclick="verLegajoInae(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-print"></i></a>&nbsp;`;
                        // action = action + `<a datatoggle='tooltip' title='Ver Legajo Inversor' onclick="verLegajoMasVenta(${row['Id']})" class="btn btn-info btn-xs"><i class="fa fa-print"></i></a>&nbsp;`;
                         action = action + `<a datatoggle='tooltip' title='Sueldo Neto y Primer Vencimiento' onclick="modificaPrestamo(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-user-plus"></i></a>&nbsp;`;
@@ -106,22 +108,22 @@
                             //action = action + `<a datatoggle='tooltip' title='Sueldo Neto y Primer Vencimiento' onclick="modificaPrestamo(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-user-plus"></i></a>&nbsp;`;
                             action = action + `<a datatoggle='tooltip' title='Aprobar Solicitud' onclick="apruebaPrestamo(${row['Id']})" class="btn btn-success btn-xs"><i class="fa fa-thumbs-o-up"></i></a>&nbsp;`;
                             action = action + `<a datatoggle='tooltip' title='Desaprueba Solicitud' onclick="anulaPrestamo(${row['Id']})" class="btn btn-danger btn-xs"><i class="fa fa-thumbs-o-down"></i></a>&nbsp;`;
-                            action = action + `<a datatoggle='tooltip' title='Enviar Notificación Préstamo' onclick="EnviarNoti([${row['DNI']}, ${row['Id']}])" class="btn btn-primary btn-xs"><i class="fa fa-envelope"></i></a>&nbsp;`;
-                            action = action + `<a datatoggle='tooltip' title='Carga Adjuntos' onclick="cargaAdjuntosCertDesc(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-sellsy"></i></a>&nbsp;`;
+                            // action = action + `<a datatoggle='tooltip' title='Enviar Notificación Préstamo' onclick="EnviarNoti([${row['DNI']}, ${row['Id']}])" class="btn btn-primary btn-xs"><i class="fa fa-envelope"></i></a>&nbsp;`;
+                            // action = action + `<a datatoggle='tooltip' title='Carga Adjuntos' onclick="cargaAdjuntosCertDesc(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-sellsy"></i></a>&nbsp;`;
                         }
                         if (row['EstadoPrestamoId'] == 2) { //Esperando Transferencia
-                            action = action + `<a datatoggle='tooltip' title='Carga Comprobante de Transferecia' onclick="cargaAdjuntos(${row['Id']})" class="btn bg-orange btn-xs"><i class="fa fa-cloud-upload"></i></a>&nbsp;`;
-                            action = action + `<a datatoggle='tooltip' title='Carga Adjuntos' onclick="cargaAdjuntosCertDesc(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-sellsy"></i></a>&nbsp;`;
+                            // action = action + `<a datatoggle='tooltip' title='Carga Comprobante de Transferecia' onclick="cargaAdjuntos(${row['Id']})" class="btn bg-orange btn-xs"><i class="fa fa-cloud-upload"></i></a>&nbsp;`;
+                            // action = action + `<a datatoggle='tooltip' title='Carga Adjuntos' onclick="cargaAdjuntosCertDesc(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-sellsy"></i></a>&nbsp;`;
                             action = action + `<a datatoggle='tooltip' title='Desaprueba Solicitud' onclick="anulaPrestamo(${row['Id']})" class="btn btn-danger btn-xs"><i class="fa fa-thumbs-o-down"></i></a>&nbsp;`;
                         }
                         if (row['EstadoPrestamoId'] == 6) { //Confirmar Persona
-                            action = action + `<a datatoggle='tooltip' title='Enviar Notificación Préstamo' onclick="EnviarNoti([${row['DNI']}, ${row['Id']}])" class="btn btn-primary btn-xs"><i class="fa fa-envelope"></i></a>&nbsp;`;
+                            // action = action + `<a datatoggle='tooltip' title='Enviar Notificación Préstamo' onclick="EnviarNoti([${row['DNI']}, ${row['Id']}])" class="btn btn-primary btn-xs"><i class="fa fa-envelope"></i></a>&nbsp;`;
                             action = action + `<a datatoggle='tooltip' title='Desaprueba Solicitud' onclick="anulaPrestamo(${row['Id']})" class="btn btn-danger btn-xs"><i class="fa fa-thumbs-o-down"></i></a>&nbsp;`;
                         }
                         if (row['EstadoPrestamoId'] == 7) { //Transferido
                             action = action + `<a datatoggle='tooltip' title='Cerrar Prestamo' onclick="cerrarPrestamo(${row['Id']})" class="btn btn-success btn-xs"><i class="fa fa-check-circle"></i></a>&nbsp;`;
-                            action = action + `<a datatoggle='tooltip' title='Ver Comprobante De Transferencia' onclick="cargaAdjuntos(${row['Id']})" class="btn bg-orange btn-xs"><i class="fa fa-file-image-o"></i></a>&nbsp;`;
-                            action = action + `<a datatoggle='tooltip' title='Ver Adjuntos' onclick="cargaAdjuntosCertDesc(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-file-image-o"></i></a>`;
+                            // action = action + `<a datatoggle='tooltip' title='Ver Comprobante De Transferencia' onclick="cargaAdjuntos(${row['Id']})" class="btn bg-orange btn-xs"><i class="fa fa-file-image-o"></i></a>&nbsp;`;
+                            // action = action + `<a datatoggle='tooltip' title='Ver Adjuntos' onclick="cargaAdjuntosCertDesc(${row['Id']})" class="btn btn-warning btn-xs"><i class="fa fa-file-image-o"></i></a>`;
                         }
                         return action;
                     }
@@ -222,6 +224,7 @@
 <modal callback-modal="true" title="Editar Solicitud de Prestamo" function="editarPrestamo" load-url="/Core/BandejaDeAprobacion/_EditarPrestamo/" size="Medium"></modal>
 <modal callback-modal="true" title="Carga Adjuntos" function="cargaAdjuntosCertDesc" load-url="/Core/BandejaDeAprobacion/_AdjuntoFotoCertificadoDescuento" size="Large"></modal>
 <modal callback-modal="true" title="Carga Comprobante de Transferecia" function="cargaAdjuntos" load-url="/Core/BandejaDeAprobacion/_Adjunto" size="Large"></modal>
+<modal callback-modal="true" title="Ver Fotos" function="verFotos" load-url="/Core/BandejaDeAprobacion/_VerFotos" size="Large"></modal>
 <modal callback-modal="true" title="Sueldo Neto y Primer Vencimiento" function="modificaPrestamo" load-url="/Core/BandejaDeAprobacion/_SueldoNetoPrimerVencimiento" size="Medium"></modal>
 
 
