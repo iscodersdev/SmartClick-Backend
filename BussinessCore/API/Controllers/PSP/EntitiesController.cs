@@ -1223,10 +1223,11 @@ namespace SmartClickCore.API.Controllers.PSP
                 var usuario = TraeUsuarioUAT(request?.UAT);
                 if (usuario == null)
                 {
+                    var estadoSinBilletera = _context.PSPAccountStatus.Where(s => s.Nombre == "Sin billetera").FirstOrDefault();
                     return BadRequest(new PSPStatusResponseDTO
                     {
                         Success = false,
-                        Estado = "error",
+                        Estado = estadoSinBilletera,
                         Mensaje = "Usuario no autenticado"
                     });
                 }
@@ -1248,7 +1249,8 @@ namespace SmartClickCore.API.Controllers.PSP
                     }
                     else
                     {
-                        return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = "error", Mensaje = "Error no se encontro la relación cliente psp" });
+                        var estadoSinBilletera = _context.PSPAccountStatus.Where(s => s.Nombre == "Sin billetera").FirstOrDefault();
+                        return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = estadoSinBilletera, Mensaje = "Error no se encontro la relación cliente psp" });
                     }
                 }
 
@@ -1284,7 +1286,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
                 var resultDto = new PSPStatusResponseDTO{
                     Success = true,
-                    Estado = pspAccount.Status ,
+                    Estado = pspAccount.EstadoCuentaPSP,
                     Mensaje = "test. Esta funcion no funciona",
                     EntityId = pspAccount.EntityId,
                     Cvu = pspAccount.CVU
@@ -1295,7 +1297,8 @@ namespace SmartClickCore.API.Controllers.PSP
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en SyncPspStatus");
-                return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = "error", Mensaje = "Error interno del servidor" });
+                var estadoSinBilletera = _context.PSPAccountStatus.Where(s => s.Nombre == "Sin billetera").FirstOrDefault();
+                return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = estadoSinBilletera, Mensaje = "Error interno del servidor" });
             }
         }
 
