@@ -1,2 +1,3 @@
+docker rm psp-test
 docker build -t psp .
 docker run -p 5000:80 -it --name psp-test psp
