@@ -1261,35 +1261,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Siempre usar el token obtenido por el servidor para que sea invisible al cliente
                 var userToken = userTokenTask.Result;
                 var systemToken = systemTokenTask.Result;
-
-                // Ejecutar C1 y C7 en paralelo cuando sea posible
-                Task<AccountsInfoResponseDTO> c1Task = null;
-                Task<EntityStatusResponseDTO> c7Task = null;
-
-                if (!string.IsNullOrEmpty(userToken))
-                {
-                    c1Task = _pspService.GetAccountDataAsync(userToken);
-                }
-                else
-                {
-                    // marcar como no disponible
-                    c1Task = Task.FromResult(new AccountsInfoResponseDTO { Success = false, Error = "NoUserToken" });
-                }
-
-                if (!string.IsNullOrEmpty(tributary) && userToken != null && !string.IsNullOrEmpty(userToken))
-                {
-                    c7Task = _pspService.GetEntityByTributaryIdAsync(tributary, userToken);
-                }
-                else
-                {
-                    c7Task = Task.FromResult(new EntityStatusResponseDTO { Success = false, Error = "NoSystemTokenOrTributary" });
-                }
-
-                await Task.WhenAll(c1Task, c7Task);
-
-                var c1 = c1Task.Result;
-                var c7 = c7Task.Result;
-
+                
                 // Buscar o crear PSPAccount para este usuario
                 var pspAccount = _context.Set<DAL.Models.PSPAccount>().Include(p => p.Usuario).FirstOrDefault(p => p.Usuario.Id == usuario.Id);
                 var created = false;
@@ -1306,179 +1278,18 @@ namespace SmartClickCore.API.Controllers.PSP
                     created = true;
                 }
 
-                // Guardar respuestas crudas para trazabilidad
-                try
-                {
-                    pspAccount.LastC1ResponseJson = JsonConvert.SerializeObject(c1);
-                }
-                catch { }
-                try
-                {
-                    pspAccount.LastC7ResponseJson = JsonConvert.SerializeObject(c7);
-                }
-                catch { }
                 pspAccount.LastStatusCheck = DateTime.UtcNow;
 
-                // Condicional: si C1 positivo -> persistir datos de cuenta
-                bool accountExists = c1 != null && c1.Success && c1.Accounts != null && c1.Accounts.Any();
-                if (accountExists)
-                {
-                    var account = c1.Accounts.First();
+                Console.WriteLine(pspAccount);
 
-                    // usar reflexión defensiva para obtener campos comunes
-                    object accountNumberObj = account?.GetType().GetProperty("accountNumber")?.GetValue(account) ?? account?.GetType().GetProperty("AccountNumber")?.GetValue(account);
-                    object cvuObj = account?.GetType().GetProperty("cvu")?.GetValue(account) ?? account?.GetType().GetProperty("Cvu")?.GetValue(account) ?? account?.GetType().GetProperty("cvU_CBU")?.GetValue(account);
-                    object accountTypeObj = account?.GetType().GetProperty("accountTypeId")?.GetValue(account) ?? account?.GetType().GetProperty("AccountTypeId")?.GetValue(account);
-                    object tributaryObj = account?.GetType().GetProperty("tributaryIdentifier")?.GetValue(account) ?? account?.GetType().GetProperty("TributaryIdentifier")?.GetValue(account);
-                    object pspUserIdObj = account?.GetType().GetProperty("personId")?.GetValue(account) ?? account?.GetType().GetProperty("personId")?.GetValue(account) ?? account?.GetType().GetProperty("userId")?.GetValue(account);
-
-                    // Campos adicionales defensivos
-                    object cvuAliasObj = account?.GetType().GetProperty("cvU_CBUAlias")?.GetValue(account)
-                        ?? account?.GetType().GetProperty("cvuAlias")?.GetValue(account)
-                        ?? account?.GetType().GetProperty("alias")?.GetValue(account)
-                        ?? account?.GetType().GetProperty("CBUAlias")?.GetValue(account);
-
-                    object entityIdObj = account?.GetType().GetProperty("entityId")?.GetValue(account) ?? account?.GetType().GetProperty("EntityId")?.GetValue(account);
-                    object identifierObj = account?.GetType().GetProperty("identifier")?.GetValue(account) ?? account?.GetType().GetProperty("Identifier")?.GetValue(account);
-
-                    object currencyTypeIdObj = account?.GetType().GetProperty("currencyTypeId")?.GetValue(account) ?? account?.GetType().GetProperty("CurrencyTypeId")?.GetValue(account);
-                    object currencyNameObj = account?.GetType().GetProperty("currencyTypeName")?.GetValue(account) ?? account?.GetType().GetProperty("CurrencyName")?.GetValue(account);
-                    object currencyDescObj = account?.GetType().GetProperty("currencyTypeDescription")?.GetValue(account) ?? account?.GetType().GetProperty("currencyDescription")?.GetValue(account);
-
-                    object accountTypeDescObj = account?.GetType().GetProperty("accountTypeDescription")?.GetValue(account) ?? account?.GetType().GetProperty("accountType")?.GetValue(account);
-                    object displayNameObj = account?.GetType().GetProperty("displayName")?.GetValue(account) ?? account?.GetType().GetProperty("name")?.GetValue(account);
-                    object virtualAccountObj = account?.GetType().GetProperty("virtualAccount")?.GetValue(account);
-                    object bankDescObj = account?.GetType().GetProperty("pspBankDescription")?.GetValue(account) ?? account?.GetType().GetProperty("bankDescription")?.GetValue(account);
-                    object deleteSolicitudeObj = account?.GetType().GetProperty("deleteAccountSolicitude")?.GetValue(account) ?? account?.GetType().GetProperty("deleteAccountSolicitud")?.GetValue(account);
-
-                    var accountNumber = accountNumberObj?.ToString();
-                    var cvu = cvuObj?.ToString();
-                    var cvuAlias = cvuAliasObj?.ToString();
-                    int? accountTypeId = null;
-                    if (accountTypeObj != null)
-                    {
-                        int tmp; if (int.TryParse(accountTypeObj.ToString(), out tmp)) accountTypeId = tmp;
-                    }
-                    var trib = tributaryObj?.ToString();
-
-                    var entityId = entityIdObj?.ToString();
-                    var identifier = identifierObj?.ToString();
-
-                    int? currencyTypeId = null;
-                    if (currencyTypeIdObj != null) { int tmp; if (int.TryParse(currencyTypeIdObj.ToString(), out tmp)) currencyTypeId = tmp; }
-                    var currencyName = currencyNameObj?.ToString();
-                    var currencyDesc = currencyDescObj?.ToString();
-
-                    var accountTypeDesc = accountTypeDescObj?.ToString();
-                    var displayName = displayNameObj?.ToString();
-                    bool? virtualAccount = null;
-                    if (virtualAccountObj != null) { bool tmpb; if (bool.TryParse(virtualAccountObj.ToString(), out tmpb)) virtualAccount = tmpb; }
-                    var bankDesc = bankDescObj?.ToString();
-                    bool? deleteSolicitude = null;
-                    if (deleteSolicitudeObj != null) { bool td; if (bool.TryParse(deleteSolicitudeObj.ToString(), out td)) deleteSolicitude = td; }
-
-                    if (!string.IsNullOrEmpty(accountNumber)) pspAccount.AccountNumber = accountNumber;
-                    // No sobreescribir CVU si ya existe salvo que esté vacío
-                    if (!string.IsNullOrEmpty(cvu) && string.IsNullOrEmpty(pspAccount.CVU)) pspAccount.CVU = cvu;
-                    // CVU alias/CBU alias
-                    if (!string.IsNullOrEmpty(cvuAlias) && string.IsNullOrEmpty(pspAccount.CVU_CBUAlias)) pspAccount.CVU_CBUAlias = cvuAlias;
-                    if (accountTypeId.HasValue) pspAccount.AccountTypeId = accountTypeId;
-                    if (!string.IsNullOrEmpty(trib)) pspAccount.TributaryIdentifier = trib;
-
-                    // entity / identifier
-                    if (!string.IsNullOrEmpty(entityId)) pspAccount.EntityId = entityId;
-                    if (!string.IsNullOrEmpty(identifier)) pspAccount.Identifier = identifier;
-
-                    // currency
-                    if (currencyTypeId.HasValue) pspAccount.CurrencyTypeId = currencyTypeId;
-                    if (!string.IsNullOrEmpty(currencyName)) pspAccount.CurrencyName = currencyName;
-                    if (!string.IsNullOrEmpty(currencyDesc)) pspAccount.CurrencyDescription = currencyDesc;
-
-                    // metadata / descriptions
-                    if (!string.IsNullOrEmpty(accountTypeDesc)) pspAccount.StatusDescription = accountTypeDesc;
-                    if (!string.IsNullOrEmpty(displayName)) pspAccount.StatusDescription = string.IsNullOrEmpty(pspAccount.StatusDescription) ? displayName : pspAccount.StatusDescription;
-                    if (!string.IsNullOrEmpty(bankDesc)) pspAccount.StatusDescription = string.IsNullOrEmpty(pspAccount.StatusDescription) ? bankDesc : pspAccount.StatusDescription;
-                    if (virtualAccount.HasValue && virtualAccount == true) { /* opcional: marcar flag o status */ }
-                    if (deleteSolicitude.HasValue) pspAccount.DeleteAccountSolicitude = deleteSolicitude;
-
-                    pspAccount.Status = "user_account_found";
-                }
-                // Si C7 positivo -> persistir datos de entidad
-                bool entityExists = c7 != null && c7.Success && c7.Data != null && c7.Data.Any();
-                if (entityExists)
-                {
-                    var entity = c7.Data.First();
-
-                    // persistir estado entidad
-                    pspAccount.EntityStatus = entity.EntityStatus;
-                    pspAccount.EntityStatusDescription = entity.EntityStatusDescription;
-
-                    // persistir cuentas de la entidad si existe
-                    if (entity.Accounts != null && entity.Accounts.Any())
-                    {
-                        var entAccount = entity.Accounts.First();
-                        // AccountNumber, Cvu, EntityId, Status, StatusDescription
-                        if (!string.IsNullOrEmpty(entAccount.AccountNumber)) pspAccount.AccountNumber = entAccount.AccountNumber;
-                        if (!string.IsNullOrEmpty(entAccount.Cvu)) pspAccount.CVU = entAccount.Cvu;
-                        // EntityId en PSC model is string
-                        try { pspAccount.EntityId = entAccount.EntityId.ToString(); } catch { }
-                        pspAccount.Status = "entity_found";
-                    }
-
-                    // also persist the tributary identifier (from request)
-                    if (!string.IsNullOrEmpty(tributary))
-                    {
-                        pspAccount.TributaryIdentifier = tributary;
-                    }
-                }
-
-                // Si ninguno existe -> marcar status
-                if (!accountExists && !entityExists)
-                {
-                    pspAccount.Status = "not_created";
-                }
-
-                pspAccount.UpdatedAt = DateTime.UtcNow;
-
-                // Guardar cambios (usar transacción cuando se crean o se actualizan múltiples campos)
-                try
-                {
-                    using (var tx = _context.Database.BeginTransaction())
-                    {
-                        await _context.SaveChangesAsync();
-                        tx.Commit();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error guardando PSPAccount desde SyncPspStatus");
-                    // no fallar la respuesta, pero reportar
-                }
-
-                // Construir mensaje global según reglas provistas
-                string overallMessage;
-                if (!accountExists && !entityExists)
-                {
-                    overallMessage = "NO SE CREÓ CUENTA NI ENTIDAD DE PSP DEL USUARIO";
-                }
-                else if (accountExists && !entityExists)
-                {
-                    overallMessage = "EN CURSO";
-                }
-                else // ambos positivos
-                {
-                    overallMessage = "SE ENCUENTRAN CREADAS LA CUENTA Y ENTIDAD DE PSP DEL USUARIO";
-                }
-
-                var resultDto = new PSPStatusResponseDTO
-                {
+                var resultDto = new PSPStatusResponseDTO{
                     Success = true,
-                    Estado = accountExists && entityExists ? "activa" : (accountExists ? "espera" : "crear_cuenta"),
-                    Mensaje = overallMessage,
+                    Estado = pspAccount.Status ,
+                    Mensaje = "test. Esta funcion no funciona",
                     EntityId = pspAccount.EntityId,
                     Cvu = pspAccount.CVU
                 };
-
+                
                 return Ok(resultDto);
             }
             catch (Exception ex)
