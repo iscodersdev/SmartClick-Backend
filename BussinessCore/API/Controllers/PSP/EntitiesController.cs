@@ -322,7 +322,9 @@ namespace SmartClickCore.API.Controllers.PSP
                                     EncryptedPassword = common.CifrarPassword(request.user.password),
                                     PSPUserId = pspResponse.UserId?.ToString(),
                                     Status = "active",
-                                    CreatedAt = DateTime.UtcNow
+                                    CreatedAt = DateTime.UtcNow,
+                                    EstadoCuentaPSP = _context.PSPAccountStatus.Where(x=>x.Codigo=="SB").FirstOrDefault()
+                                    
                                 };
 
                                 _context.Set<DAL.Models.PSPAccount>().Add(nuevoPspAccount);
@@ -330,18 +332,6 @@ namespace SmartClickCore.API.Controllers.PSP
 
                                 Log.Information($"✅ Credenciales PSP guardadas automáticamente para usuario {usuarioLocal.UserName}");
                             }
-                            //else
-                            //{
-                            //    // Actualizar PSPAccount existente
-                            //    pspAccountExistente.UserName = request.user.userName;
-                            //    pspAccountExistente.EncryptedPassword = common.Encrypt(request.user.password, "PSPPassword");
-                            //    pspAccountExistente.PSPUserId = pspResponse.UserId?.ToString();
-                            //    pspAccountExistente.UpdatedAt = DateTime.UtcNow;
-
-                            //    _context.SaveChanges();
-
-                            //    Log.Information($"✅ Credenciales PSP actualizadas automáticamente para usuario {usuarioLocal.UserName}");
-                            //}
                         }
                         else
                         {
@@ -405,6 +395,13 @@ namespace SmartClickCore.API.Controllers.PSP
                             }
 
 
+                            DAL.Models.Core.Billetera billetera = new DAL.Models.Core.Billetera()
+                            {
+                                Cliente = usuario.Clientes,
+                                Saldo = 0,
+                            };
+                            _context.Billeteras.Add(billetera);
+                            _context.SaveChanges();
 
                         }
                         else

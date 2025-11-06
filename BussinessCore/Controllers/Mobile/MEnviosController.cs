@@ -84,17 +84,22 @@ namespace BussinessCore.API.Controllers.Billetera
                     var pspAccount = TraeAccountPSP(usuario);
                     string decryptedToken = common.DescifrarPassword(pspAccount.EncryptedPassword);
 
+                    var AccesToken = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedToken);
+
+                    ExternalAccountDataDTO pspResp = _pspService.ValidarCuentaExternaAsync(envioBilleteraDTO.CVU, AccesToken.access_token).Result;
+
+                    if (pspResp.CUIT!=pspAccount.TributaryIdentifier)
+                    {
+                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "La cuenta origen y destino no son del mismo titular." });
+                    }
+
                     var respuestaRecaudadora = _pspService.TransferenciaCuentaRecaudadoraAsync(pspAccount, envioBilleteraDTO.Monto).Result;
 
                     if (!respuestaRecaudadora.Success)
                     {
                         return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
                     }
-
-
-                    var AccesToken = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedToken); //Revisar utilizar end point
-
-                    var pspResp = await _pspService.ValidarCuentaExternaAsync(envioBilleteraDTO.CVU, AccesToken.access_token);
+                  
 
                     if (pspResp.Success)
                     {
@@ -169,18 +174,19 @@ namespace BussinessCore.API.Controllers.Billetera
 
                 billeteraOrigen.Saldo -= montoEnvio;
                 billeteraOrigen.Movimientos.Add(movimientoOrigen);
-                billeteraOrigen.Contactos.Add(new ContactosBilletera
+                if (billeteraDestino!=null)
                 {
-                    ClienteContacto = billeteraDestino.Cliente,
-                    Detalle = billeteraDestino!=null? billeteraDestino.Cliente.Persona?.GetNombreCompleto() : ""
-                });
-
-
+                    billeteraOrigen.Contactos.Add(new ContactosBilletera
+                    {
+                        ClienteContacto = billeteraDestino.Cliente,
+                        Detalle = billeteraDestino!=null ? billeteraDestino.Cliente.Persona?.GetNombreCompleto() : ""
+                    });
+                    _notificacionAPIService.Envia_Push(billeteraDestino.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${montoEnvio} en su billetera");
+                }
 
                 _context.Update(billeteraOrigen);
                 await _context.SaveChangesAsync();
                 _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Envio de dinero", $"Ha enviado ${montoEnvio} exitosamente");
-                _notificacionAPIService.Envia_Push(billeteraDestino.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${montoEnvio} en su billetera");
                 return new JsonResult(new DAL.Models.RespuestaAPI { Status = 200, UAT = envioBilleteraDTO.UAT, Mensaje = "Envio realizado" });
 
             }

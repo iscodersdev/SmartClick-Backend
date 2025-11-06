@@ -539,7 +539,7 @@ namespace SmartClick.Controllers
                         solicitud.UAT = LoginCGE(Uat.Cliente.Empresa);
                         solicitud.EntidadId = Uat.Cliente.Empresa.EntidadIdCGE;
                         solicitud.Precancelaciones = uat.Precancelaciones;
-                        client.BaseAddress = new Uri("https://www.cge.mil.ar:81/api/mentidades/");
+                        client.BaseAddress = new Uri("https://haberes20.cge.mil.ar/api/mentidades/");
                         HttpResponseMessage response = client.PostAsJsonAsync("SolicitaPrestamo", solicitud).Result;
                         if (response.IsSuccessStatusCode)
                         {
@@ -721,7 +721,7 @@ namespace SmartClick.Controllers
                 login.CUIT = empresa.CUIT;
                 login.Password = empresa.PasswordCGE;
                 login.Token = empresa.TokenCGE;
-                client.BaseAddress = new Uri("https://www.cge.mil.ar:81/api/mentidades/");
+                client.BaseAddress = new Uri("https://haberes20.cge.mil.ar/api/mentidades/");
                 HttpResponseMessage response = client.PostAsJsonAsync("Login", login).Result;
                 if (response.IsSuccessStatusCode)
                 {

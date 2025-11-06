@@ -193,43 +193,50 @@ namespace BusinessCore.Services
             try
             {
 
+                HttpResponseMessage response = new HttpResponseMessage();
+                TransactionResponseDTO apiResponse = new TransactionResponseDTO();
+
                 CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
                 TokenResponseDTO token = await GetAccessTokenAsync();
 
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add");
-
-                requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.access_token);
-                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
-
-                TransactionRequestDTO transactionRequestDTO = new TransactionRequestDTO()
+                using (var client = new HttpClient())
                 {
-                    balance = Convert.ToDecimal(monto),
-                    transactionTypeId = 1,
-                    concept = "VAR",
-                    isExternal = false,
-                    originAccount = new AccountRefDTO()
+                    HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Add");
+
+                    requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.access_token);
+                    requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
+
+                    TransactionRequestDTO transactionRequestDTO = new TransactionRequestDTO()
                     {
-                        accountNumber = cuentaRecaudadora.AccountNumber,
-                        accountTypeId = 0
-                    },
-                    destinationAccount = new AccountRefDTO()
-                    {
-                        accountNumber = cuentaOrigen.AccountNumber,
-                        tributaryIdentifierType = cuentaOrigen.TributaryIdentifierType,
-                        tributaryIdentifier = cuentaOrigen.TributaryIdentifier,
-                    }
-                };
+                        balance = Convert.ToDecimal(monto),
+                        transactionTypeId = 1,
+                        concept = "VAR",
+                        isExternal = false,
+                        originAccount = new AccountRefDTO()
+                        {
+                            accountNumber = cuentaRecaudadora.AccountNumber,
+                            accountTypeId = 1
+                        },
+                        destinationAccount = new AccountRefDTO()
+                        {
+                            accountNumber = cuentaOrigen.AccountNumber,
+                            tributaryIdentifierType = cuentaOrigen.TributaryIdentifierType,
+                            tributaryIdentifier = cuentaOrigen.TributaryIdentifier,
+                            accountTypeId = 1
+                        }
+                    };
 
+                    var jsonContent = JsonConvert.SerializeObject(transactionRequestDTO);
+                    requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                var jsonContent = JsonConvert.SerializeObject(transactionRequestDTO);
-                requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.SendAsync(requestMessage);
-                var content = await response.Content.ReadAsStringAsync();
-                TransactionResponseDTO apiResponse = JsonConvert.DeserializeObject<TransactionResponseDTO>(content);
+                    response = await client.SendAsync(requestMessage);
+                    var content = await response.Content.ReadAsStringAsync();
+                    apiResponse = JsonConvert.DeserializeObject<TransactionResponseDTO>(content);
+                }
 
                 if (response.IsSuccessStatusCode)
                 {
+
                     var requestMessageConfirmacion = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Transactions/Confirmation");
 
                     requestMessageConfirmacion.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.access_token);
@@ -239,29 +246,34 @@ namespace BusinessCore.Services
                     {
                         Guid = new ConfirmationGuidDTO()
                         {
-                            Key = apiResponse.Guid.Key
+                            Key = apiResponse.Guid.Key,
+                            Code = 999999
                         },
                         OTP = 999999,
                         TransactionId = apiResponse.Data.TransactionId,
-                        IsExternal = true
+                        IsExternal = false
                     };
 
                     var jsonContentConfirmarTrans = JsonConvert.SerializeObject(confirmarTrans);
-                    requestMessageConfirmacion.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                    var responseConfirmacion = await _httpClient.SendAsync(requestMessage);
-                    var contentConfirmacion = await response.Content.ReadAsStringAsync();
-
-                    if (!responseConfirmacion.IsSuccessStatusCode)
+                    requestMessageConfirmacion.Content = new StringContent(jsonContentConfirmarTrans, Encoding.UTF8, "application/json");
+                    using (var clientConfirmacion = new HttpClient())
                     {
-                        JObject respuestaCompleta = JObject.Parse(contentConfirmacion);
-                        string mensajeExterno = respuestaCompleta["message"]?.ToString() ?? "Error desconocido al intentar la transferencia.";
-                        return new FinalConfirmationResponseDTO { Code = response.StatusCode.ToString(), Message = mensajeExterno, Success = false };
-                    }
 
-                    var apiResponseConfirmacion = JsonConvert.DeserializeObject<FinalConfirmationResponseDTO>(content);
-                    return apiResponseConfirmacion;
+                        var responseConfirmacion = await clientConfirmacion.SendAsync(requestMessageConfirmacion);
+                        var contentConfirmacion = await response.Content.ReadAsStringAsync();                     
+
+                        if (!responseConfirmacion.IsSuccessStatusCode)
+                        {
+                            JObject respuestaCompleta = JObject.Parse(contentConfirmacion);
+                            string mensajeExterno = respuestaCompleta["message"]?.ToString() ?? "Error desconocido al intentar la transferencia.";
+                            return new FinalConfirmationResponseDTO { Code = response.StatusCode.ToString(), Message = mensajeExterno, Success = false };
+                        }
+
+                        var apiResponseConfirmacion = JsonConvert.DeserializeObject<FinalConfirmationResponseDTO>(contentConfirmacion);
+                        return apiResponseConfirmacion;
+                    }
                 }
+                
                 return new FinalConfirmationResponseDTO { Code = "500", Message = "Excepción al ejecutar la transferencia: ", Success = false };
 
             }
