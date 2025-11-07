@@ -296,6 +296,8 @@ namespace SmartClickCore.API.Controllers.PSP
                     UserToken = pspResponse.UserToken
                 };
 
+                var usuarioLocal = _context.Usuarios.FirstOrDefault(u => u.UserName == request.user.email || u.Email == request.user.email);
+                
                 if (pspResponse.Success)
                 {
                     Log.Information($"Usuario creado exitosamente en PSP - UserName: {request.user.userName}");
@@ -304,7 +306,6 @@ namespace SmartClickCore.API.Controllers.PSP
                     try
                     {
                         // Buscar usuario local por email para asociar PSPAccount
-                        var usuarioLocal = _context.Usuarios.FirstOrDefault(u => u.UserName == request.user.email || u.Email == request.user.email);
 
                         if (usuarioLocal != null)
                         {
@@ -324,7 +325,6 @@ namespace SmartClickCore.API.Controllers.PSP
                                     Status = "active",
                                     CreatedAt = DateTime.UtcNow,
                                     EstadoCuentaPSP = _context.PSPAccountStatus.Where(x=>x.Codigo=="SB").FirstOrDefault()
-                                    
                                 };
 
                                 _context.Set<DAL.Models.PSPAccount>().Add(nuevoPspAccount);
@@ -372,6 +372,18 @@ namespace SmartClickCore.API.Controllers.PSP
 
                         if (pspResponseSelf.Success)
                         {
+                            var pspCuenta = _context.Set<DAL.Models.PSPAccount>()
+                                .FirstOrDefault(p => p.Usuario.Id == usuarioLocal.Id);
+
+                            if (pspCuenta == null)
+                            {
+                                Log.Warning($"ERror recuperando usuario.");
+                                return BadRequest(response);
+                            }
+                            
+                            pspCuenta.EstadoCuentaPSP =
+                                _context.PSPAccountStatus.Where(x => x.Codigo == "FF").FirstOrDefault();
+                            
                             Log.Information($"SelfRegistration completado exitosamente - CUIT: {request.entity.tributaryIdentifier}");
                             response.Mensaje += " | " + (_pspService.IsTestMode()
                                 ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
@@ -383,6 +395,19 @@ namespace SmartClickCore.API.Controllers.PSP
 
                             if (pspResponseFiles.Success)
                             {
+                                var pspCuentaPostArchivos = _context.Set<DAL.Models.PSPAccount>()
+                                    .FirstOrDefault(p => p.Usuario.Id == usuarioLocal.Id);
+
+                                if (pspCuentaPostArchivos == null)
+                                {
+                                    Log.Warning($"Error recuperando usuario.");
+                                    return BadRequest(response);
+                                }
+                            
+                                pspCuentaPostArchivos.EstadoCuentaPSP =
+                                    _context.PSPAccountStatus.Where(x => x.Codigo == "A").FirstOrDefault();
+
+                                
                                 Log.Information($"Archivos subidos exitosamente - Identifier: {pspResponseSelf.Identifier}, Archivos: {request.files.Count}");
                                 response.Mensaje += " | " + (_pspService.IsTestMode()
                                     ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
@@ -642,6 +667,18 @@ namespace SmartClickCore.API.Controllers.PSP
 
                 if (pspResponse.Success)
                 {
+                    var pspCuentaPostArchivos = _context.Set<DAL.Models.PSPAccount>()
+                        .FirstOrDefault(p => p.Usuario.Id == usuario.Id);
+
+                    if (pspCuentaPostArchivos == null)
+                    {
+                        Log.Warning($"Error recuperando usuario.");
+                        return BadRequest(response);
+                    }
+                            
+                    pspCuentaPostArchivos.EstadoCuentaPSP =
+                        _context.PSPAccountStatus.Where(x => x.Codigo == "A").FirstOrDefault();
+                    
                     Log.Information($"Archivos subidos exitosamente - Identifier: {identifier}, Archivos: {files.Count}");
                     return Ok(response);
                 }
