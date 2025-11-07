@@ -19,6 +19,9 @@ namespace BusinessCore.Services
 {
     public partial class PSPService
     {
+        // TODO: Cambiar account number en produccion
+        private string _nroCuentaRecaudadora = "30717072509-00000591";
+        
         /// <summary>
         /// Valida una cuenta externa en el PSP
         /// </summary>
@@ -29,7 +32,7 @@ namespace BusinessCore.Services
         {
             try
             {
-                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber==_nroCuentaRecaudadora).FirstOrDefault();
                 var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Person/ContactNotebook/Get"); 
                 requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", userToken);
                 requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
@@ -75,6 +78,50 @@ namespace BusinessCore.Services
         }
 
 
+        /// <summary>
+        /// Valida una cuenta externa en el PSP
+        /// </summary>
+        /// <param name="CBU">CBU de la cuenta destino</param>
+        /// <param name="userToken">Token PSP de la cuenta logueada</param>
+        /// <returns></returns>
+        public async Task<AgendarCuentaDataDTO> AgendarCuentaExternaAsync(int externalId, string userToken)
+        {
+            try
+            {
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber==_nroCuentaRecaudadora).FirstOrDefault();
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v2/Person/ContactNotebook/Add"); 
+                requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", userToken);
+                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
+
+                var requestBody = new { ExternalAccountId = externalId };
+                var jsonContent = JsonConvert.SerializeObject(requestBody);
+                requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(requestMessage);
+                var content = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    JObject respuestaCompleta = JObject.Parse(content);
+                    string mensajeExterno = respuestaCompleta["message"].ToString();
+                    return new AgendarCuentaDataDTO { Status = (int)response.StatusCode, Mensaje = mensajeExterno, Success = false };
+                }
+
+                var apiResponse = JsonConvert.DeserializeObject<ApiResponsePSP>(content);
+                return new AgendarCuentaDataDTO
+                {
+                     Mensaje = apiResponse.Message,
+                     Status = (int)response.StatusCode,
+                     Success = apiResponse.Success
+                };
+            }
+            catch (Exception ex)
+            {
+                return new AgendarCuentaDataDTO { Status = 500, Mensaje = ex.Message };
+            }
+        }
+        
+        
 
        /// <summary>
        /// Solicita una tranferencia
@@ -134,7 +181,7 @@ namespace BusinessCore.Services
             }
             catch (Exception ex)
             {
-                return new TransactionResponseDTO { Code = "500", Message = "Excepción al ejecutar la transferencia: " + ex.Message, Success = false };
+                return new TransactionResponseDTO { Code = "500", Message = "Excepciï¿½n al ejecutar la transferencia: " + ex.Message, Success = false };
             }
         }
 
@@ -176,7 +223,7 @@ namespace BusinessCore.Services
             }
             catch (Exception ex)
             {
-                return new FinalConfirmationResponseDTO { Code = "500", Message = "Excepción al ejecutar la transferencia: " + ex.Message, Success = false };
+                return new FinalConfirmationResponseDTO { Code = "500", Message = "Excepciï¿½n al ejecutar la transferencia: " + ex.Message, Success = false };
             }
         }
 
@@ -274,12 +321,12 @@ namespace BusinessCore.Services
                     }
                 }
                 
-                return new FinalConfirmationResponseDTO { Code = "500", Message = "Excepción al ejecutar la transferencia: ", Success = false };
+                return new FinalConfirmationResponseDTO { Code = "500", Message = "Excepciï¿½n al ejecutar la transferencia: ", Success = false };
 
             }
             catch (Exception ex)
             {
-                return new FinalConfirmationResponseDTO { Code = "500", Message = "Excepción al ejecutar la transferencia: " + ex.Message, Success = false };
+                return new FinalConfirmationResponseDTO { Code = "500", Message = "Excepciï¿½n al ejecutar la transferencia: " + ex.Message, Success = false };
             }
         }
     }

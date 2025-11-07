@@ -87,14 +87,28 @@ namespace BussinessCore.API.Controllers.Billetera
                     var AccesToken = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedToken);
 
                     ExternalAccountDataDTO pspResp = _pspService.ValidarCuentaExternaAsync(envioBilleteraDTO.CVU, AccesToken.access_token).Result;
-
+                    
+                    Console.WriteLine(pspResp);
+                    
                     if (pspResp.CUIT!=pspAccount.TributaryIdentifier)
                     {
                         return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "La cuenta origen y destino no son del mismo titular." });
                     }
+                    
+                    int externalAccountId = pspResp.ExternoId;
+                    AgendarCuentaDataDTO respuestaAgendar =
+                        _pspService.AgendarCuentaExternaAsync(externalAccountId, AccesToken.access_token).Result;
+                    Console.WriteLine(respuestaAgendar);
+
+                    if (!respuestaAgendar.Success)
+                    {
+                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "No se pudo agendar correctamente la cuenta externa." });
+                    }
 
                     var respuestaRecaudadora = _pspService.TransferenciaCuentaRecaudadoraAsync(pspAccount, envioBilleteraDTO.Monto).Result;
 
+                    Console.WriteLine(respuestaRecaudadora);
+                    
                     if (!respuestaRecaudadora.Success)
                     {
                         return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
@@ -105,6 +119,8 @@ namespace BussinessCore.API.Controllers.Billetera
                     {
                         var solicitudTransferencia = _pspService.SolicitudDeTransferenciaAsync(pspAccount, pspResp, true, envioBilleteraDTO.Monto, AccesToken.access_token).Result;
 
+                        Console.WriteLine(solicitudTransferencia);
+                        
                         TransactionConfirmationRequestDTO confirmarTrans = new TransactionConfirmationRequestDTO()
                         {
                             Guid = new ConfirmationGuidDTO()

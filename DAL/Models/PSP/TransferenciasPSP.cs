@@ -43,6 +43,11 @@ namespace DAL.Models.PSP
         public bool Virtual { get; set; }
     }
 
+    public class AgendarCuentaDataDTO : RespuestaAPI
+    {
+        public bool Success { get; set; }
+    }
+
     public class ExternalAccountDataDTO : RespuestaAPI
     {
         public int ExternoId { get; set; }
