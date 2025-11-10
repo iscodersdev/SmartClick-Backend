@@ -664,6 +664,8 @@ namespace SmartClickCore.API.Controllers.PSP
                     Success = pspResponse.Success,
                     UploadedFiles = pspResponse.UploadedFiles
                 };
+                
+                Log.Warning(pspResponse.ToString());
 
                 if (pspResponse.Success)
                 {

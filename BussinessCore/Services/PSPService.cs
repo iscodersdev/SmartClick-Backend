@@ -629,7 +629,7 @@ namespace BusinessCore.Services
                     _logger.LogInformation($"Subiendo archivos al PSP - Identifier: {identifier}, Archivos: {string.Join(", ", files.Keys)}");
 
                     // PASO 5: Realizar la llamada HTTP - URL CORREGIDA seg�n la lista proporcionada
-                    var response = await _httpClient.PostAsync($"{cuentaRecaudadora.ClientId}/a/multicuenta/api/v1/Entities/File?entityId={identifier}", formData);
+                    var response = await _httpClient.PostAsync($"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Entities/File?entityId={identifier}", formData);
 
                     // PASO 6: Procesar la respuesta
                     if (response.IsSuccessStatusCode)
