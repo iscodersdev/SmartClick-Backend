@@ -552,6 +552,7 @@ namespace BusinessCore.Services
         /// </summary>
         public async Task<UploadFilesResponseDTO> UploadFilesAsync(string identifier, string userToken, Dictionary<string, byte[]> files)
         {
+            Console.Write("Estoy en UploadFilesAsync\n");
             // PASO 1: Manejo del modo de prueba
             if (_testMode)
             {
@@ -570,6 +571,7 @@ namespace BusinessCore.Services
                 };
             }
 
+            
             try
             {
                 CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.Activo).FirstOrDefault();
@@ -614,6 +616,7 @@ namespace BusinessCore.Services
                         var fileContent = new ByteArrayContent(file.Value);
                         fileContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream");
                         formData.Add(fileContent, file.Key, $"{file.Key}.jpg"); // Nombre de archivo gen�rico
+                        Console.WriteLine(formData);
                     }
 
                     // PASO 4: Configurar headers HTTP con el token del USUARIO
@@ -626,10 +629,11 @@ namespace BusinessCore.Services
                         _httpClient.DefaultRequestHeaders.Add("X-client_id", cuentaRecaudadora.ClientId);
                     }
 
-                    _logger.LogInformation($"Subiendo archivos al PSP - Identifier: {identifier}, Archivos: {string.Join(", ", files.Keys)}");
+                    Console.Write($"Subiendo archivos al PSP - Identifier: {identifier}, Archivos: {string.Join(", ", files.Keys)}");
 
                     // PASO 5: Realizar la llamada HTTP - URL CORREGIDA seg�n la lista proporcionada
                     var response = await _httpClient.PostAsync($"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Entities/File?entityId={identifier}", formData);
+                    Console.Write(response + "\n");
 
                     // PASO 6: Procesar la respuesta
                     if (response.IsSuccessStatusCode)

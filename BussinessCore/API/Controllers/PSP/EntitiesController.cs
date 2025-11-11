@@ -649,8 +649,11 @@ namespace SmartClickCore.API.Controllers.PSP
                     }
                 }
 
+                Log.Warning("Antes de upload");
                 // Llamar al servicio PSP
                 var pspResponse = await _pspService.UploadFilesAsync(identifier, userToken, files);
+                Log.Warning("post UploadFilesAsync");
+                Log.Warning(pspResponse.ToString());
 
                 var mensaje = _pspService.IsTestMode()
                     ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"

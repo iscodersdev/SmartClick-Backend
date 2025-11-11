@@ -98,11 +98,14 @@ namespace BussinessCore.API.Controllers.Billetera
                     int externalAccountId = pspResp.ExternoId;
                     AgendarCuentaDataDTO respuestaAgendar =
                         _pspService.AgendarCuentaExternaAsync(externalAccountId, AccesToken.access_token).Result;
-                    Console.WriteLine(respuestaAgendar);
 
                     if (!respuestaAgendar.Success)
                     {
-                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "No se pudo agendar correctamente la cuenta externa." });
+                        // TODO: arreglar esto, no está tan bueno
+                        if (respuestaAgendar.Mensaje != "La cuenta ya existe en la libreta de contacto")
+                        {
+                            return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "No se pudo agendar correctamente la cuenta externa." });
+                        }
                     }
 
                     var respuestaRecaudadora = _pspService.TransferenciaCuentaRecaudadoraAsync(pspAccount, envioBilleteraDTO.Monto).Result;
