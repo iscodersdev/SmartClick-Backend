@@ -108,7 +108,8 @@ namespace BussinessCore.API.Controllers.Billetera
                 var movimientos = billetera.Movimientos.Select(m => new MovimientoBilleteraDTO { 
                     Monto = m.Monto, 
                     TipoMovimiento = m.TipoMovimiento.Nombre, 
-                    Fecha = m.Fecha
+                    Fecha = m.Fecha,
+                    Nombre = m.OrigenAsociado.IdAsociado!=0? ObtenerBilleteraByAsociadoId(m.OrigenAsociado.IdAsociado):"Externo"
                 }).ToList();
                 movimientos.AddRange(billetera.Tarjetas.SelectMany(t => t.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha}).ToList());
                 movimientos.AddRange(billetera.Cuentas.Where(c=>!c.Terceros).SelectMany(c => c.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha }).ToList());
@@ -190,6 +191,13 @@ namespace BussinessCore.API.Controllers.Billetera
                 Log.Error($"Error en consulta de movimientos - {e.Message}");
                 return new JsonResult(new RespuestaAPI { Status = 500, UAT = validarBilleteraDTO.UAT, Mensaje = "Error en consulta de movimientos" });
             }
+
+        }
+
+        private string ObtenerBilleteraByAsociadoId(int Id)
+        {
+            DAL.Models.Core.Billetera billetera = _context.Billeteras.Where(x => x.Id==Id).FirstOrDefault();
+            return billetera.Cliente.Persona.GetNombreCompleto();
 
         }
 
