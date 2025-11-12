@@ -324,7 +324,8 @@ namespace SmartClickCore.API.Controllers.PSP
                                     PSPUserId = pspResponse.UserId?.ToString(),
                                     Status = "active",
                                     CreatedAt = DateTime.UtcNow,
-                                    EstadoCuentaPSP = _context.PSPAccountStatus.Where(x=>x.Codigo=="SB").FirstOrDefault()
+                                    EstadoCuentaPSP = _context.PSPAccountStatus.Where(x=>x.Codigo=="SB").FirstOrDefault(),
+                                    Cliente = usuarioLocal.Clientes
                                 };
 
                                 _context.Set<DAL.Models.PSPAccount>().Add(nuevoPspAccount);
