@@ -105,8 +105,12 @@ namespace BussinessCore.API.Controllers.Billetera
             {
                 var usuario = TraeUsuarioUAT(consultaMovimientosDTO.UAT);
                 var billetera = _context.Billeteras.Where(b => b.Cliente.Usuario.Id == usuario.Id).FirstOrDefault();
-                var movimientos = billetera.Movimientos.Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha }).ToList();
-                movimientos.AddRange(billetera.Tarjetas.SelectMany(t => t.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha }).ToList());
+                var movimientos = billetera.Movimientos.Select(m => new MovimientoBilleteraDTO { 
+                    Monto = m.Monto, 
+                    TipoMovimiento = m.TipoMovimiento.Nombre, 
+                    Fecha = m.Fecha
+                }).ToList();
+                movimientos.AddRange(billetera.Tarjetas.SelectMany(t => t.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha}).ToList());
                 movimientos.AddRange(billetera.Cuentas.Where(c=>!c.Terceros).SelectMany(c => c.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha }).ToList());
                 return new JsonResult(new ListaMovimientoDTO { Status = 200, UAT = consultaMovimientosDTO.UAT, Mensaje = "Movimientos enviados", Movimientos = movimientos.OrderByDescending(m => m.Fecha).ToList() });
             }

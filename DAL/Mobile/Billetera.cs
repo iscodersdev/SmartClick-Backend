@@ -27,6 +27,7 @@ namespace DAL.Mobile
         public decimal Monto { get; set; }
         public string TipoMovimiento { get; set; }
         public DateTime Fecha { get; set; }
+        public string Nombre { get; set; }
     }
 
     public class ListaTarjetasDTO : RespuestaAPI
