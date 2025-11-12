@@ -1327,7 +1327,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 var resultDto = new PSPStatusResponseDTO{
                     Success = true,
                     Estado = pspAccount.EstadoCuentaPSP,
-                    Mensaje = "test. Esta funcion no funciona",
+                    Mensaje = "Estado de cuenta consultado exitosamente",
                     EntityId = pspAccount.EntityId,
                     Cvu = pspAccount.CVU
                 };
