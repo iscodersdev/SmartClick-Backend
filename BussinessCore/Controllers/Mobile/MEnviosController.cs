@@ -47,13 +47,13 @@ namespace BussinessCore.API.Controllers.Billetera
                 if (envioBilleteraDTO.Monto.Contains(","))
                 {
                     Log.Error($"Error de monto debe usar puntos para decimales");
-                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en monto de envio, debe usar el punto para decimales" });
+                    return new JsonResult(new EnvioBilleteraDTO { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en monto de envio, debe usar el punto para decimales" });
                 }
 
                 if (!Decimal.TryParse(envioBilleteraDTO.Monto, NumberStyles.Number, CultureInfo.InvariantCulture.NumberFormat, out decimal montoEnvio))
                 {
                     Log.Error($"Error de monto en envio entre billeteras");
-                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en monto de envio" });
+                    return new JsonResult(new EnvioBilleteraDTO { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en monto de envio" });
                 }
 
 
@@ -63,7 +63,7 @@ namespace BussinessCore.API.Controllers.Billetera
                 if (!billeteraOrigen.ChequeaDebito(montoEnvio))
                 {
                     Log.Error($"Error el monto supera el saldo");
-                    return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "El monto supera su saldo" });
+                    return new JsonResult(new EnvioBilleteraDTO { Status = 400, UAT = envioBilleteraDTO.UAT, Mensaje = "El monto supera su saldo" });
                 }
 
                 var pspAccountDestino = _context.PSPAccounts.Where(b => b.CVU == envioBilleteraDTO.CVU).FirstOrDefault();
@@ -74,7 +74,7 @@ namespace BussinessCore.API.Controllers.Billetera
 
                     if (billeteraDestino==null)
                     {
-                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error no existe Billetera" });
+                        return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error no existe Billetera" });
                     }
                 }
                 
@@ -92,7 +92,7 @@ namespace BussinessCore.API.Controllers.Billetera
                     
                     if (pspResp.CUIT!=pspAccount.TributaryIdentifier)
                     {
-                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "La cuenta origen y destino no son del mismo titular." });
+                        return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "La cuenta origen y destino no son del mismo titular." });
                     }
                     
                     int externalAccountId = pspResp.ExternoId;
@@ -104,7 +104,7 @@ namespace BussinessCore.API.Controllers.Billetera
                         // TODO: arreglar esto, no está tan bueno
                         if (respuestaAgendar.Mensaje != "La cuenta ya existe en la libreta de contacto")
                         {
-                            return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "No se pudo agendar correctamente la cuenta externa." });
+                            return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "No se pudo agendar correctamente la cuenta externa." });
                         }
                     }
 
@@ -114,7 +114,7 @@ namespace BussinessCore.API.Controllers.Billetera
                     
                     if (!respuestaRecaudadora.Success)
                     {
-                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
+                        return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
                     }
                   
 
@@ -140,13 +140,13 @@ namespace BussinessCore.API.Controllers.Billetera
                             var confirmarTransferencia = _pspService.ConfirmarTransferenciaAsync(confirmarTrans, AccesToken.access_token).Result;
                             if (!confirmarTransferencia.Success)
                             {
-                                return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+confirmarTransferencia.Message });
+                                return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+confirmarTransferencia.Message });
                             }
                         }
                     }
                     else
                     {
-                        return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+pspResp.Mensaje });
+                        return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+pspResp.Mensaje });
                     }
                 }
                 else
@@ -206,13 +206,13 @@ namespace BussinessCore.API.Controllers.Billetera
                 _context.Update(billeteraOrigen);
                 await _context.SaveChangesAsync();
                 _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Envio de dinero", $"Ha enviado ${montoEnvio} exitosamente");
-                return new JsonResult(new DAL.Models.RespuestaAPI { Status = 200, UAT = envioBilleteraDTO.UAT, Mensaje = "Envio realizado" });
+                return new JsonResult(new EnvioBilleteraDTO { Status = 200, UAT = envioBilleteraDTO.UAT, Mensaje = "Envio realizado", Titular = billeteraDestino.Cliente.RazonSocial, CVU = envioBilleteraDTO.CVU, Monto = envioBilleteraDTO.Monto});
 
             }
             catch (Exception e)
             {
                 Log.Error($"Error en envio entre billeteras - {e.Message}");
-                return new JsonResult(new DAL.Models.RespuestaAPI { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
+                return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
             }
         }
 

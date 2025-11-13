@@ -89,6 +89,7 @@ namespace DAL.Mobile
     {
         public string CVU { get; set; }
         public string Monto { get; set; }
+        public string Titular { get; set; }
     }
 
     public class ValidarBilleteraDTO : RespuestaAPI
