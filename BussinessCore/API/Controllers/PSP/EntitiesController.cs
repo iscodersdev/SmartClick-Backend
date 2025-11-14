@@ -684,6 +684,8 @@ namespace SmartClickCore.API.Controllers.PSP
                             
                     pspCuentaPostArchivos.EstadoCuentaPSP =
                         _context.PSPAccountStatus.Where(x => x.Codigo == "A").FirstOrDefault();
+                    _context.SaveChanges();
+                    
                     
                     Log.Information($"Archivos subidos exitosamente - Identifier: {identifier}, Archivos: {files.Count}");
                     return Ok(response);

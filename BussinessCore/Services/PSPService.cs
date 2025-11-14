@@ -552,7 +552,6 @@ namespace BusinessCore.Services
         /// </summary>
         public async Task<UploadFilesResponseDTO> UploadFilesAsync(string identifier, string userToken, Dictionary<string, byte[]> files)
         {
-            Console.Write("Estoy en UploadFilesAsync\n");
             // PASO 1: Manejo del modo de prueba
             if (_testMode)
             {
@@ -570,7 +569,6 @@ namespace BusinessCore.Services
                     UploadedFiles = uploadedFiles
                 };
             }
-
             
             try
             {
