@@ -277,10 +277,10 @@ namespace SmartClickCore.API.Controllers.PSP
         {
             try
             {
-                PSPAccount account = _context.PSPAccounts.Where(x=>x.AccountNumber == request.accountNumber).FirstOrDefault();
+                PSPAccount account = _context.PSPAccounts.Where(x=>x.AccountNumber == request.destinationAccount.accountNumber).FirstOrDefault();
                 if (account==null)
                 {
-                    return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+                    return StatusCode(500, new { success = false, message = "No se encuentra la cuenta por ese número de cuenta", data = "", code = "" });
                 }
 
                 CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
@@ -289,25 +289,29 @@ namespace SmartClickCore.API.Controllers.PSP
                 {
                     IdentificadorTributario = cuentaRecaudadora.TributaryIdentifier,
                     CUIT = cuentaRecaudadora.TributaryIdentifier,
-                        NumeroDeCuenta = cuentaRecaudadora.AccountNumber,
-                        Nombre = "Cuenta Recaudadora",
-                        TipoCuentaId = 1,
-                        TipoMonedaId = 1,
-                    };
-                var token = _pspService.GetAccessTokenAsync();
+                    NumeroDeCuenta = cuentaRecaudadora.AccountNumber,
+                    Nombre = "Cuenta Recaudadora",
+                    TipoCuentaId = 1,
+                    TipoMonedaId = 1,
+                };
+                
+                string decryptedToken = common.DescifrarPassword(account.EncryptedPassword);
+                
+                var token = _pspService.GetAccessTokenUserAsync(account.UserName, decryptedToken);
                 var solicitud = await _pspService.SolicitudDeTransferenciaAsync(account, cuantaDestino, false, request.balance.ToString(), token.Result.access_token);
-
+                
                 if (solicitud.Success)
                 {
                     TransactionConfirmationRequestDTO confirmarTrans = new TransactionConfirmationRequestDTO()
                     {
                         Guid = new ConfirmationGuidDTO()
                         {
-                            Key = solicitud.Guid.Key
+                            Key = solicitud.Guid.Key,
+                            Code = 999999
                         },
                         OTP = 999999,
                         TransactionId = solicitud.Data.TransactionId,
-                        IsExternal = true
+                        IsExternal = false
                     };
 
                     var transferencia = await _pspService.ConfirmarTransferenciaAsync(confirmarTrans, token.Result.access_token);
@@ -345,13 +349,13 @@ namespace SmartClickCore.API.Controllers.PSP
                 }
                 else
                 {
-                    return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+                    return StatusCode(500, new { success = false, message = solicitud.Message, data = "", code = "No success" });
                 }      
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en ResetPassword");
-                return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+                return StatusCode(500, new { success = false, message = "Error interno del servidor 2", data = "", code = "" });
             }
         }
     }
