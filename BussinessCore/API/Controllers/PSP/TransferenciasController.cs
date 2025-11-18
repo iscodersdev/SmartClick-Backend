@@ -332,7 +332,7 @@ namespace SmartClickCore.API.Controllers.PSP
                                 IdAsociado =  0,
                                 Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
                             },
-                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
+                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDinero)
                         };
 
                         billeteraOrigen.Saldo += request.balance;
