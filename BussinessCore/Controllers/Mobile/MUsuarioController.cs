@@ -450,12 +450,20 @@ namespace SmartClick.Controllers
             Usuario usuario = _context.UAT.Where(u => u.Token == request.UAT).Select(u => u.Cliente.Usuario).FirstOrDefault();
 
             var response = _userService.ChangePasswordAsync(usuario, request.CurrentPassword, request.Password1);
+
+            request.Password1 = "";
+            request.Password2 = "";
+            request.CurrentPassword = "";
             
-            Console.WriteLine(response.IsCompleted);
-            Console.WriteLine(response.Status);
+            if (response.Result.ToString() == "Succeeded")
+            {
+                request.Status = 400;
+                request.Mensaje = "No se pudo actualizar la clave";
+                return request;
+            } 
             
             request.Status = 200;
-            request.Mensaje = response.Result.ToString();
+            request.Mensaje = "Clave actualizada correctamente";
             return request;
         }
         
