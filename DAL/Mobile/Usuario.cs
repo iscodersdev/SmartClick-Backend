@@ -160,8 +160,18 @@ namespace DAL.Models
         public DateTime? FechaNacimiento { get; set; }
         public string Password1 { get; set; }
         public string Password2 { get; set; }
-
     }
+    
+    public class MActualizaPasswordDTO
+    {
+        public string UAT { get; set; }
+        public int Status { get; set; }
+        public string Mensaje { get; set; }
+        public string CurrentPassword { get; set; }
+        public string Password1 { get; set; }
+        public string Password2 { get; set; }
+    }
+    
     public class MActualizaFotoDTO
     {
         public string UAT { get; set; }

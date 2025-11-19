@@ -417,6 +417,48 @@ namespace SmartClick.Controllers
             _context.SaveChanges();
             return uat;
         }
+        
+        
+        [HttpPost]
+        [Route("ActualizaPassword")]
+        [EnableCors("CorsPolicy")]
+        [AllowAnonymous]
+        public MActualizaPasswordDTO ActualizaPassword([FromBody] MActualizaPasswordDTO request)
+        {
+            var Uat = _context.UAT.FirstOrDefault(x => x.Token == request.UAT);
+            if (request == null)
+            {
+                request.Status = 500;
+                request.Mensaje = "UAT Invalida";
+                return request;
+            }
+            
+            if (request.Password1 != request.Password2)
+            {
+                request.Status = 400;
+                request.Mensaje = "Las claves deben Coincidir";
+                return request;
+            }
+
+            if (string.IsNullOrEmpty(request.Password1))
+            {
+                request.Status = 400;
+                request.Mensaje = "La clave no puede estar vacía";
+                return request;
+            }
+            
+            Usuario usuario = _context.UAT.Where(u => u.Token == request.UAT).Select(u => u.Cliente.Usuario).FirstOrDefault();
+
+            var response = _userService.ChangePasswordAsync(usuario, request.CurrentPassword, request.Password1);
+            
+            Console.WriteLine(response.IsCompleted);
+            Console.WriteLine(response.Status);
+            
+            request.Status = 200;
+            request.Mensaje = response.Result.ToString();
+            return request;
+        }
+        
         [HttpPost]
         [Route("ActualizaFoto")]
         [EnableCors("CorsPolicy")]
