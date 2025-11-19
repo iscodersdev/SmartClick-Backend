@@ -109,7 +109,8 @@ namespace BussinessCore.API.Controllers.Billetera
                     Monto = m.Monto, 
                     TipoMovimiento = m.TipoMovimiento.Nombre, 
                     Fecha = m.Fecha,
-                    Nombre = m.OrigenAsociado.IdAsociado!=0? ObtenerBilleteraByAsociadoId(m.OrigenAsociado.IdAsociado):"Externo"
+                    CVU = m.CBU,
+                    Nombre = m.OrigenAsociado.IdAsociado!=0? ObtenerBilleteraByAsociadoId(m.OrigenAsociado.IdAsociado):"Ingreso externo"
                 }).ToList();
                 movimientos.AddRange(billetera.Tarjetas.SelectMany(t => t.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha}).ToList());
                 movimientos.AddRange(billetera.Cuentas.Where(c=>!c.Terceros).SelectMany(c => c.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha }).ToList());

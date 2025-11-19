@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using DAL.Models.Core;
 
 namespace DAL.Mobile
 {
@@ -28,6 +29,7 @@ namespace DAL.Mobile
         public string TipoMovimiento { get; set; }
         public DateTime Fecha { get; set; }
         public string Nombre { get; set; }
+        public string CVU { get; set; }
     }
 
     public class ListaTarjetasDTO : RespuestaAPI
