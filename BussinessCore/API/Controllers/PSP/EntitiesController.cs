@@ -587,7 +587,7 @@ namespace SmartClickCore.API.Controllers.PSP
         /// Sube archivos de validación (DNI, selfie, inscripción AFIP, etc.)
         /// </summary>
         [HttpPost("UploadFiles")]
-        public async Task<IActionResult> UploadFiles([FromQuery] string identifier, [FromQuery] string userToken, [FromQuery] string uat)
+        public async Task<IActionResult> UploadFiles([FromQuery] string identifier, [FromQuery] string uat)
         {
             try
             {
@@ -604,6 +604,9 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
+                PSPAccount cuenta = _context.PSPAccounts.Where(x => x.Cliente == usuario.Clientes).FirstOrDefault();
+
+                
                 // Validar parámetros requeridos
                 if (string.IsNullOrEmpty(identifier))
                 {
@@ -616,13 +619,14 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
+                var userToken = await ObtenerUserTokenPSP(usuario);
                 if (string.IsNullOrEmpty(userToken))
                 {
-                    return BadRequest(new UploadFilesWithUATResponseDTO
+                    return BadRequest(new AccountsInfoWithUATResponseDTO
                     {
                         Status = 400,
                         UAT = uat,
-                        Mensaje = "UserToken requerido",
+                        Mensaje = "No se pudo obtener el token del usuario PSP. Verifique que las credenciales estén guardadas.",
                         Success = false
                     });
                 }
