@@ -162,10 +162,28 @@ namespace DAL.Models.PSP
 
     /*-------------------- Webhook-------------------------*/
 
+    public class RecibirTransferenciaExternalDTO
+    {
+        public string Title { get; set; }
+        public decimal Amount { get; set; }
+        public string CVU_CBUPayer { get; set; }
+        public string OperationIdentifier { get; set; }
+    }
+    
+    public class RecibirTransferenciaInternalDTO
+    {
+        public string Status { get; set; }
+        public string CVU_CBU { get; set; }
+        public string AccountNumber { get; set; }
+        public string TributaryIdentifier { get; set; }
+        public int TransactionReferece { get; set; }
+    }
+    
     public class RecibirTransferenciaWebhookDTO
     {
-        public decimal balance { get; set; }
-        public AccountRefDTO destinationAccount { get; set; }
+        public RecibirTransferenciaExternalDTO External { get; set; }
+        public RecibirTransferenciaInternalDTO Internal { get; set; }
+        
     }
 
     #endregion

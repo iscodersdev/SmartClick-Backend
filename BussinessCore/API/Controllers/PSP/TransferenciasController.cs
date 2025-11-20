@@ -277,7 +277,7 @@ namespace SmartClickCore.API.Controllers.PSP
         {
             try
             {
-                PSPAccount account = _context.PSPAccounts.Where(x=>x.AccountNumber == request.destinationAccount.accountNumber).FirstOrDefault();
+                PSPAccount account = _context.PSPAccounts.Where(x=>x.CVU == request.External.CVU_CBUPayer).FirstOrDefault();
                 if (account==null)
                 {
                     return StatusCode(500, new { success = false, message = "No se encuentra la cuenta por ese número de cuenta", data = "", code = "" });
@@ -298,7 +298,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 string decryptedToken = common.DescifrarPassword(account.EncryptedPassword);
                 
                 var token = _pspService.GetAccessTokenUserAsync(account.UserName, decryptedToken);
-                var solicitud = await _pspService.SolicitudDeTransferenciaAsync(account, cuantaDestino, false, request.balance.ToString(), token.Result.access_token);
+                var solicitud = await _pspService.SolicitudDeTransferenciaAsync(account, cuantaDestino, false, request.External.Amount.ToString(), token.Result.access_token);
                 
                 if (solicitud.Success)
                 {
@@ -316,8 +316,7 @@ namespace SmartClickCore.API.Controllers.PSP
 
                     var transferencia = await _pspService.ConfirmarTransferenciaAsync(confirmarTrans, token.Result.access_token);
 
-                    PSPAccount pspAccountDestino = _context.PSPAccounts.Where(x => x.AccountNumber == request.destinationAccount.accountNumber).FirstOrDefault();
-                    DAL.Models.Core.Billetera billeteraOrigen = _context.Billeteras.Where(x => x.Cliente.Usuario.Id == pspAccountDestino.Usuario.Id).FirstOrDefault();
+                    DAL.Models.Core.Billetera billeteraOrigen = _context.Billeteras.Where(x => x.Cliente.Usuario.Id == account.Usuario.Id).FirstOrDefault();
 
                     if (transferencia.Success)
                     {
@@ -325,7 +324,7 @@ namespace SmartClickCore.API.Controllers.PSP
                         {
                             CBU = billeteraOrigen.CVU,
                             Fecha = DateTime.Now,
-                            Monto = request.balance,
+                            Monto = request.External.Amount,
                             OrigenAsociado = new OrigenMovimiento
                             {
                                 TipoOrigen = TipoOrigenMovimiento.Billetera,
@@ -335,10 +334,10 @@ namespace SmartClickCore.API.Controllers.PSP
                             TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDinero)
                         };
 
-                        billeteraOrigen.Saldo += request.balance;
+                        billeteraOrigen.Saldo += request.External.Amount;
                         billeteraOrigen.Movimientos.Add(movimientoOrigen);
                         await _context.SaveChangesAsync();
-                        _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${request.balance} en su billetera");
+                        _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${request.External.Amount} en su billetera");
 
                         return Ok(new { success = true, message = "Transferencia realizada con éxito", data = transferencia.Data, code = "" });
                     }
@@ -355,7 +354,7 @@ namespace SmartClickCore.API.Controllers.PSP
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en ResetPassword");
-                return StatusCode(500, new { success = false, message = "Error interno del servidor 2", data = "", code = "" });
+                return StatusCode(500, new { success = false, message = ex.Message, data = "", code = "" });
             }
         }
     }
