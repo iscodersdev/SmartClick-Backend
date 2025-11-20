@@ -355,6 +355,14 @@ namespace SmartClickCore.API.Controllers.PSP
                             var pspAccountToUpdate = _context.Set<DAL.Models.PSPAccount>().FirstOrDefault(p => p.Usuario.UserName == request.user.email || p.Usuario.Email == request.user.email);
                             if (pspAccountToUpdate != null)
                             {
+
+                                var pspGetData = _pspService.GetAccountDataAsync(pspResponseToken.access_token).Result;
+                                var listAccount = pspGetData.Accounts.FirstOrDefault();
+                                pspAccountToUpdate.EntityId = listAccount.entityId.ToString();
+                                pspAccountToUpdate.TributaryIdentifier = listAccount.tributaryIdentifier;
+                                pspAccountToUpdate.CVU = listAccount.cvU_CBU;
+                                pspAccountToUpdate.CVU_CBUAlias = listAccount.cvU_CBUAlias;
+                                pspAccountToUpdate.AccountNumber = listAccount.accountNumber;
                                 pspAccountToUpdate.EncryptedUserToken = common.CifrarPassword(pspResponseToken.access_token);
                                 pspAccountToUpdate.TokenExpiry = pspResponseToken.expires_in > 0
                                     ? (DateTime?)DateTime.UtcNow.AddSeconds(pspResponseToken.expires_in)
