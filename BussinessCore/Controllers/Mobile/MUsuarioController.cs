@@ -455,7 +455,7 @@ namespace SmartClick.Controllers
             request.Password2 = "";
             request.CurrentPassword = "";
             
-            if (response.Result.ToString() == "Succeeded")
+            if (response.Result.ToString() != "Succeeded")
             {
                 request.Status = 400;
                 request.Mensaje = "No se pudo actualizar la clave";
