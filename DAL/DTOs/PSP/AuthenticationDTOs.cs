@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DAL.DTOs.PSP
 {
-    // DTOs para autenticación y token
+    // DTOs para autenticaciï¿½n y token
     public class TokenRequestDTO
     {
         public string grant_type { get; set; } = "password";
@@ -30,7 +30,7 @@ namespace DAL.DTOs.PSP
 
     public class EntityDTO
     {
-        public int entityTypeId { get; set; } = 5; // Persona Física
+        public int entityTypeId { get; set; } = 5; // Persona Fï¿½sica
         public int parentId { get; set; } = 1601;
         public int? commercialPlanId { get; set; }
         public bool isPhysicalPerson { get; set; } = false;
@@ -150,26 +150,27 @@ namespace DAL.DTOs.PSP
     public class CreateUserRequestDTO
     {
         public string userType { get; set; } = "5";           // Tipo de usuario
-        public string userName { get; set; }                  // Nombre de usuario único
+        public string userName { get; set; }                  // Nombre de usuario ï¿½nico
         public string documentType { get; set; } = "CUIL";    // Tipo de documento
-        public string documentNumber { get; set; }            // Número de documento
+        public string documentNumber { get; set; }            // Nï¿½mero de documento
         public string firstName { get; set; }                 // Nombre
         public string lastName { get; set; }                  // Apellido
         public string email { get; set; }                     // Email
-        public string phoneNumber { get; set; }               // Teléfono
-        public string address { get; set; }                   // Dirección
+        public string phoneNumber { get; set; }               // Telï¿½fono
+        public string address { get; set; }                   // Direcciï¿½n
         public string departmentId { get; set; } = "19";      // ID departamento
         public string cityId { get; set; } = "17934";         // ID ciudad
         public bool Active { get; set; } = true;              // Usuario activo
         public List<int> roles { get; set; } = new List<int> { 9 }; // Roles (9 = viewer)
-        public string password { get; set; }                  // Contraseña
-        public string passwordConfirm { get; set; }           // Confirmación contraseña
+        public string password { get; set; }                  // Contraseï¿½a
+        public string passwordConfirm { get; set; }           // Confirmaciï¿½n contraseï¿½a
     }
 
     public class CreateUserResponseDTO
     {
         public bool Success { get; set; }
         public string Message { get; set; }
+        public string EntityId { get; set; }
         public int? UserId { get; set; }
         public string UserToken { get; set; }  // Token del usuario creado
         public string Error { get; set; }
@@ -180,38 +181,38 @@ namespace DAL.DTOs.PSP
     {
         public int entityTypeId { get; set; } = 5;               // Tipo de entidad
         public int parentId { get; set; } = 1601;                // ID padre
-        public bool isPhysicalPerson { get; set; } = false;      // Es persona física
+        public bool isPhysicalPerson { get; set; } = false;      // Es persona fï¿½sica
         public bool taxPayer { get; set; } = false;              // Es contribuyente
         public bool isPyME { get; set; } = false;                // Es PyME
         public DateTime? PyMEEffectiveDate { get; set; }         // Fecha efectiva PyME
         public string tributaryIdentifierType { get; set; } = "CUIT"; // Tipo identificador
         public string tributaryIdentifier { get; set; }          // CUIT/CUIL
         public string name { get; set; }                         // Nombre entidad
-        public string phoneCode { get; set; } = "549";           // Código teléfono
-        public string phone { get; set; }                        // Teléfono
-        public string address { get; set; }                      // Dirección
+        public string phoneCode { get; set; } = "549";           // Cï¿½digo telï¿½fono
+        public string phone { get; set; }                        // Telï¿½fono
+        public string address { get; set; }                      // Direcciï¿½n
         public string floor { get; set; }                        // Piso
         public string department { get; set; }                   // Departamento
         public int cityId { get; set; } = 3;                     // ID ciudad
-        public string postalCode { get; set; }                   // Código postal
+        public string postalCode { get; set; }                   // Cï¿½digo postal
         public string email { get; set; }                        // Email
-        public bool isRevalidation { get; set; } = true;         // Es revalidación
-        public bool IsSameAddress { get; set; } = true;          // Misma dirección
+        public bool isRevalidation { get; set; } = true;         // Es revalidaciï¿½n
+        public bool IsSameAddress { get; set; } = true;          // Misma direcciï¿½n
         public string activityPostalCode { get; set; }           // CP actividad
         public int activityCityId { get; set; } = 3;             // Ciudad actividad
-        public string activityAddress { get; set; }              // Dirección actividad
+        public string activityAddress { get; set; }              // Direcciï¿½n actividad
         public string activityFloor { get; set; }                // Piso actividad
         public string activityDepartment { get; set; }           // Depto actividad
-        public string FantasyName { get; set; }                  // Nombre fantasía
+        public string FantasyName { get; set; }                  // Nombre fantasï¿½a
         public string cuf { get; set; }                          // CUF
-        public string CovenantCode { get; set; }                 // Código convenio
+        public string CovenantCode { get; set; }                 // Cï¿½digo convenio
     }
 
     public class SelfRegistrationResponseDTO
     {
         public bool Success { get; set; }
         public string Message { get; set; }
-        public string Identifier { get; set; }  // ID para subir archivos después
+        public string Identifier { get; set; }  // ID para subir archivos despuï¿½s
         public string EntityId { get; set; }
         public string Error { get; set; }
     }
@@ -221,7 +222,7 @@ namespace DAL.DTOs.PSP
     // DTO para CrearUsuario con UAT
     public class CreateUserWithUATRequestDTO : CreateUserRequestDTO
     {
-        public string UAT { get; set; }  // Token de autenticación del usuario administrador
+        public string UAT { get; set; }  // Token de autenticaciï¿½n del usuario administrador
     }
 
     public class CreateUserWithUATResponseDTO : PSPBaseResponseDTO
@@ -235,13 +236,13 @@ namespace DAL.DTOs.PSP
     // DTO para SelfRegistration con UAT
     public class SelfRegistrationWithUATRequestDTO : SelfRegistrationRequestDTO
     {
-        public string UAT { get; set; }        // Token de autenticación del usuario administrador
+        public string UAT { get; set; }        // Token de autenticaciï¿½n del usuario administrador
         public string UserToken { get; set; }  // Token del usuario que ejecuta SelfRegistration
     }
 
     public class SelfRegistrationWithUATResponseDTO : PSPBaseResponseDTO
     {
-        public string Identifier { get; set; }  // ID para subir archivos después
+        public string Identifier { get; set; }  // ID para subir archivos despuï¿½s
         public string EntityId { get; set; }
     }
 
@@ -328,7 +329,7 @@ namespace DAL.DTOs.PSP
     // *** DTOs PARA CREAR ENTIDAD Y USUARIO CON UAT ***
     public class CreateEntityAndUserWithUATRequestDTO
     {
-        public string UAT { get; set; }  // Token de autenticación del usuario administrador
+        public string UAT { get; set; }  // Token de autenticaciï¿½n del usuario administrador
         public EntityDTO entity { get; set; }
         public PersonDTO person { get; set; }
     }
@@ -349,7 +350,7 @@ namespace DAL.DTOs.PSP
     // *** DTOs PARA ACCOUNTS/ALL/GET ENDPOINT ***
 
     /// <summary>
-    /// DTO para la información de cuenta del usuario (mapea respuesta del PSP)
+    /// DTO para la informaciï¿½n de cuenta del usuario (mapea respuesta del PSP)
     /// </summary>
     public class AccountInfoDTO
     {
@@ -381,7 +382,7 @@ namespace DAL.DTOs.PSP
     }
 
     /// <summary>
-    /// DTO para la respuesta del controlador API (incluye UAT y campos de respuesta estándar)
+    /// DTO para la respuesta del controlador API (incluye UAT y campos de respuesta estï¿½ndar)
     /// </summary>
     public class AccountsInfoWithUATResponseDTO : PSPBaseResponseDTO
     {
@@ -389,12 +390,12 @@ namespace DAL.DTOs.PSP
     }
 
     /// <summary>
-    /// Request DTO para validar cuenta externa vía PSP desde endpoint interno
+    /// Request DTO para validar cuenta externa vï¿½a PSP desde endpoint interno
     /// </summary>
     public class ValidateExternalAccountRequestDTO : PSPBaseResponseDTO
     {
         public string TextSearch { get; set; }
-        public string UserToken { get; set; } // optional: token del usuario PSP para hacer la validación en contexto del usuario
+        public string UserToken { get; set; } // optional: token del usuario PSP para hacer la validaciï¿½n en contexto del usuario
     }
 
     /// <summary>
@@ -432,7 +433,7 @@ namespace DAL.DTOs.PSP
 
 
     /// <summary>
-    /// Request DTO para crear transacción con UAT
+    /// Request DTO para crear transacciï¿½n con UAT
     /// </summary>
     //public class TransactionWithUATRequestDTO : PSPBaseResponseDTO
     //{
@@ -441,7 +442,7 @@ namespace DAL.DTOs.PSP
     //}
 
     /// <summary>
-    /// Response DTO para crear transacción con UAT
+    /// Response DTO para crear transacciï¿½n con UAT
     /// </summary>
     //public class TransactionWithUATResponseDTO : PSPBaseResponseDTO
     //{

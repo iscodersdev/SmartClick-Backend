@@ -279,7 +279,6 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Llamar al servicio PSP
                 var pspResponse = await _pspService.CreateUserAsync(request.user);
 
-
                 var mensaje = _pspService.IsTestMode()
                     ? "?? SIMULACIÓN: Usuario creado (modo prueba)"
                     : "Usuario creado exitosamente";
@@ -324,6 +323,7 @@ namespace SmartClickCore.API.Controllers.PSP
                                     PSPUserId = pspResponse.UserId?.ToString(),
                                     Status = "active",
                                     CreatedAt = DateTime.UtcNow,
+                                    EntityId = pspResponse.EntityId,
                                     EstadoCuentaPSP = _context.PSPAccountStatus.Where(x=>x.Codigo=="SB").FirstOrDefault(),
                                     Cliente = usuarioLocal.Clientes
                                 };
