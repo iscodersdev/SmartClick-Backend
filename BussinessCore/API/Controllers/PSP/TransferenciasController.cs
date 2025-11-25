@@ -318,6 +318,10 @@ namespace SmartClickCore.API.Controllers.PSP
 
                     DAL.Models.Core.Billetera billeteraOrigen = _context.Billeteras.Where(x => x.Cliente.Usuario.Id == account.Usuario.Id).FirstOrDefault();
 
+                    Log.Error(transferencia.Message, "Info VerificarTransferenciaPSP");
+                    Log.Error(transferencia.Success.ToString(), "Info VerificarTransferenciaPSP");
+                    Log.Error(transferencia.Data.ToString(), "Info VerificarTransferenciaPSP");
+                    
                     if (transferencia.Success)
                     {
                         var movimientoOrigen = new MovimientoBilletera
@@ -343,17 +347,19 @@ namespace SmartClickCore.API.Controllers.PSP
                     }
                     else
                     {
+                        Log.Error(transferencia.Message, "Error VerificarTransferenciaPSP 1");
                         return StatusCode(500, new { success = false, message = transferencia.Message, data = "", code = "" });
                     }
                 }
                 else
                 {
+                    Log.Error(solicitud.Message, "Error VerificarTransferenciaPSP 2");
                     return StatusCode(500, new { success = false, message = solicitud.Message, data = "", code = "No success" });
                 }      
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error en ResetPassword");
+                Log.Error(ex, "Error VerificarTransferenciaPSP 3");
                 return StatusCode(500, new { success = false, message = ex.Message, data = "", code = "" });
             }
         }
