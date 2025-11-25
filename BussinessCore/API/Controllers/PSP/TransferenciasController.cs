@@ -277,7 +277,7 @@ namespace SmartClickCore.API.Controllers.PSP
         {
             try
             {
-                PSPAccount account = _context.PSPAccounts.Where(x=>x.CVU == request.External.CVU_CBUPayer).FirstOrDefault();
+                PSPAccount account = _context.PSPAccounts.Where(x=>x.CVU == request.Internal.CVU_CBU).FirstOrDefault();
                 if (account==null)
                 {
                     return StatusCode(500, new { success = false, message = "No se encuentra la cuenta por ese número de cuenta", data = "", code = "" });
