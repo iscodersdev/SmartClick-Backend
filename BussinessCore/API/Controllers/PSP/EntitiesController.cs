@@ -300,7 +300,6 @@ namespace SmartClickCore.API.Controllers.PSP
                 if (pspResponse.Success)
                 {
                     Log.Information($"Usuario creado exitosamente en PSP - UserName: {request.user.userName}");
-
                     // *** PASO 2: GUARDAR CREDENCIALES PSP AUTOMÁTICAMENTE (OPCIÓN 1) ***
                     try
                     {
@@ -314,6 +313,8 @@ namespace SmartClickCore.API.Controllers.PSP
 
                             if (pspAccountExistente == null)
                             {
+                                // TODO obtener C1
+                                var datosUsuario = await GetAccountData(new PSPBaseResponseDTO { UAT = request.UAT });
                                 // Crear nuevo PSPAccount
                                 var nuevoPspAccount = new DAL.Models.PSPAccount
                                 {
