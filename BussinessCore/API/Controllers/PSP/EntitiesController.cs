@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using DAL.DTOs.API;
 using Newtonsoft.Json;
 using DAL.Models;
+using SmartClickCore.Areas.Core.Controllers;
 
 namespace SmartClickCore.API.Controllers.PSP
 {
@@ -313,8 +314,6 @@ namespace SmartClickCore.API.Controllers.PSP
 
                             if (pspAccountExistente == null)
                             {
-                                // TODO obtener C1
-                                var datosUsuario = await GetAccountData(new PSPBaseResponseDTO { UAT = request.UAT });
                                 // Crear nuevo PSPAccount
                                 var nuevoPspAccount = new DAL.Models.PSPAccount
                                 {
@@ -345,6 +344,12 @@ namespace SmartClickCore.API.Controllers.PSP
                         Log.Error(exCredenciales, $"❌ Error guardando credenciales PSP para usuario {request.user.userName}. El usuario PSP fue creado exitosamente pero las credenciales no se guardaron localmente.");
                         // No fallar el request completo, solo advertir
                     }
+                    
+
+                    // TODO obtener C1
+                    var datosUsuario = await GetAccountData(new PSPBaseResponseDTO { UAT = request.UAT });
+                    Log.Information($"{datosUsuario.AsJson()}");
+                    
                     // *** FIN PASO 2 ***
 
                     var pspResponseToken = await _pspService.GetAccessTokenUserAsync(pspRequest.userName, pspRequest.password);
