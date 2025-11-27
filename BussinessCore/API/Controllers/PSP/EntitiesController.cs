@@ -218,6 +218,59 @@ namespace SmartClickCore.API.Controllers.PSP
             }
         }
 
+        [HttpPost("ActualizarDatosManualmente")]
+        public async Task<IActionResult> ActualizarDatosManualmente([FromBody] CreateUserEntidadRequestDTO request)
+        {
+            var usuarioABuscar = TraeUsuarioUAT(request.UAT);
+            var tokenTemp = await ObtenerUserTokenPSP(usuarioABuscar);
+
+            if (usuarioABuscar != null)
+            {
+                try
+                {
+                    var pspAccountToUpdate = _context.PSPAccounts.FirstOrDefault(p => p.Usuario.Id == usuarioABuscar.Id);
+                    if (pspAccountToUpdate != null)
+                    {
+                        var pspGetData = _pspService.GetAccountDataAsync(tokenTemp).Result;
+                        var listAccount = pspGetData.Accounts.FirstOrDefault();
+                        if (listAccount != null)
+                        {
+                            pspAccountToUpdate.EntityId = listAccount.entityId.ToString();
+                            pspAccountToUpdate.TributaryIdentifier = listAccount.tributaryIdentifier;
+                            pspAccountToUpdate.CVU = listAccount.cvU_CBU;
+                            pspAccountToUpdate.CVU_CBUAlias = listAccount.cvU_CBUAlias;
+                            pspAccountToUpdate.AccountNumber = listAccount.accountNumber;
+                            pspAccountToUpdate.EncryptedUserToken = common.CifrarPassword(tokenTemp);
+                            _context.SaveChanges();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, $"Bad Ending: No se pudo guardar el token en BD para {request.user.userName}, pero se continúa la operación.");
+                    var responseError = new CreateUserWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = request.UAT,
+                        Mensaje = "Falló la actualización",
+                        Success = false
+                    };
+            
+                    return BadRequest(responseError);
+                }
+            }
+            
+            var response = new CreateUserWithUATResponseDTO
+            {
+                Status = 200,
+                UAT = request.UAT,
+                Mensaje = "Actualizado Manualmente",
+                Success = true
+            };
+            
+            return Ok(response);
+        }
+        
         // *** NUEVO ENDPOINT: CREAR USUARIO ***
         /// <summary>
         /// Crea un nuevo usuario en el PSP
@@ -346,42 +399,11 @@ namespace SmartClickCore.API.Controllers.PSP
                     }
                     
 
-                    // TODO obtener C1
-                    var datosUsuario = await GetAccountData(new PSPBaseResponseDTO { UAT = request.UAT });
-                    Log.Information($"{datosUsuario.AsJson()}");
-                    
                     // *** FIN PASO 2 ***
 
                     var pspResponseToken = await _pspService.GetAccessTokenUserAsync(pspRequest.userName, pspRequest.password);
                     if (pspResponseToken != null && !string.IsNullOrEmpty(pspResponseToken.access_token))
                     {
-                        // Actualizar el token en la BD después de obtenerlo
-                        try
-                        {
-                            var pspAccountToUpdate = _context.Set<DAL.Models.PSPAccount>().FirstOrDefault(p => p.Usuario.UserName == request.user.email || p.Usuario.Email == request.user.email);
-                            if (pspAccountToUpdate != null)
-                            {
-
-                                var pspGetData = _pspService.GetAccountDataAsync(pspResponseToken.access_token).Result;
-                                var listAccount = pspGetData.Accounts.FirstOrDefault();
-                                pspAccountToUpdate.EntityId = listAccount.entityId.ToString();
-                                pspAccountToUpdate.TributaryIdentifier = listAccount.tributaryIdentifier;
-                                pspAccountToUpdate.CVU = listAccount.cvU_CBU;
-                                pspAccountToUpdate.CVU_CBUAlias = listAccount.cvU_CBUAlias;
-                                pspAccountToUpdate.AccountNumber = listAccount.accountNumber;
-                                pspAccountToUpdate.EncryptedUserToken = common.CifrarPassword(pspResponseToken.access_token);
-                                pspAccountToUpdate.TokenExpiry = pspResponseToken.expires_in > 0
-                                    ? (DateTime?)DateTime.UtcNow.AddSeconds(pspResponseToken.expires_in)
-                                    : null;
-                                _context.SaveChanges();
-                                Log.Information($"Token actualizado en BD para usuario {request.user.userName}");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex, $"No se pudo guardar el token en BD para {request.user.userName}, pero se continúa la operación.");
-                        }
-
                         Log.Information($"Token Valido");
                         var pspResponseSelf = await _pspService.SelfRegistrationAsync(request.entity, pspResponseToken.access_token);
 
@@ -406,35 +428,6 @@ namespace SmartClickCore.API.Controllers.PSP
                             response.Identifier = pspResponseSelf.Identifier;
                             response.EntityId = pspResponseSelf.EntityId;
 
-                            var pspResponseFiles = await _pspService.UploadFilesAsync(pspResponseSelf.Identifier, pspResponse.UserToken, request.files);
-
-                            if (pspResponseFiles.Success)
-                            {
-                                var pspCuentaPostArchivos = _context.Set<DAL.Models.PSPAccount>()
-                                    .FirstOrDefault(p => p.Usuario.Id == usuarioLocal.Id);
-
-                                if (pspCuentaPostArchivos == null)
-                                {
-                                    Log.Warning($"Error recuperando usuario.");
-                                    return BadRequest(response);
-                                }
-                            
-                                pspCuentaPostArchivos.EstadoCuentaPSP =
-                                    _context.PSPAccountStatus.Where(x => x.Codigo == "A").FirstOrDefault();
-
-                                
-                                Log.Information($"Archivos subidos exitosamente - Identifier: {pspResponseSelf.Identifier}, Archivos: {request.files.Count}");
-                                response.Mensaje += " | " + (_pspService.IsTestMode()
-                                    ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
-                                    : "Archivos subidos exitosamente");
-                            }
-                            else
-                            {
-                                Log.Warning($"Error al subir archivos: {pspResponseFiles.Error}");
-                                response.Mensaje += " | Error al subir archivos: " + pspResponseFiles.Error;
-                            }
-
-
                             DAL.Models.Core.Billetera billetera = new DAL.Models.Core.Billetera()
                             {
                                 Cliente = usuario.Clientes,
@@ -454,6 +447,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     {
                         Log.Warning($"Token Invalido");
                     }
+                    
                     return Ok(response);
                 }
                 else
