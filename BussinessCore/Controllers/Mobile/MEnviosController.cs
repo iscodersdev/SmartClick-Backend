@@ -9,7 +9,9 @@ using DAL.Models.Core;
 using DAL.Models.PSP;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Org.BouncyCastle.Ocsp;
 using Serilog;
 using SmartClickCore;
@@ -19,6 +21,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BussinessCore.API.Controllers.Billetera
@@ -29,12 +32,15 @@ namespace BussinessCore.API.Controllers.Billetera
     public class MEnviosController : BaseApiController
     {
         private readonly NotificacionAPIService _notificacionAPIService;
-        private readonly IPSPService _pspService;
+        private readonly IPSPService _pspService; 
+        private readonly IServiceScopeFactory _scopeFactory;
+        private int _idMoviemiento;
 
-        public MEnviosController(SmartClickContext context, NotificacionAPIService notificacionAPIService, IPSPService pspService) : base(context)
+        public MEnviosController(SmartClickContext context, NotificacionAPIService notificacionAPIService, IPSPService pspService, IServiceScopeFactory scopeFactory) : base(context)
         {
             _notificacionAPIService = notificacionAPIService;
             _pspService = pspService;
+            _scopeFactory = scopeFactory;
         }
 
 
@@ -77,27 +83,24 @@ namespace BussinessCore.API.Controllers.Billetera
                         return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error no existe Billetera" });
                     }
                 }
-                
+
 
                 if (pspAccountDestino==null) // no es una billetera de Smart-click
-                {                    
+                {
+                   
+
                     var pspAccount = TraeAccountPSP(usuario);
                     string decryptedToken = common.DescifrarPassword(pspAccount.EncryptedPassword);
-
                     var AccesToken = await _pspService.GetAccessTokenUserAsync(pspAccount.UserName, decryptedToken);
-
                     ExternalAccountDataDTO pspResp = _pspService.ValidarCuentaExternaAsync(envioBilleteraDTO.CVU, AccesToken.access_token).Result;
-                    
-                    Console.WriteLine(pspResp);
-                    
+
                     if (pspResp.CUIT!=pspAccount.TributaryIdentifier)
                     {
                         return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "La cuenta origen y destino no son del mismo titular." });
                     }
-                    
+
                     int externalAccountId = pspResp.ExternoId;
-                    AgendarCuentaDataDTO respuestaAgendar =
-                        _pspService.AgendarCuentaExternaAsync(externalAccountId, AccesToken.access_token).Result;
+                    AgendarCuentaDataDTO respuestaAgendar = _pspService.AgendarCuentaExternaAsync(externalAccountId, AccesToken.access_token).Result;
 
                     if (!respuestaAgendar.Success)
                     {
@@ -108,45 +111,36 @@ namespace BussinessCore.API.Controllers.Billetera
                         }
                     }
 
-                    var respuestaRecaudadora = _pspService.TransferenciaCuentaRecaudadoraAsync(pspAccount, envioBilleteraDTO.Monto).Result;
-
-                    Console.WriteLine(respuestaRecaudadora);
-                    
+                    //Trae Saldo de cuenta Recaudadora
+                    var respuestaRecaudadora = await _pspService.TransferenciaCuentaRecaudadoraAsync(pspAccount, envioBilleteraDTO.Monto);
                     if (!respuestaRecaudadora.Success)
                     {
                         return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
                     }
-                  
 
+
+                    //Valida si Trajo saldo de la cuenta recaudadora al la cuenta del usuario
                     if (pspResp.Success)
                     {
-                        var solicitudTransferencia = _pspService.SolicitudDeTransferenciaAsync(pspAccount, pspResp, true, envioBilleteraDTO.Monto, AccesToken.access_token).Result;
-
-                        Console.WriteLine(solicitudTransferencia);
-                        
-                        TransactionConfirmationRequestDTO confirmarTrans = new TransactionConfirmationRequestDTO()
+                        var movimientoOrigen = new MovimientoBilletera
                         {
-                            Guid = new ConfirmationGuidDTO()
+                            CBU = billeteraDestino!=null ? billeteraDestino.CVU : envioBilleteraDTO.CVU,
+                            Fecha = DateTime.Now,
+                            Monto = montoEnvio,
+                            OrigenAsociado = new OrigenMovimiento
                             {
-                                Key = solicitudTransferencia.Guid.Key,
-                            },                           
-                            OTP = 999999,
-                            TransactionId = solicitudTransferencia.Data.TransactionId,
-                            IsExternal = true
+                                TipoOrigen = TipoOrigenMovimiento.Billetera,
+                                IdAsociado = billeteraDestino!=null ? billeteraDestino.Id : 0,
+                                Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
+                            },
+                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioPendiente)
                         };
 
-                        if (solicitudTransferencia.Success)
-                        {
-                            var confirmarTransferencia = _pspService.ConfirmarTransferenciaAsync(confirmarTrans, AccesToken.access_token).Result;
-                            if (!confirmarTransferencia.Success)
-                            {
-                                return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+confirmarTransferencia.Message });
-                            }
-                        }
-                    }
-                    else
-                    {
-                        return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio - "+pspResp.Mensaje });
+                        billeteraOrigen.Saldo -= montoEnvio;
+                        billeteraOrigen.Movimientos.Add(movimientoOrigen);
+                        await _context.SaveChangesAsync();
+
+                        EnviarTransferenciaExterna(movimientoOrigen.Id, envioBilleteraDTO, pspAccount, pspResp, AccesToken.access_token, billeteraOrigen.Id);
                     }
                 }
                 else
@@ -174,25 +168,23 @@ namespace BussinessCore.API.Controllers.Billetera
                         Detalle = billeteraOrigen.Cliente.Persona?.GetNombreCompleto()
                     });
                     _context.Update(billeteraDestino);
-                }          
 
-
-                var movimientoOrigen = new MovimientoBilletera
-                {
-                    CBU = billeteraDestino!=null ? billeteraDestino.CVU : envioBilleteraDTO.CVU,
-                    Fecha = DateTime.Now,
-                    Monto = montoEnvio,
-                    OrigenAsociado = new OrigenMovimiento
+                    var movimientoOrigen = new MovimientoBilletera
                     {
-                        TipoOrigen = TipoOrigenMovimiento.Billetera,
-                        IdAsociado = billeteraDestino!=null? billeteraDestino.Id:0,
-                        Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
-                    },
-                    TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
-                };
+                        CBU = billeteraDestino!=null ? billeteraDestino.CVU : envioBilleteraDTO.CVU,
+                        Fecha = DateTime.Now,
+                        Monto = montoEnvio,
+                        OrigenAsociado = new OrigenMovimiento
+                        {
+                            TipoOrigen = TipoOrigenMovimiento.Billetera,
+                            IdAsociado = billeteraDestino!=null ? billeteraDestino.Id : 0,
+                            Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
+                        },
+                        TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
+                    };
 
-                billeteraOrigen.Saldo -= montoEnvio;
-                billeteraOrigen.Movimientos.Add(movimientoOrigen);
+                }                    
+
                 if (billeteraDestino!=null)
                 {
                     billeteraOrigen.Contactos.Add(new ContactosBilletera
@@ -201,17 +193,19 @@ namespace BussinessCore.API.Controllers.Billetera
                         Detalle = billeteraDestino!=null ? billeteraDestino.Cliente.Persona?.GetNombreCompleto() : ""
                     });
                     _notificacionAPIService.Envia_Push(billeteraDestino.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${montoEnvio} en su billetera");
+                    
+                    _context.Update(billeteraOrigen);
+                    await _context.SaveChangesAsync();
                 }
 
-                _context.Update(billeteraOrigen);
-                await _context.SaveChangesAsync();
                 _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Envio de dinero", $"Ha enviado ${montoEnvio} exitosamente");
-                return new JsonResult(new EnvioBilleteraDTO { Status = 200, UAT = envioBilleteraDTO.UAT, Mensaje = "Envio realizado", Titular = billeteraDestino.Cliente.RazonSocial, CVU = envioBilleteraDTO.CVU, Monto = envioBilleteraDTO.Monto});
+                return new JsonResult(new EnvioBilleteraDTO { Status = 200, UAT = envioBilleteraDTO.UAT, Mensaje = "Envio realizado", Titular = billeteraDestino==null?"Externo":billeteraDestino.Cliente.RazonSocial, CVU = envioBilleteraDTO.CVU, Monto = envioBilleteraDTO.Monto });
 
+                
             }
             catch (Exception e)
             {
-                Log.Error($"Error en envio entre billeteras - {e.Message}");
+                Serilog.Log.Error($"Error en envio entre billeteras - {e.Message}");
                 return new JsonResult(new EnvioBilleteraDTO { Status = 500, UAT = envioBilleteraDTO.UAT, Mensaje = "Error en envio" });
             }
         }
@@ -346,6 +340,124 @@ namespace BussinessCore.API.Controllers.Billetera
                 return new JsonResult(new DAL.Models.RespuestaAPI { Status = 400, UAT = retiroDineroDTO.UAT, Mensaje = "Error en el retiro de dinero" });
             }
 
+        }
+
+
+        private void EnviarTransferenciaExterna(int idMovimiento, EnvioBilleteraDTO datosEnvio, PSPAccount pspAccount, ExternalAccountDataDTO pspResp, string accessToken, int BilletaraOrigenId)
+        {
+            Task.Run(async () =>
+            {
+                using (var cts = new CancellationTokenSource())
+                {
+                    cts.CancelAfter(TimeSpan.FromSeconds(180)); // 3 minutos máximo
+
+                    using (var scope = _scopeFactory.CreateScope())
+                    {
+                        var dbContextHilo = scope.ServiceProvider.GetRequiredService<SmartClickContext>();
+                        var pspServiceHilo = scope.ServiceProvider.GetRequiredService<IPSPService>();
+                        var mov = await dbContextHilo.MovimientosBilletera.FindAsync(idMovimiento);
+                        var billeteraOrigenHilo = await dbContextHilo.Billeteras.FindAsync(BilletaraOrigenId);
+                        try
+                        {
+                            
+                            if (mov == null) return; // Seguridad
+
+                            decimal montoRequerido = Convert.ToDecimal(datosEnvio.Monto);
+                            bool saldoSuficiente = false;
+
+                            try
+                            {
+                                while (!cts.Token.IsCancellationRequested)
+                                {
+                                    // A. Consultar Saldo
+                                    var consultaSaldo = await pspServiceHilo.ConsultarSaldoAsync(pspAccount.AccountNumber, accessToken);
+
+                                    if (consultaSaldo.Success)
+                                    {
+                                        // B. Validar si alcanza
+                                        if (consultaSaldo.Data.AvailableBalance >= montoRequerido)
+                                        {
+                                            saldoSuficiente = true;
+                                            break; // ¡SALDO ENCONTRADO! Rompemos el ciclo y avanzamos.
+                                        }
+                                    }
+                                    // C. ESPERAR 5 SEGUNDOS ANTES DE REINTENTAR
+                                    await Task.Delay(7000, cts.Token);
+                                }
+                            }
+                            catch (TaskCanceledException)
+                            {
+                                // Se acabó el tiempo (180s) dentro del Task.Delay
+                                saldoSuficiente = false;
+                            }
+
+                            if (saldoSuficiente)
+                            {
+
+                                // B. Lógica de Negocio (Transferencia)
+                                var solicitud = await pspServiceHilo.SolicitudDeTransferenciaAsync(
+                                    pspAccount,
+                                    pspResp,
+                                    true,
+                                    datosEnvio.Monto,
+                                    accessToken
+                                );
+
+                                if (solicitud.Success)
+                                {
+                                    var confirmacion = new TransactionConfirmationRequestDTO
+                                    {
+                                        Guid = new ConfirmationGuidDTO { Key = solicitud.Guid.Key },
+                                        OTP = 999999,
+                                        TransactionId = solicitud.Data.TransactionId,
+                                        IsExternal = true
+                                    };
+
+                                    var respConfirm = await pspServiceHilo.ConfirmarTransferenciaAsync(confirmacion, accessToken);
+
+                                    if (respConfirm.Success)
+                                    {
+                                        mov.TipoMovimiento = await dbContextHilo.TipoMovimientoBilletera
+                                            .FindAsync((int)TipoMovimientoBilleteraEnum.EnvioBilletera);
+                                    }
+                                    else
+                                    {
+                                        mov.TipoMovimiento = await dbContextHilo.TipoMovimientoBilletera
+                                            .FindAsync((int)TipoMovimientoBilleteraEnum.ErrorEnvio);
+                                        billeteraOrigenHilo.Saldo += Convert.ToDecimal(datosEnvio.Monto);
+                                    }
+                                }
+                                else
+                                {
+                                    mov.TipoMovimiento = await dbContextHilo.TipoMovimientoBilletera
+                                        .FindAsync((int)TipoMovimientoBilleteraEnum.ErrorEnvio);
+                                    billeteraOrigenHilo.Saldo += Convert.ToDecimal(datosEnvio.Monto);
+                                }
+                            }
+                            else
+                            {
+                                mov.TipoMovimiento = await dbContextHilo.TipoMovimientoBilletera
+                                      .FindAsync((int)TipoMovimientoBilleteraEnum.ErrorEnvio);
+                                billeteraOrigenHilo.Saldo += Convert.ToDecimal(datosEnvio.Monto);
+                            }
+                            await dbContextHilo.SaveChangesAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            // Manejo de errores fatales dentro del hilo
+                            var movError = await dbContextHilo.MovimientosBilletera.FindAsync(idMovimiento);
+                            if (movError != null)
+                            {
+                                movError.TipoMovimiento = await dbContextHilo.TipoMovimientoBilletera
+                                        .FindAsync((int)TipoMovimientoBilleteraEnum.ErrorEnvio);
+                                billeteraOrigenHilo.Saldo += Convert.ToDecimal(datosEnvio.Monto);
+                                await dbContextHilo.SaveChangesAsync();
+                            }
+                            Serilog.Log.Error($"Error en hilo background: {ex.Message}");
+                        }
+                    }
+                }
+            });
         }
 
 

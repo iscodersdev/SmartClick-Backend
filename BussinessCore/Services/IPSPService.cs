@@ -132,12 +132,20 @@ namespace BusinessCore.Services
 
 
         /// <summary>
-        /// Enviart transferencia desde cuenta recaudadora
+        /// Envia transferencia desde cuenta recaudadora
         /// </summary>
         /// <param name="cuentaOrigen"></param>
         /// <param name="monto"></param>
         /// <param name="userToken"></param>
         /// <returns></returns>
         Task<FinalConfirmationResponseDTO> TransferenciaCuentaRecaudadoraAsync(PSPAccount cuentaOrigen, string monto);
+
+        /// <summary>
+        /// Consultar Saldo
+        /// </summary>
+        /// <param name="accountNumber"></param>
+        /// <param name="userToken"></param>
+        /// <returns></returns>
+        Task<BalanceResponseDTO> ConsultarSaldoAsync(string accountNumber, string userToken);
     }
 }

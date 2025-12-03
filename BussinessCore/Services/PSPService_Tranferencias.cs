@@ -227,6 +227,49 @@ namespace BusinessCore.Services
             }
         }
 
+        /// <summary>
+        /// Consultar Saldo
+        /// </summary>
+        /// <returns></returns>
+        public async Task<BalanceResponseDTO> ConsultarSaldoAsync(string accountNumber, string userToken)
+        {
+            try
+            {
+                CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
+                var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{cuentaRecaudadora.BaseUrl}/a/multicuenta/api/v1/Accounts/Balances");
+
+                requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", userToken);
+                requestMessage.Headers.Add("X-client_id", cuentaRecaudadora.ClientId);
+
+                ConsultarSaldoDTO consultarSaldoRequestDTO = new ConsultarSaldoDTO()
+                {
+                    accountNumber = accountNumber,
+                };
+
+
+                var jsonContent = JsonConvert.SerializeObject(consultarSaldoRequestDTO);
+                requestMessage.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(requestMessage);
+                var content = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    JObject respuestaCompleta = JObject.Parse(content);
+                    string mensajeExterno = respuestaCompleta["message"]?.ToString() ?? "Error desconocido al intentar la transferencia.";
+                    return new BalanceResponseDTO { Code = response.StatusCode.ToString(), Message = mensajeExterno, Success = false };
+                }
+
+                var apiResponse = JsonConvert.DeserializeObject<BalanceResponseDTO>(content);
+
+                return apiResponse;
+            }
+            catch (Exception ex)
+            {
+                return new BalanceResponseDTO { Code = "500", Message = "Excepci�n al ejecutar la transferencia: " + ex.Message, Success = false };
+            }
+        }
+
 
 
         /// <summary>

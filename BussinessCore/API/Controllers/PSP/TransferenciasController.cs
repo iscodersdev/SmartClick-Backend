@@ -335,7 +335,7 @@ namespace SmartClickCore.API.Controllers.PSP
                                 IdAsociado =  0,
                                 Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
                             },
-                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDinero)
+                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDineroExterno)
                         };
 
                         billeteraOrigen.Saldo += request.External.Amount;
