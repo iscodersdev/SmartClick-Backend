@@ -285,6 +285,15 @@ namespace SmartClickCore.API.Controllers.PSP
 
                 CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
 
+                if (request.External.CVU_CBUPayer == cuentaRecaudadora.TributaryIdentifier)
+                {
+                    Log.Error("Transferencia recibida desde cuenta recaudadora, ignorando esto");
+                    return StatusCode(500, new { success = false, message = "Transferencia recibida desde cuenta recaudadora, ignorando esto", data = "", code = "" });
+                }
+                Log.Error($"CVU_CBUPayer - {request.External.CVU_CBUPayer}");
+                Log.Error($"CVU_CBU - {request.Internal.CVU_CBU}");
+
+
                 ExternalAccountDataDTO cuantaDestino = new ExternalAccountDataDTO
                 {
                     IdentificadorTributario = cuentaRecaudadora.TributaryIdentifier,
@@ -325,7 +334,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     if (transferencia.Success)
                     {
                         var movimientoOrigen = new MovimientoBilletera
-                        {
+                        {                           
                             CBU = billeteraOrigen.CVU,
                             Fecha = DateTime.Now,
                             Monto = request.External.Amount,
