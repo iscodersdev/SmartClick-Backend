@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace DAL.Models.PSP
@@ -188,5 +189,38 @@ namespace DAL.Models.PSP
 
     #endregion
 
+
+    #region Consultar Saldo
+    public class ConsultarSaldoDTO
+    {
+        public string accountNumber { get; set; }
+
+    }
+
+    public class BalanceResponseDTO
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public BalanceDataDTO Data { get; set; }
+        public string Code { get; set; }
+    }
+
+    public class BalanceDataDTO
+    {
+        public DateTime RequestDate { get; set; }
+
+        public decimal AvailableBalance { get; set; }
+        public decimal WithdrawalBalance { get; set; }
+
+        public decimal IssuedDeferredBalance { get; set; }
+
+        public decimal DeferredBalanceToCharge { get; set; }
+
+        public string CurrencyTypeSymbol { get; set; }
+    }
+
+
+
+    #endregion
 
 }
