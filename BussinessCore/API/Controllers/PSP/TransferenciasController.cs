@@ -288,7 +288,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 if (request.External.CVU_CBUPayer == cuentaRecaudadora.TributaryIdentifier)
                 {
                     Log.Error("Transferencia recibida desde cuenta recaudadora, ignorando esto");
-                    return StatusCode(500, new { success = false, message = "Transferencia recibida desde cuenta recaudadora, ignorando esto", data = "", code = "" });
+                    return StatusCode(100, new { success = false, message = "Transferencia recibida desde cuenta recaudadora, ignorando esto", data = "", code = "" });
                 }
                 Log.Error($"CVU_CBUPayer - {request.External.CVU_CBUPayer}");
                 Log.Error($"CVU_CBU - {request.Internal.CVU_CBU}");

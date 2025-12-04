@@ -182,8 +182,11 @@ namespace BussinessCore.API.Controllers.Billetera
                         },
                         TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
                     };
+                    billeteraOrigen.Saldo += montoEnvio;
+                    billeteraOrigen.Movimientos.Add(movimientoOrigen);
+                    _context.Update(billeteraDestino);
 
-                }                    
+                }              
 
                 if (billeteraDestino!=null)
                 {
