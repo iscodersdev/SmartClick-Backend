@@ -74,6 +74,11 @@ namespace BussinessCore.API.Controllers.Billetera
 
                 var pspAccountDestino = _context.PSPAccounts.Where(b => b.CVU == envioBilleteraDTO.CVU).FirstOrDefault();
 
+                if (pspAccountDestino == null)
+                {
+                    pspAccountDestino = _context.PSPAccounts.Where(b => b.CVU_CBUAlias == envioBilleteraDTO.CVU).FirstOrDefault();
+                }
+
                 if (pspAccountDestino!=null)
                 {
                     billeteraDestino = _context.Billeteras.Where(b => b.Cliente.Id == pspAccountDestino.Cliente.Id).FirstOrDefault();
