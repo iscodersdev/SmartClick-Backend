@@ -169,6 +169,7 @@ namespace DAL.Models.PSP
         public decimal Amount { get; set; }
         public string CVU_CBUPayer { get; set; }
         public string OperationIdentifier { get; set; }
+        public string NamePayer { get; set; }
     }
     
     public class RecibirTransferenciaInternalDTO

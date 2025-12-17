@@ -89,6 +89,7 @@ namespace DAL.Mobile
 
     public class EnvioBilleteraDTO : RespuestaAPI
     {
+        public int Id { get; set; }
         public string CVU { get; set; }
         public string Monto { get; set; }
         public string Titular { get; set; }
