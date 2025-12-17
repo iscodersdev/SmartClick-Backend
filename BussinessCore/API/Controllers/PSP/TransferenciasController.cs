@@ -343,7 +343,7 @@ namespace SmartClickCore.API.Controllers.PSP
                             {
                                 TipoOrigen = TipoOrigenMovimiento.Billetera,
                                 IdAsociado =  0,
-                                Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
+                                Descripcion = request.External.NamePayer
                             },
                             TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDineroExterno)
                         };
