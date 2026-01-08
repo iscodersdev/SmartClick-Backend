@@ -315,6 +315,9 @@ namespace SmartClick.Controllers
 
                 Producto producto = _context.Productos.FirstOrDefault(x => x.Id == CompraProducto.ProductoId);
 
+                Console.WriteLine(billeteraPagadora.Saldo);
+                Console.WriteLine(producto.Descripcion);
+                
 
                 if (billeteraPagadora.ChequeaDebito(producto.Precio))
                 {
@@ -336,10 +339,22 @@ namespace SmartClick.Controllers
                     compra.EstadoCompra = EstadoCompra;
                     compra.TipoCompra = TipoCompra;
 
-                    MovimientoBilletera movimientoBilletera = new MovimientoBilletera();
+                    MovimientoBilletera movimientoBilletera = new MovimientoBilletera{                           
+                        CBU = "0",
+                        Fecha = DateTime.Now,
+                        Monto = producto.Precio,
+                        OrigenAsociado = new OrigenMovimiento
+                        {
+                            TipoOrigen = TipoOrigenMovimiento.Billetera,
+                            IdAsociado =  0,
+                            Descripcion = "Compra de " + producto.Descripcion
+                        },
+                        TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
+                    };
                     //Agregar Movimiento Billetera
 
                     billeteraPagadora.Saldo -= producto.Precio;
+                    billeteraPagadora.Movimientos.Add(movimientoBilletera);
                     _context.Update(billeteraPagadora);
                     _context.ComprasProductos.Add(compra);
                     _context.SaveChanges();
