@@ -809,7 +809,22 @@ namespace SmartClick.Controllers
                 html = "<br/>Sr: " + datoscge.Nombres + " " + datoscge.Apellido + "<br/><br/>";
                 html += "Su Token de Registro es: " + token.ToString() + "<br/><br/>";
                  common.EnviarMail(datoscge.Mail, "Token Registro SmartClick", html, "");
-               
+                preregistro.OrganismoId = Registro.OrganismoId;
+
+                var tipopersonaEjercito = _context.TiposPersonas.Where(x => x.Organismo.Activo && x.Organismo.Id == Registro.OrganismoId).OrderBy(x => x.Organismo.Orden);
+                if (tipopersonaEjercito != null)
+                {
+                    List<MListaTipoPersonas> lista = new List<MListaTipoPersonas>();
+                    foreach (var tipopers in tipopersonaEjercito)
+                    {
+                        MListaTipoPersonas TipoPersona = new MListaTipoPersonas();
+                        TipoPersona.Id = tipopers.Id;
+                        TipoPersona.Descripcion = tipopers.nombre;
+                        lista.Add(TipoPersona);
+                    }
+                    preregistro.TipoPersonas = lista;
+                }
+
                 return preregistro;
 
             }
