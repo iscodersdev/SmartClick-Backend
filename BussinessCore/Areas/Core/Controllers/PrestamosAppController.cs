@@ -1,6 +1,4 @@
-﻿using SmartClickCore.Controllers;
-using SmartClickCore.Services;
-using Commons.Identity.Extensions;
+﻿using Commons.Identity.Extensions;
 using Commons.Models;
 using DAL.Data;
 using DAL.Models;
@@ -9,6 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
+using SmartClickCore.Controllers;
+using SmartClickCore.Interface;
+using SmartClickCore.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,6 +17,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using static SmartClickCore.common;
 
 namespace SmartClickCore.Areas.Core.Controllers
 {
@@ -23,10 +25,13 @@ namespace SmartClickCore.Areas.Core.Controllers
     public class PrestamosAppController : SmartClickCoreController
     {
         private readonly CGEService _cgeService;
-        public PrestamosAppController(SmartClickContext context, CGEService cgeService) : base(context)
+
+        private readonly IMailService _mailService;
+        public PrestamosAppController(SmartClickContext context, CGEService cgeService, IMailService mailService) : base(context)
         {
             breadcumb.Add(new Message() { DisplayName = "Prestamos App" });
             _cgeService = cgeService;
+            _mailService=mailService;
         }
 
         public IActionResult Index()
@@ -470,7 +475,12 @@ namespace SmartClickCore.Areas.Core.Controllers
                 {
                     var prestamos = _context.Prestamos.Find(item.Id);
                     string destinatario = prestamos.Cliente.Usuario.Mail;  
-                    common.EnviarMail(destinatario, titulo, texto, cliente);
+                    //common.EnviarMail(destinatario, titulo, texto, cliente);
+
+
+                    var mail = new MailAPI { Mail = destinatario, Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
+
                 }
 
                 AddPageAlerts(PageAlertType.Success, "Se envio las Notificaciones Correctamente.");

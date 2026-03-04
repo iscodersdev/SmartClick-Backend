@@ -1,21 +1,23 @@
-﻿using Commons.Models;
-using Microsoft.AspNetCore.Mvc;
+﻿using Commons.Identity.Extensions;
+using Commons.Models;
 using DAL.Data;
+using DAL.DTOs;
 using DAL.Models;
-using System.Linq;
-using System.IO;
-using System;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using OfficeOpenXml;
-using System.Collections.Generic;
-using DAL.DTOs;
-using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
-using Commons.Identity.Extensions;
-using SmartClickCore.Services;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Authorization;
 using SmartClickCore.Controllers;
+using SmartClickCore.Interface;
+using SmartClickCore.Services;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Claims;
+using static SmartClickCore.common;
 
 namespace SmartClickCore.Areas.Core.Controllers
 {
@@ -23,10 +25,12 @@ namespace SmartClickCore.Areas.Core.Controllers
     public class CampanasController : SmartClickCoreController
     {
         private IHostingEnvironment _envirom;
-        public CampanasController(SmartClickContext context, IHostingEnvironment env) : base(context)
+        private readonly IMailService _mailService;
+        public CampanasController(SmartClickContext context, IHostingEnvironment env, IMailService mailService) : base(context)
         {
             _envirom = env;
             breadcumb.Add(new Message() { DisplayName = "Gestión" });
+            _mailService=mailService;
         }
         public ActionResult Index()
         {
@@ -294,8 +298,11 @@ namespace SmartClickCore.Areas.Core.Controllers
                 texto = texto + "<img src='" + renglon.Cabecera.ImagenUrl + "'><br/></a><br><br>";
                 if (renglon.eMail != null)
                 {
-                    SmartClickCore.SmartClick.EnviarMailEmpresa(renglon.Cabecera.Empresa, renglon.eMail, renglon.Cabecera.Observaciones, texto, "");
+                    //SmartClickCore.SmartClick.EnviarMailEmpresa(renglon.Cabecera.Empresa, renglon.eMail, renglon.Cabecera.Observaciones, texto, "");
                     //common.EnviarMail(renglon.eMail,renglon.Cabecera.Observaciones,texto,"",renglon.Cabecera.Imagen);
+
+                    var mail = new MailAPI { Mail = renglon.eMail, Titulo = renglon.Cabecera.Observaciones, Html = SmartClick.cuerpoHTMLEmpresa(renglon.Cabecera.Observaciones, texto, "", renglon.Cabecera.Empresa, renglon.Cabecera.ImagenUrl) };
+                    _mailService.EnviarAsync(mail);
                 }
             }
             AddPageAlerts(PageAlertType.Success, renglones.Count().ToString() + " Mails Enviados");

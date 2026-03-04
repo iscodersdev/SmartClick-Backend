@@ -1,14 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.AspNetCore.Mvc;
+﻿using Commons.Controllers;
+using Commons.Identity.Services;
 using DAL.Data;
 using DAL.Models;
-using Microsoft.AspNetCore.Cors;
-using System.Linq;
 using Microsoft.AspNetCore.Authorization;
-using Commons.Controllers;
-using Commons.Identity.Services;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
 using SmartClickCore;
+using SmartClickCore.Interface;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using static SmartClickCore.common;
 
 namespace SmartClick.Controllers
 {
@@ -17,10 +19,13 @@ namespace SmartClick.Controllers
     {
         private readonly UserService<Usuario> _userManager;
         public SmartClickContext _context;
-        public MServiciosController(SmartClickContext context, UserService<Usuario> userManager)
+
+        private readonly IMailService _mailService;
+        public MServiciosController(SmartClickContext context, UserService<Usuario> userManager, IMailService mailService)
         {
             _context = context;
             _userManager = userManager;
+            _mailService=mailService;
         }
 
         [HttpPost]
@@ -307,7 +312,10 @@ namespace SmartClick.Controllers
                 leyenda = "<BR/><BR/><b>" + horario.Servicio.Observaciones + "</b>";
             }
             string textomail = "Confirmacion de Reserva de Actividad " + horario.Servicio.Nombre + "<BR/><BR/>Dia: " + uat.Fecha.ToString("dd/MM/yyyy") + "<BR/>Horario: " + horario.Nombre+ "<BR/><BR/>Cliente: " + Uat.Cliente?.Persona?.Apellido+", "+Uat.Cliente?.Persona?.Nombres+leyenda;
-            common.EnviarMail(Uat.Cliente.Usuario.Mail, "Confirma Reserva Actividad", textomail, "SmartClick",null,null);
+            //common.EnviarMail(Uat.Cliente.Usuario.Mail, "Confirma Reserva Actividad", textomail, "SmartClick",null,null);
+
+            var mail = new MailAPI { Mail = Uat.Cliente.Usuario.Mail, Titulo = "Confirma Reserva Actividad", Html = textomail };
+            _mailService.EnviarAsync(mail);
             return uat;
         }
 
@@ -332,7 +340,10 @@ namespace SmartClick.Controllers
             uat.Mensaje = "Reserva Anulada";
             uat.Status = 200;
             string textomail = "Anulacion de Reserva de Actividad " + reserva.Horario.Servicio.Nombre + "<BR/><BR/>Dia: " + reserva.Fecha.ToString("dd/MM/yyyy") + "<BR/>Horario: " + reserva.Horario.Nombre + "<BR/>Cliente: " + Uat.Cliente?.Persona?.Apellido + ", " + Uat.Cliente?.Persona.Nombres;
-            common.EnviarMail(Uat.Cliente.Usuario.Mail, "Anulacion Reserva Actividad", textomail, "SmartClick",null,null);
+            //common.EnviarMail(Uat.Cliente.Usuario.Mail, "Anulacion Reserva Actividad", textomail, "SmartClick",null,null);
+
+            var mail = new MailAPI { Mail = Uat.Cliente.Usuario.Mail, Titulo = "Anulacion Reserva Actividad", Html = textomail };
+            _mailService.EnviarAsync(mail);
             return uat;
         }
     }

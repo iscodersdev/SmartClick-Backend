@@ -1,7 +1,4 @@
-﻿using SmartClickCore.Areas.Administracion.ViewModels;
-using SmartClickCore.Controllers;
-using SmartClickCore.Services;
-using Castle.Core.Internal;
+﻿using Castle.Core.Internal;
 using Commons.Identity.Extensions;
 using Commons.Identity.Services;
 using Commons.Models;
@@ -12,6 +9,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
+using SmartClickCore.Areas.Administracion.ViewModels;
+using SmartClickCore.Controllers;
+using SmartClickCore.Interface;
+using SmartClickCore.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,6 +20,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using static SmartClickCore.common;
 
 namespace SmartClickCore.Areas.Core.Controllers
 {
@@ -27,11 +29,13 @@ namespace SmartClickCore.Areas.Core.Controllers
     {
         private readonly CGEService _cgeService;
         private readonly UserService<Usuario> _userService;
-        public PrestamosAprobadosController(SmartClickContext context, CGEService cgeService, UserService<Usuario> userService) : base(context)
+        private readonly IMailService _mailService;
+        public PrestamosAprobadosController(SmartClickContext context, CGEService cgeService, UserService<Usuario> userService, IMailService mailService) : base(context)
         {
             breadcumb.Add(new Message() { DisplayName = "Prestamos Aprobados" });
             _cgeService = cgeService;
             _userService = userService;
+            _mailService = mailService;
         }
 
         public IActionResult Index()
@@ -280,7 +284,10 @@ namespace SmartClickCore.Areas.Core.Controllers
 
                     if (destinatario != null)
                     {
-                        common.EnviarMail(destinatario, titulo, texto, client);
+                        //common.EnviarMail(destinatario, titulo, texto, client);
+
+                        var mail = new MailAPI { Mail = destinatario, Titulo = titulo, Html = texto };
+                        _mailService.EnviarAsync(mail);
                     }
                 }
 
@@ -443,8 +450,15 @@ namespace SmartClickCore.Areas.Core.Controllers
                     texto += "</br>";
                     texto += "https://play.google.com/store/apps/details?id=ar.com.SmartClick&hl=es";
                     string q = "";
-                    common.EnviarMail(destinatario, titulo, texto, q);
-                    common.EnviarMail("app@SmartClick.org.ar", titulo, texto, q);
+                    //common.EnviarMail(destinatario, titulo, texto, q);
+                    //common.EnviarMail("app@SmartClick.org.ar", titulo, texto, q);
+
+
+                    var mail = new MailAPI { Mail = destinatario, Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
+
+                    var mailSsiempreClick = new MailAPI { Mail = "app@SmartClick.org.ar", Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
                 }
                 else
                 {
@@ -454,9 +468,15 @@ namespace SmartClickCore.Areas.Core.Controllers
                     texto += "</br>";
                     texto += "https://play.google.com/store/apps/details?id=ar.com.SmartClick&hl=es";
                     string q = "";
-                    common.EnviarMail(destinatario, titulo, texto, q);
-                    common.EnviarMail("acevedoruben@hotmail.com", titulo, texto, q);
-                    common.EnviarMail("app@SmartClick.org.ar", titulo, texto, q);
+                    //common.EnviarMail(destinatario, titulo, texto, q);
+                    //common.EnviarMail("acevedoruben@hotmail.com", titulo, texto, q);
+                    //common.EnviarMail("app@SmartClick.org.ar", titulo, texto, q);
+
+                    var mail = new MailAPI { Mail = destinatario, Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
+
+                    var mailSsiempreClick = new MailAPI { Mail = "app@SmartClick.org.ar", Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
 
                 }
                 AddPageAlerts(PageAlertType.Success, "Se envio Correctamente la Notificaciones a " + cliente.Persona.Apellido + " " + cliente.Persona.Nombres);

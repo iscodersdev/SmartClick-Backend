@@ -1,24 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.AspNetCore.Mvc;
-using System.Data;
-using Microsoft.AspNetCore.Cors;
+﻿using Commons.Controllers;
+using Commons.Identity.Services;
 using DAL.Data;
 using DAL.Models;
-using System.Linq;
 using Microsoft.AspNetCore.Authorization;
-using Commons.Identity.Services;
-using Commons.Controllers;
-using SmartClickCore;
-using System.Net.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
-using Microsoft.Win32;
-using System.ComponentModel.DataAnnotations;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Numeric;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Win32;
 using MimeKit.Encodings;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.Numeric;
+using SmartClickCore;
+using SmartClickCore.Interface;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using static SmartClickCore.common;
 
 namespace SmartClick.Controllers
 {
@@ -28,11 +30,13 @@ namespace SmartClick.Controllers
         private readonly UserService<Usuario> _userManager;
         private readonly SignInManager<Usuario> _signInManager;
         public SmartClickContext _context;
-        public MPrestamosController(SmartClickContext context, UserService<Usuario> userManager, SignInManager<Usuario> signInManager)
+        private readonly IMailService _mailService;
+        public MPrestamosController(SmartClickContext context, UserService<Usuario> userManager, SignInManager<Usuario> signInManager, IMailService mailService)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
+            _mailService=mailService;
         }
 
         [HttpPost]
@@ -493,8 +497,11 @@ namespace SmartClick.Controllers
                             html += "<b>Monto de Cuota:</b> " + prestamo.MontoCuota.ToString() + "<br/><br/>";
                             html += "<b>Monto de Cuota Ampliación :</b> " + prestamo.MontoCuotaAmpliacion.ToString() + "<br/><br/>";
                             html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
-                            common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
-                            common.EnviarMail("acevedoruben@hotmail.com", "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                            //common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                            //common.EnviarMail("acevedoruben@hotmail.com", "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+
+                            var mail = new MailAPI { Mail = prestamo.Cliente.Usuario.Email.Trim(), Titulo = "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), Html = html };
+                            _mailService.EnviarAsync(mail);
                         }
                         else
                         {
@@ -617,8 +624,12 @@ namespace SmartClick.Controllers
                 html += "<b>Monto de Cuota:</b> " + prestamoBAF.MontoCuota.ToString() + "<br/><br/>";
                 html += "<b>Monto de Cuota Ampliación :</b> " + prestamoBAF.MontoCuotaAmpliacion.ToString() + "<br/><br/>";
                 html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
-                common.EnviarMail(prestamoBAF.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamoBAF.Cliente.Persona.Apellido.Trim() + ", " + prestamoBAF.Cliente.Persona.Nombres.Trim(), html, "");
-                common.EnviarMail("acevedoruben@hotmail.com", "Solicitud de Descuento - Causante: " + prestamoBAF.Cliente.Persona.Apellido.Trim() + ", " + prestamoBAF.Cliente.Persona.Nombres.Trim(), html, "");
+                //common.EnviarMail(prestamoBAF.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamoBAF.Cliente.Persona.Apellido.Trim() + ", " + prestamoBAF.Cliente.Persona.Nombres.Trim(), html, "");
+                //common.EnviarMail("acevedoruben@hotmail.com", "Solicitud de Descuento - Causante: " + prestamoBAF.Cliente.Persona.Apellido.Trim() + ", " + prestamoBAF.Cliente.Persona.Nombres.Trim(), html, "");
+
+
+                var mail = new MailAPI { Mail = prestamoBAF.Cliente.Usuario.Email.Trim(), Titulo = "Solicitud de Descuento - Causante: " + prestamoBAF.Cliente.Persona.Apellido.Trim() + ", " + prestamoBAF.Cliente.Persona.Nombres.Trim(), Html = html };
+                _mailService.EnviarAsync(mail);
             }
             return uat;
         }
@@ -679,8 +690,11 @@ namespace SmartClick.Controllers
                 html += "<b>Cantidad de Cuotas:</b> " + prestamo.CantidadCuotas.ToString() + "<br/>";
                 html += "<b>Monto de Cuota:</b> " + prestamo.MontoCuota.ToString() + "<br/><br/>";
                 html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
-                common.EnviarMail("racingdario@gmail.com", "Solicitud de Prestamo - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
-                common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                //common.EnviarMail("racingdario@gmail.com", "Solicitud de Prestamo - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+               // common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+
+                var mail = new MailAPI { Mail = prestamo.Cliente.Usuario.Email.Trim(), Titulo = "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), Html = html };
+                _mailService.EnviarAsync(mail);
                 return true;
             }
             catch (Exception)
@@ -980,8 +994,11 @@ namespace SmartClick.Controllers
                 string html = "";
                 html = "<br/>Sr: " + prestamo.Cliente.Usuario.UserName + "<br/><br/>";
                 html += "Su Token de Confirmación de prestamo es: " + token.ToString() + "<br/><br/>";
-                common.EnviarMail(prestamo.Cliente.Usuario.UserName.Trim(), "Token Confirmación SmartClick", html, "");
-                common.EnviarMail("acevedoruben@hotmail.com", "Token Confirmación SmartClick", html, "");
+                //common.EnviarMail(prestamo.Cliente.Usuario.UserName.Trim(), "Token Confirmación SmartClick", html, "");
+                //common.EnviarMail("acevedoruben@hotmail.com", "Token Confirmación SmartClick", html, "");
+
+                var mail = new MailAPI { Mail = prestamo.Cliente.Usuario.UserName.Trim(), Titulo = "Token Confirmación SmartClick", Html = html };
+                _mailService.EnviarAsync(mail);
                 uat.Mensaje = "Envio email con Token !!";
             }
 
@@ -1766,10 +1783,11 @@ namespace SmartClick.Controllers
                         html += "<b>Cantidad de Cuotas:</b> " + prestamo.CantidadCuotas.ToString() + "<br/>";
                         html += "<b>Monto de Cuota:</b> " + prestamo.MontoCuota.ToString() + "<br/><br/>";
                         html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
-                        common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
-                        common.EnviarMail("rolando.d.ponce@hotmail.com", "Solicitud de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                        //common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                        //common.EnviarMail("rolando.d.ponce@hotmail.com", "Solicitud de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
 
-
+                        var mail = new MailAPI { Mail = prestamo.Cliente.Empresa.Mail, Titulo = "Solicitud de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), Html = html };
+                        await _mailService.EnviarAsync(mail);
                     }
                     else
                     {

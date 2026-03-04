@@ -1,20 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.AspNetCore.Mvc;
-using System.Data;
-using Microsoft.AspNetCore.Cors;
+﻿using Commons.Controllers;
+using Commons.Identity.Services;
 using DAL.Data;
 using DAL.Models;
-using System.Linq;
-using Microsoft.AspNetCore.Authorization;
-using Commons.Identity.Services;
-using Commons.Controllers;
-using SmartClickCore;
-using System.Net.Http;
-using System.Threading.Tasks;
-using SmartClickCore.API.Controllers;
 using DAL.Models.Core;
 using MailKit.Search;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Mvc;
+using SmartClickCore;
+using SmartClickCore.API.Controllers;
+using SmartClickCore.Interface;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using static SmartClickCore.common;
 
 namespace SmartClick.Controllers
 {
@@ -24,10 +26,13 @@ namespace SmartClick.Controllers
         private readonly UserService<Usuario> _userManager;
         //private readonly BusinessCore.Services.NotificacionAPIService _notificacionAPIService;
         public SmartClickContext _context;
-        public MProductosController(SmartClickContext context, UserService<Usuario> userManager) : base(context)
+
+        private readonly IMailService _mailService;
+        public MProductosController(SmartClickContext context, UserService<Usuario> userManager, IMailService mailService) : base(context)
         {
             _context = context;
             _userManager = userManager;
+            _mailService=mailService;
         }
 
         [HttpPost]
@@ -589,8 +594,11 @@ namespace SmartClick.Controllers
                                 html += "<b>Cantidad de Cuotas:</b> " + prestamo.CantidadCuotas.ToString() + "<br/>";
                                 html += "<b>Monto de Cuota:</b> " + prestamo.MontoCuota.ToString() + "<br/><br/>";
                                 html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
-                                common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                                //common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
                                 //uat.LegajoElectronico = solicitud.LegajoElectronico;
+
+                                var mail = new MailAPI { Mail = prestamo.Cliente.Empresa.Mail, Titulo = "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), Html = html};
+                                _mailService.EnviarAsync(mail);
 
 
                                 Compras compra = new Compras();
@@ -690,8 +698,12 @@ namespace SmartClick.Controllers
                 html += "<b>Cantidad de Cuotas:</b> " + prestamo.CantidadCuotas.ToString() + "<br/>";
                 html += "<b>Monto de Cuota:</b> " + prestamo.MontoCuota.ToString() + "<br/><br/>";
                 html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
-                common.EnviarMail("racingdario@gmail.com", "Solicitud de Prestamo - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+               // common.EnviarMail("racingdario@gmail.com", "Solicitud de Prestamo - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
                 //common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+
+
+                var mail = new MailAPI { Mail = prestamo.Cliente.Empresa.Mail, Titulo = "Solicitud de Descuento - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), Html = html };
+                _mailService.EnviarAsync(mail);
 
                 Compras compra = new Compras();
 
