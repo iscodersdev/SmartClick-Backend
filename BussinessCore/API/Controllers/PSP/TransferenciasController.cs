@@ -277,81 +277,100 @@ namespace SmartClickCore.API.Controllers.PSP
         {
             try
             {
-                PSPAccount account = _context.PSPAccounts.Where(x=>x.AccountNumber == request.accountNumber).FirstOrDefault();
+                PSPAccount account = _context.PSPAccounts.Where(x=>x.CVU == request.Internal.CVU_CBU).FirstOrDefault();
                 if (account==null)
                 {
-                    return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+                    return StatusCode(500, new { success = false, message = "No se encuentra la cuenta por ese número de cuenta", data = "", code = "" });
                 }
 
                 CuentasRecaudadoras cuentaRecaudadora = _context.CuentasRecaudadoras.Where(x => x.AccountNumber=="30717072509-00000591").FirstOrDefault();
+
+                if (request.External.CVU_CBUPayer == cuentaRecaudadora.TributaryIdentifier)
+                {
+                    Log.Error("Transferencia recibida desde cuenta recaudadora, ignorando esto");
+                    return StatusCode(100, new { success = false, message = "Transferencia recibida desde cuenta recaudadora, ignorando esto", data = "", code = "" });
+                }
+                Log.Error($"CVU_CBUPayer - {request.External.CVU_CBUPayer}");
+                Log.Error($"CVU_CBUPayer - {request.External.NamePayer}");
+                Log.Error($"CVU_CBU - {request.Internal.CVU_CBU}");
+
 
                 ExternalAccountDataDTO cuantaDestino = new ExternalAccountDataDTO
                 {
                     IdentificadorTributario = cuentaRecaudadora.TributaryIdentifier,
                     CUIT = cuentaRecaudadora.TributaryIdentifier,
-                        NumeroDeCuenta = cuentaRecaudadora.AccountNumber,
-                        Nombre = "Cuenta Recaudadora",
-                        TipoCuentaId = 1,
-                        TipoMonedaId = 1,
-                    };
-                var token = _pspService.GetAccessTokenAsync();
-                var solicitud = await _pspService.SolicitudDeTransferenciaAsync(account, cuantaDestino, false, request.balance.ToString(), token.Result.access_token);
-
+                    NumeroDeCuenta = cuentaRecaudadora.AccountNumber,
+                    Nombre = "Cuenta Recaudadora",
+                    TipoCuentaId = 1,
+                    TipoMonedaId = 1,
+                };
+                
+                string decryptedToken = common.DescifrarPassword(account.EncryptedPassword);
+                
+                var token = _pspService.GetAccessTokenUserAsync(account.UserName, decryptedToken);
+                var solicitud = await _pspService.SolicitudDeTransferenciaAsync(account, cuantaDestino, false, request.External.Amount.ToString(), token.Result.access_token);
+                
                 if (solicitud.Success)
                 {
                     TransactionConfirmationRequestDTO confirmarTrans = new TransactionConfirmationRequestDTO()
                     {
                         Guid = new ConfirmationGuidDTO()
                         {
-                            Key = solicitud.Guid.Key
+                            Key = solicitud.Guid.Key,
+                            Code = 999999
                         },
                         OTP = 999999,
                         TransactionId = solicitud.Data.TransactionId,
-                        IsExternal = true
+                        IsExternal = false
                     };
 
                     var transferencia = await _pspService.ConfirmarTransferenciaAsync(confirmarTrans, token.Result.access_token);
 
-                    PSPAccount pspAccountDestino = _context.PSPAccounts.Where(x => x.AccountNumber == request.destinationAccount.accountNumber).FirstOrDefault();
-                    DAL.Models.Core.Billetera billeteraOrigen = _context.Billeteras.Where(x => x.Cliente.Usuario.Id == pspAccountDestino.Usuario.Id).FirstOrDefault();
+                    DAL.Models.Core.Billetera billeteraOrigen = _context.Billeteras.Where(x => x.Cliente.Usuario.Id == account.Usuario.Id).FirstOrDefault();
 
+                    Log.Error(transferencia.Message, "Info VerificarTransferenciaPSP");
+                    Log.Error(transferencia.Success.ToString(), "Info VerificarTransferenciaPSP");
+                    Log.Error(transferencia.Data.ToString(), "Info VerificarTransferenciaPSP");
+                    
                     if (transferencia.Success)
                     {
                         var movimientoOrigen = new MovimientoBilletera
-                        {
+                        {                           
                             CBU = billeteraOrigen.CVU,
                             Fecha = DateTime.Now,
-                            Monto = request.balance,
+                            Monto = request.External.Amount,
                             OrigenAsociado = new OrigenMovimiento
                             {
                                 TipoOrigen = TipoOrigenMovimiento.Billetera,
                                 IdAsociado =  0,
-                                Descripcion = TipoOrigenMovimiento.Billetera.GetDisplayName()
+                                Descripcion = request.External.NamePayer
                             },
-                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.EnvioBilletera)
+                            TipoMovimiento = _context.TipoMovimientoBilletera.Find((int)TipoMovimientoBilleteraEnum.IngresoDineroExterno)
                         };
 
-                        billeteraOrigen.Saldo += request.balance;
+                        billeteraOrigen.Saldo += request.External.Amount;
                         billeteraOrigen.Movimientos.Add(movimientoOrigen);
                         await _context.SaveChangesAsync();
-                        _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${request.balance} en su billetera");
+                        _notificacionAPIService.Envia_Push(billeteraOrigen.Cliente.Usuario.DeviceId, "Recepcion de dinero", $"Ha recibido ${request.External.Amount} en su billetera");
 
                         return Ok(new { success = true, message = "Transferencia realizada con éxito", data = transferencia.Data, code = "" });
                     }
                     else
                     {
+                        Log.Error(transferencia.Message, "Error VerificarTransferenciaPSP 1");
                         return StatusCode(500, new { success = false, message = transferencia.Message, data = "", code = "" });
                     }
                 }
                 else
                 {
-                    return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+                    Log.Error(solicitud.Message, "Error VerificarTransferenciaPSP 2");
+                    return StatusCode(500, new { success = false, message = solicitud.Message, data = "", code = "No success" });
                 }      
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error en ResetPassword");
-                return StatusCode(500, new { success = false, message = "Error interno del servidor", data = "", code = "" });
+                Log.Error(ex, "Error VerificarTransferenciaPSP 3");
+                return StatusCode(500, new { success = false, message = ex.Message, data = "", code = "" });
             }
         }
     }

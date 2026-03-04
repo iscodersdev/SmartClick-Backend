@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace DAL.Models.PSP
@@ -41,6 +42,11 @@ namespace DAL.Models.PSP
         public string TributaryIdentifierType { get; set; }
         public string PspBankDescription { get; set; }
         public bool Virtual { get; set; }
+    }
+
+    public class AgendarCuentaDataDTO : RespuestaAPI
+    {
+        public bool Success { get; set; }
     }
 
     public class ExternalAccountDataDTO : RespuestaAPI
@@ -157,15 +163,65 @@ namespace DAL.Models.PSP
 
     /*-------------------- Webhook-------------------------*/
 
+    public class RecibirTransferenciaExternalDTO
+    {
+        public string Title { get; set; }
+        public decimal Amount { get; set; }
+        public string CVU_CBUPayer { get; set; }
+        public string OperationIdentifier { get; set; }
+        public string NamePayer { get; set; }
+    }
+    
+    public class RecibirTransferenciaInternalDTO
+    {
+        public string Status { get; set; }
+        public string CVU_CBU { get; set; }
+        public string AccountNumber { get; set; }
+        public string TributaryIdentifier { get; set; }
+        public int TransactionReferece { get; set; }
+    }
+    
     public class RecibirTransferenciaWebhookDTO
     {
-        public string accountNumber { get; set; } //Número de cuenta.
-        public decimal balance { get; set; }
-        public AccountRefDTO originAccount { get; set; }
-        public AccountRefDTO destinationAccount { get; set; }
+        public RecibirTransferenciaExternalDTO External { get; set; }
+        public RecibirTransferenciaInternalDTO Internal { get; set; }
+        
     }
 
     #endregion
 
+
+    #region Consultar Saldo
+    public class ConsultarSaldoDTO
+    {
+        public string accountNumber { get; set; }
+
+    }
+
+    public class BalanceResponseDTO
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public BalanceDataDTO Data { get; set; }
+        public string Code { get; set; }
+    }
+
+    public class BalanceDataDTO
+    {
+        public DateTime RequestDate { get; set; }
+
+        public decimal AvailableBalance { get; set; }
+        public decimal WithdrawalBalance { get; set; }
+
+        public decimal IssuedDeferredBalance { get; set; }
+
+        public decimal DeferredBalanceToCharge { get; set; }
+
+        public string CurrencyTypeSymbol { get; set; }
+    }
+
+
+
+    #endregion
 
 }

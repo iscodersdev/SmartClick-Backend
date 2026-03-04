@@ -105,8 +105,14 @@ namespace BussinessCore.API.Controllers.Billetera
             {
                 var usuario = TraeUsuarioUAT(consultaMovimientosDTO.UAT);
                 var billetera = _context.Billeteras.Where(b => b.Cliente.Usuario.Id == usuario.Id).FirstOrDefault();
-                var movimientos = billetera.Movimientos.Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha }).ToList();
-                movimientos.AddRange(billetera.Tarjetas.SelectMany(t => t.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha }).ToList());
+                var movimientos = billetera.Movimientos.Select(m => new MovimientoBilleteraDTO { 
+                    Monto = m.Monto, 
+                    TipoMovimiento = m.TipoMovimiento.Nombre, 
+                    Fecha = m.Fecha,
+                    CVU = m.CBU,
+                    Nombre = m.OrigenAsociado.IdAsociado!=0? ObtenerBilleteraByAsociadoId(m.OrigenAsociado.IdAsociado):m.OrigenAsociado.Descripcion
+                }).ToList();
+                movimientos.AddRange(billetera.Tarjetas.SelectMany(t => t.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha}).ToList());
                 movimientos.AddRange(billetera.Cuentas.Where(c=>!c.Terceros).SelectMany(c => c.Movimientos).Select(m => new MovimientoBilleteraDTO { Monto = m.Monto, TipoMovimiento = m.TipoMovimiento.Nombre, Fecha = m.Fecha }).ToList());
                 return new JsonResult(new ListaMovimientoDTO { Status = 200, UAT = consultaMovimientosDTO.UAT, Mensaje = "Movimientos enviados", Movimientos = movimientos.OrderByDescending(m => m.Fecha).ToList() });
             }
@@ -186,6 +192,13 @@ namespace BussinessCore.API.Controllers.Billetera
                 Log.Error($"Error en consulta de movimientos - {e.Message}");
                 return new JsonResult(new RespuestaAPI { Status = 500, UAT = validarBilleteraDTO.UAT, Mensaje = "Error en consulta de movimientos" });
             }
+
+        }
+
+        private string ObtenerBilleteraByAsociadoId(int Id)
+        {
+            DAL.Models.Core.Billetera billetera = _context.Billeteras.Where(x => x.Id==Id).FirstOrDefault();
+            return billetera.Cliente.Persona.GetNombreCompleto();
 
         }
 

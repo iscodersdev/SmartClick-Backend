@@ -1,14 +1,16 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
-using System.Threading;
-using System;
-using DAL.Data;
+﻿using DAL.Data;
 using DAL.Models;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using SmartClickCore.Interface;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using static SmartClickCore.common;
 
 namespace SmartClickCore
 {
@@ -16,11 +18,13 @@ namespace SmartClickCore
     {
         private readonly ILogger<Worker> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IMailService _mailService;
 
-        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider)
+        public Worker(ILogger<Worker> logger, IServiceProvider serviceProvider, IMailService mailService)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
+            _mailService=mailService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -186,9 +190,11 @@ namespace SmartClickCore
                                 html += "<b>Cantidad de Cuotas:</b> " + prestamo.CantidadCuotas.ToString() + "<br/>";
                                 html += "<b>Monto de Cuota:</b> " + prestamo.MontoCuota.ToString() + "<br/><br/>";
                                 html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
-                                common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Aprobación de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
-                                common.EnviarMail("rolando.d.ponce@hotmail.com", "Aprobación de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                                //common.EnviarMail(prestamo.Cliente.Empresa.Mail, "Aprobación de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
+                                //common.EnviarMail("rolando.d.ponce@hotmail.com", "Aprobación de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), html, "");
 
+                                var mail = new MailAPI { Mail = prestamo.Cliente.Empresa.Mail, Titulo = "Aprobación de Descuento Bot - Causante: " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim(), Html = html };
+                                _mailService.EnviarAsync(mail);
 
                             }
                         }

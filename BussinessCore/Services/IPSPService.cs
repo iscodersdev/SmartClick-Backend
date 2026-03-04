@@ -19,6 +19,8 @@ namespace BusinessCore.Services
         /// </summary>
         Task<TokenResponseDTO> GetAccessTokenUserAsync(string username, string paswword);
 
+        Task<AgendarCuentaDataDTO> AgendarCuentaExternaAsync(int externalId, string userToken);
+        
         /// <summary>
         /// Crea una nueva entidad y usuario en el PSP
         /// </summary>
@@ -30,12 +32,12 @@ namespace BusinessCore.Services
         //Task<RegistrarEntidadResponseDTO> RegistrarEntidadAsync(RegistrarEntidadRequestDTO request);
 
         /// <summary>
-        /// Valida si las credenciales del PSP están configuradas correctamente
+        /// Valida si las credenciales del PSP estï¿½n configuradas correctamente
         /// </summary>
         bool ValidateConfiguration();
 
         /// <summary>
-        /// Verifica si está en modo de prueba/mock
+        /// Verifica si estï¿½ en modo de prueba/mock
         /// </summary>
         bool IsTestMode();
 
@@ -50,7 +52,7 @@ namespace BusinessCore.Services
         Task<SelfRegistrationResponseDTO> SelfRegistrationAsync(SelfRegistrationRequestDTO request, string userToken);
 
         /// <summary>
-        /// Sube archivos de validación para una entidad (DNI, selfie, etc.)
+        /// Sube archivos de validaciï¿½n para una entidad (DNI, selfie, etc.)
         /// </summary>
         Task<UploadFilesResponseDTO> UploadFilesAsync(string identifier, string userToken, Dictionary<string, byte[]> files);
 
@@ -60,7 +62,7 @@ namespace BusinessCore.Services
         Task<ProvincesResponseDTO> GetProvincesAsync();
 
         /// <summary>
-        /// Obtiene la lista de ciudades de una provincia específica
+        /// Obtiene la lista de ciudades de una provincia especï¿½fica
         /// </summary>
         Task<CitiesResponseDTO> GetCitiesAsync(int provinceId);
 
@@ -76,8 +78,8 @@ namespace BusinessCore.Services
         Task<ExternalAccountLookupResponseDTO> ValidateExternalAccountAsync(string textSearch, string userToken = null);
 
         /// <summary>
-        /// Crea una transacción (transferencia) en el PSP. El userToken debe ser el token del usuario que autoriza la transferencia.
-        /// Se puede pasar localCuit para evitar consultar las cuentas del PSP cuando ya se validó localmente.
+        /// Crea una transacciï¿½n (transferencia) en el PSP. El userToken debe ser el token del usuario que autoriza la transferencia.
+        /// Se puede pasar localCuit para evitar consultar las cuentas del PSP cuando ya se validï¿½ localmente.
         /// </summary>
         //Task<TransactionResultDTO> CreateTransactionAsync(TransactionRequestDTO request, string userToken, string localCuit = null);
 
@@ -92,12 +94,12 @@ namespace BusinessCore.Services
         Task<EntityStatusResponseDTO> GetEntityByTributaryIdAsync(string tributaryIdentifier, string systemToken);
 
         /// <summary>
-        /// Solicita al PSP recuperar la contraseña (envía EventValidator al usuario)
+        /// Solicita al PSP recuperar la contraseï¿½a (envï¿½a EventValidator al usuario)
         /// </summary>
         Task<SimplePspResponseDTO> RecoverPasswordAsync(RecoverPasswordRequestDTO request, string systemToken);
 
         /// <summary>
-        /// Resetea la contraseña en el PSP usando EventValidator
+        /// Resetea la contraseï¿½a en el PSP usando EventValidator
         /// </summary>
         Task<SimplePspResponseDTO> ResetPasswordAsync(ResetPasswordRequestDTO request, string systemToken);
 
@@ -130,12 +132,20 @@ namespace BusinessCore.Services
 
 
         /// <summary>
-        /// Enviart transferencia desde cuenta recaudadora
+        /// Envia transferencia desde cuenta recaudadora
         /// </summary>
         /// <param name="cuentaOrigen"></param>
         /// <param name="monto"></param>
         /// <param name="userToken"></param>
         /// <returns></returns>
         Task<FinalConfirmationResponseDTO> TransferenciaCuentaRecaudadoraAsync(PSPAccount cuentaOrigen, string monto);
+
+        /// <summary>
+        /// Consultar Saldo
+        /// </summary>
+        /// <param name="accountNumber"></param>
+        /// <param name="userToken"></param>
+        /// <returns></returns>
+        Task<BalanceResponseDTO> ConsultarSaldoAsync(string accountNumber, string userToken);
     }
 }

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace DAL.Models.Core
 {
-        public class Billetera
+        public class Billetera 
         {
             public int Id { get; set; }
             public virtual Clientes Cliente { get; set; }
@@ -81,7 +81,10 @@ namespace DAL.Models.Core
             EnvioBilletera = 1,
             IngresoDinero = 2,
             PagoServicio = 3,
-            RetiroDinero = 4
+            RetiroDinero = 4,
+            EnvioPendiente = 7,
+            ErrorEnvio = 8,
+            IngresoDineroExterno = 9
         }
 
         public class TipoMovimientoBilletera

@@ -4,14 +4,16 @@ using DAL.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace DAL.Migrations
 {
     [DbContext(typeof(SmartClickContext))]
-    partial class SmartClickContextModelSnapshot : ModelSnapshot
+    [Migration("20251106184206_AgregaPSPAccountStatus")]
+    partial class AgregaPSPAccountStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1596,37 +1598,6 @@ namespace DAL.Migrations
                     b.ToTable("Localidad");
                 });
 
-            modelBuilder.Entity("DAL.Models.MailConfig", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
-
-                    b.Property<bool>("Activo");
-
-                    b.Property<string>("ApiKey");
-
-                    b.Property<string>("CodigoProveedor");
-
-                    b.Property<string>("Proveedor");
-
-                    b.Property<string>("SenderEmail");
-
-                    b.Property<string>("SenderName");
-
-                    b.Property<string>("SmtpHost");
-
-                    b.Property<string>("SmtpPass");
-
-                    b.Property<int>("SmtpPort");
-
-                    b.Property<string>("SmtpUser");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("MailConfig");
-                });
-
             modelBuilder.Entity("DAL.Models.MatrizConsecuencias", b =>
                 {
                     b.Property<int>("Id")
@@ -1947,8 +1918,6 @@ namespace DAL.Migrations
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<bool>("Aceptado");
-
-                    b.Property<string>("Codigo");
 
                     b.Property<string>("Nombre");
 

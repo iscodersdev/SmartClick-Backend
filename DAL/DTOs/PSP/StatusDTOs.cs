@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DAL.Models;
 using Newtonsoft.Json;
 
 namespace DAL.DTOs.PSP
@@ -16,7 +17,7 @@ namespace DAL.DTOs.PSP
     public class PSPStatusResponseDTO
     {
         public bool Success { get; set; }
-        public string Estado { get; set; } // "crear_cuenta", "espera", "activa", "error"
+        public PSPAccountStatus Estado { get; set; } // "crear_cuenta", "espera", "activa", "error"
         public string Mensaje { get; set; }
         public string EntityId { get; set; }
         public string Cvu { get; set; }

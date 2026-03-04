@@ -1,29 +1,34 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using DAL.Data;
+﻿using DAL.Data;
+using DAL.DTOs;
 using DAL.Models;
-using System.Linq;
-using Microsoft.AspNetCore.Mvc.Rendering;
+using DAL.Models.Core;
 using Microsoft.AspNetCore.Http;
-using System.IO;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using OfficeOpenXml;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.Text;
+using SmartClickCore.Controllers;
+using SmartClickCore.Interface;
+using SmartClickCore.Services;
 using System;
 using System.Collections.Generic;
-using OfficeOpenXml;
 using System.Drawing;
-using Microsoft.AspNetCore.Identity;
-using SmartClickCore.Controllers;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
-using SmartClickCore.Services;
-using DAL.DTOs;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Text;
-using DAL.Models.Core;
+using static SmartClickCore.common;
 
 namespace SmartClickCore.Areas.Core.Controllers
 {
     [Area("Core")]
     public class BandejaDeAprobacionController : SmartClickCoreController
     {
-        public BandejaDeAprobacionController(SmartClickContext context) : base(context)
+
+        private readonly IMailService _mailService;
+        public BandejaDeAprobacionController(SmartClickContext context, IMailService mailService) : base(context)
         {
+            _mailService = mailService;
         }
         public ActionResult Index()
         {
@@ -332,7 +337,10 @@ namespace SmartClickCore.Areas.Core.Controllers
                     html += "<b>Cantidad de Cuotas:</b>" + prestamo.CantidadCuotas + "<br/>";
                     html += "<b>Couta Mensual:</b>" + prestamo.MontoCuota + "<br/><br/>";
                     html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/>";
-                    common.EnviarMail(prestamo.Cliente.Usuario.Email.Trim(), "Solicitud de Descuento SmartClick", html, "");
+                    //common.EnviarMail(prestamo.Cliente.Usuario.Email.Trim(), "Solicitud de Descuento SmartClick", html, "");
+
+                    var mail = new MailAPI { Mail = prestamo.Cliente.Usuario.Email.Trim(), Titulo = "Solicitud de Descuento SmartClick", Html = html };
+                        _mailService.EnviarAsync(mail);
 
                 }
             }
@@ -379,8 +387,9 @@ namespace SmartClickCore.Areas.Core.Controllers
                     html += "<b>Cantidad de Cuotas:</b>" + prestamo.CantidadCuotas + "<br/>";
                     html += "<b>Couta Mensual:</b>" + prestamo.MontoCuota + "<br/><br/>";
                     html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/>";
-                    common.EnviarMail(prestamo.Cliente.Usuario.Email.Trim(), "Solicitud de Descuento SmartClick", html, "");
-
+                    //common.EnviarMail(prestamo.Cliente.Usuario.Email.Trim(), "Solicitud de Descuento SmartClick", html, "");
+                    var mail = new MailAPI { Mail = prestamo.Cliente.Usuario.Email.Trim(), Titulo = "Solicitud de Descuento SmartClick", Html = html };
+                    _mailService.EnviarAsync(mail);
 
                 }
             }
@@ -447,7 +456,10 @@ namespace SmartClickCore.Areas.Core.Controllers
                     html += "<b>Cantidad de Cuotas:</b>" + prestamoUpdate.CantidadCuotas + "<br/>";
                     html += "<b>Couta Mensual:</b>" + prestamoUpdate.MontoCuota + "<br/><br/>";
                     html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/>";
-                    common.EnviarMail(prestamoUpdate.Cliente.Usuario.Email.Trim(), "Solicitud de Descuento SmartClick", html, "");
+                   // common.EnviarMail(prestamoUpdate.Cliente.Usuario.Email.Trim(), "Solicitud de Descuento SmartClick", html, "");
+
+                    var mail = new MailAPI { Mail = prestamoUpdate.Cliente.Usuario.Email.Trim(), Titulo = "Solicitud de Descuento SmartClick", Html = html };
+                    _mailService.EnviarAsync(mail);
 
                     return PartialView("_EditarPrestamo", prestamo);
                 }
@@ -709,8 +721,14 @@ namespace SmartClickCore.Areas.Core.Controllers
                     texto += "</br>";
                     texto += "https://play.google.com/store/apps/details?id=ar.com.SmartClick&hl=es";
                     string q = "";
-                    common.EnviarMail(destinatario, titulo, texto, q);
-                    common.EnviarMail("app@SmartClick.org.ar", titulo, texto, q);
+                    //common.EnviarMail(destinatario, titulo, texto, q);
+                    //common.EnviarMail("app@SmartClick.org.ar", titulo, texto, q);
+
+                    var mail = new MailAPI { Mail = destinatario, Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
+
+                    var mailSsiempreClick = new MailAPI { Mail = "app@SmartClick.org.ar", Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
                 }
                 else
                 {
@@ -720,8 +738,15 @@ namespace SmartClickCore.Areas.Core.Controllers
                     texto += "</br>";
                     texto += "https://play.google.com/store/apps/details?id=ar.com.SmartClick&hl=es";
                     string q = "";
-                    common.EnviarMail(destinatario, titulo, texto, q);
-                    common.EnviarMail("app@SmartClick.org.ar", titulo, texto, q);
+                    //common.EnviarMail(destinatario, titulo, texto, q);
+                    //common.EnviarMail("app@SmartClick.org.ar", titulo, texto, q);
+
+
+                    var mail = new MailAPI { Mail = destinatario, Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
+
+                    var mailSsiempreClick = new MailAPI { Mail = "app@SmartClick.org.ar", Titulo = titulo, Html = texto };
+                    _mailService.EnviarAsync(mail);
 
                 }
                 AddPageAlerts(PageAlertType.Success, "Se envio Correctamente la Notificaciones a " + cliente.Persona.Apellido + " " + cliente.Persona.Nombres);

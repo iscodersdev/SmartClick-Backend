@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using DAL.DTOs.API;
 using Newtonsoft.Json;
 using DAL.Models;
+using SmartClickCore.Areas.Core.Controllers;
 
 namespace SmartClickCore.API.Controllers.PSP
 {
@@ -217,6 +218,59 @@ namespace SmartClickCore.API.Controllers.PSP
             }
         }
 
+        [HttpPost("ActualizarDatosManualmente")]
+        public async Task<IActionResult> ActualizarDatosManualmente([FromBody] CreateUserEntidadRequestDTO request)
+        {
+            var usuarioABuscar = TraeUsuarioUAT(request.UAT);
+            var tokenTemp = await ObtenerUserTokenPSP(usuarioABuscar);
+
+            if (usuarioABuscar != null)
+            {
+                try
+                {
+                    var pspAccountToUpdate = _context.PSPAccounts.FirstOrDefault(p => p.Usuario.Id == usuarioABuscar.Id);
+                    if (pspAccountToUpdate != null)
+                    {
+                        var pspGetData = _pspService.GetAccountDataAsync(tokenTemp).Result;
+                        var listAccount = pspGetData.Accounts.FirstOrDefault();
+                        if (listAccount != null)
+                        {
+                            pspAccountToUpdate.EntityId = listAccount.entityId.ToString();
+                            pspAccountToUpdate.TributaryIdentifier = listAccount.tributaryIdentifier;
+                            pspAccountToUpdate.CVU = listAccount.cvU_CBU;
+                            pspAccountToUpdate.CVU_CBUAlias = listAccount.cvU_CBUAlias;
+                            pspAccountToUpdate.AccountNumber = listAccount.accountNumber;
+                            pspAccountToUpdate.EncryptedUserToken = common.CifrarPassword(tokenTemp);
+                            _context.SaveChanges();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, $"Bad Ending: No se pudo guardar el token en BD para {request.user.userName}, pero se continúa la operación.");
+                    var responseError = new CreateUserWithUATResponseDTO
+                    {
+                        Status = 400,
+                        UAT = request.UAT,
+                        Mensaje = "Falló la actualización",
+                        Success = false
+                    };
+            
+                    return BadRequest(responseError);
+                }
+            }
+            
+            var response = new CreateUserWithUATResponseDTO
+            {
+                Status = 200,
+                UAT = request.UAT,
+                Mensaje = "Actualizado Manualmente",
+                Success = true
+            };
+            
+            return Ok(response);
+        }
+        
         // *** NUEVO ENDPOINT: CREAR USUARIO ***
         /// <summary>
         /// Crea un nuevo usuario en el PSP
@@ -279,7 +333,6 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Llamar al servicio PSP
                 var pspResponse = await _pspService.CreateUserAsync(request.user);
 
-
                 var mensaje = _pspService.IsTestMode()
                     ? "?? SIMULACIÓN: Usuario creado (modo prueba)"
                     : "Usuario creado exitosamente";
@@ -296,15 +349,15 @@ namespace SmartClickCore.API.Controllers.PSP
                     UserToken = pspResponse.UserToken
                 };
 
+                var usuarioLocal = _context.Usuarios.FirstOrDefault(u => u.UserName == request.user.email || u.Email == request.user.email);
+                
                 if (pspResponse.Success)
                 {
                     Log.Information($"Usuario creado exitosamente en PSP - UserName: {request.user.userName}");
-
                     // *** PASO 2: GUARDAR CREDENCIALES PSP AUTOMÁTICAMENTE (OPCIÓN 1) ***
                     try
                     {
                         // Buscar usuario local por email para asociar PSPAccount
-                        var usuarioLocal = _context.Usuarios.FirstOrDefault(u => u.UserName == request.user.email || u.Email == request.user.email);
 
                         if (usuarioLocal != null)
                         {
@@ -322,7 +375,10 @@ namespace SmartClickCore.API.Controllers.PSP
                                     EncryptedPassword = common.CifrarPassword(request.user.password),
                                     PSPUserId = pspResponse.UserId?.ToString(),
                                     Status = "active",
-                                    CreatedAt = DateTime.UtcNow
+                                    CreatedAt = DateTime.UtcNow,
+                                    EntityId = pspResponse.EntityId,
+                                    EstadoCuentaPSP = _context.PSPAccountStatus.Where(x=>x.Codigo=="SB").FirstOrDefault(),
+                                    Cliente = usuarioLocal.Clientes
                                 };
 
                                 _context.Set<DAL.Models.PSPAccount>().Add(nuevoPspAccount);
@@ -330,18 +386,6 @@ namespace SmartClickCore.API.Controllers.PSP
 
                                 Log.Information($"✅ Credenciales PSP guardadas automáticamente para usuario {usuarioLocal.UserName}");
                             }
-                            //else
-                            //{
-                            //    // Actualizar PSPAccount existente
-                            //    pspAccountExistente.UserName = request.user.userName;
-                            //    pspAccountExistente.EncryptedPassword = common.Encrypt(request.user.password, "PSPPassword");
-                            //    pspAccountExistente.PSPUserId = pspResponse.UserId?.ToString();
-                            //    pspAccountExistente.UpdatedAt = DateTime.UtcNow;
-
-                            //    _context.SaveChanges();
-
-                            //    Log.Information($"✅ Credenciales PSP actualizadas automáticamente para usuario {usuarioLocal.UserName}");
-                            //}
                         }
                         else
                         {
@@ -353,35 +397,30 @@ namespace SmartClickCore.API.Controllers.PSP
                         Log.Error(exCredenciales, $"❌ Error guardando credenciales PSP para usuario {request.user.userName}. El usuario PSP fue creado exitosamente pero las credenciales no se guardaron localmente.");
                         // No fallar el request completo, solo advertir
                     }
+                    
+
                     // *** FIN PASO 2 ***
 
                     var pspResponseToken = await _pspService.GetAccessTokenUserAsync(pspRequest.userName, pspRequest.password);
                     if (pspResponseToken != null && !string.IsNullOrEmpty(pspResponseToken.access_token))
                     {
-                        // Actualizar el token en la BD después de obtenerlo
-                        try
-                        {
-                            var pspAccountToUpdate = _context.Set<DAL.Models.PSPAccount>().FirstOrDefault(p => p.Usuario.UserName == request.user.email || p.Usuario.Email == request.user.email);
-                            if (pspAccountToUpdate != null)
-                            {
-                                pspAccountToUpdate.EncryptedUserToken = common.CifrarPassword(pspResponseToken.access_token);
-                                pspAccountToUpdate.TokenExpiry = pspResponseToken.expires_in > 0
-                                    ? (DateTime?)DateTime.UtcNow.AddSeconds(pspResponseToken.expires_in)
-                                    : null;
-                                _context.SaveChanges();
-                                Log.Information($"Token actualizado en BD para usuario {request.user.userName}");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex, $"No se pudo guardar el token en BD para {request.user.userName}, pero se continúa la operación.");
-                        }
-
                         Log.Information($"Token Valido");
                         var pspResponseSelf = await _pspService.SelfRegistrationAsync(request.entity, pspResponseToken.access_token);
 
                         if (pspResponseSelf.Success)
                         {
+                            var pspCuenta = _context.Set<DAL.Models.PSPAccount>()
+                                .FirstOrDefault(p => p.Usuario.Id == usuarioLocal.Id);
+
+                            if (pspCuenta == null)
+                            {
+                                Log.Warning($"ERror recuperando usuario.");
+                                return BadRequest(response);
+                            }
+                            
+                            pspCuenta.EstadoCuentaPSP =
+                                _context.PSPAccountStatus.Where(x => x.Codigo == "FF").FirstOrDefault();
+                            
                             Log.Information($"SelfRegistration completado exitosamente - CUIT: {request.entity.tributaryIdentifier}");
                             response.Mensaje += " | " + (_pspService.IsTestMode()
                                 ? "?? SIMULACIÓN: Entidad creada mediante SelfRegistration (modo prueba)"
@@ -389,22 +428,13 @@ namespace SmartClickCore.API.Controllers.PSP
                             response.Identifier = pspResponseSelf.Identifier;
                             response.EntityId = pspResponseSelf.EntityId;
 
-                            var pspResponseFiles = await _pspService.UploadFilesAsync(pspResponseSelf.Identifier, pspResponse.UserToken, request.files);
-
-                            if (pspResponseFiles.Success)
+                            DAL.Models.Core.Billetera billetera = new DAL.Models.Core.Billetera()
                             {
-                                Log.Information($"Archivos subidos exitosamente - Identifier: {pspResponseSelf.Identifier}, Archivos: {request.files.Count}");
-                                response.Mensaje += " | " + (_pspService.IsTestMode()
-                                    ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
-                                    : "Archivos subidos exitosamente");
-                            }
-                            else
-                            {
-                                Log.Warning($"Error al subir archivos: {pspResponseFiles.Error}");
-                                response.Mensaje += " | Error al subir archivos: " + pspResponseFiles.Error;
-                            }
-
-
+                                Cliente = usuario.Clientes,
+                                Saldo = 0,
+                            };
+                            _context.Billeteras.Add(billetera);
+                            _context.SaveChanges();
 
                         }
                         else
@@ -417,6 +447,7 @@ namespace SmartClickCore.API.Controllers.PSP
                     {
                         Log.Warning($"Token Invalido");
                     }
+                    
                     return Ok(response);
                 }
                 else
@@ -564,7 +595,7 @@ namespace SmartClickCore.API.Controllers.PSP
         /// Sube archivos de validación (DNI, selfie, inscripción AFIP, etc.)
         /// </summary>
         [HttpPost("UploadFiles")]
-        public async Task<IActionResult> UploadFiles([FromQuery] string identifier, [FromQuery] string userToken, [FromQuery] string uat)
+        public async Task<IActionResult> UploadFiles([FromQuery] string identifier, [FromQuery] string uat)
         {
             try
             {
@@ -581,6 +612,9 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
+                PSPAccount cuenta = _context.PSPAccounts.Where(x => x.Cliente == usuario.Clientes).FirstOrDefault();
+
+                
                 // Validar parámetros requeridos
                 if (string.IsNullOrEmpty(identifier))
                 {
@@ -593,13 +627,14 @@ namespace SmartClickCore.API.Controllers.PSP
                     });
                 }
 
+                var userToken = await ObtenerUserTokenPSP(usuario);
                 if (string.IsNullOrEmpty(userToken))
                 {
-                    return BadRequest(new UploadFilesWithUATResponseDTO
+                    return BadRequest(new AccountsInfoWithUATResponseDTO
                     {
                         Status = 400,
                         UAT = uat,
-                        Mensaje = "UserToken requerido",
+                        Mensaje = "No se pudo obtener el token del usuario PSP. Verifique que las credenciales estén guardadas.",
                         Success = false
                     });
                 }
@@ -627,8 +662,11 @@ namespace SmartClickCore.API.Controllers.PSP
                     }
                 }
 
+                Log.Warning("Antes de upload");
                 // Llamar al servicio PSP
                 var pspResponse = await _pspService.UploadFilesAsync(identifier, userToken, files);
+                Log.Warning("post UploadFilesAsync");
+                Log.Warning(pspResponse.ToString());
 
                 var mensaje = _pspService.IsTestMode()
                     ? "?? SIMULACIÓN: Archivos subidos exitosamente (modo prueba)"
@@ -642,9 +680,25 @@ namespace SmartClickCore.API.Controllers.PSP
                     Success = pspResponse.Success,
                     UploadedFiles = pspResponse.UploadedFiles
                 };
+                
+                Log.Warning(pspResponse.ToString());
 
                 if (pspResponse.Success)
                 {
+                    var pspCuentaPostArchivos = _context.Set<DAL.Models.PSPAccount>()
+                        .FirstOrDefault(p => p.Usuario.Id == usuario.Id);
+
+                    if (pspCuentaPostArchivos == null)
+                    {
+                        Log.Warning($"Error recuperando usuario.");
+                        return BadRequest(response);
+                    }
+                            
+                    pspCuentaPostArchivos.EstadoCuentaPSP =
+                        _context.PSPAccountStatus.Where(x => x.Codigo == "A").FirstOrDefault();
+                    _context.SaveChanges();
+                    
+                    
                     Log.Information($"Archivos subidos exitosamente - Identifier: {identifier}, Archivos: {files.Count}");
                     return Ok(response);
                 }
@@ -1223,10 +1277,11 @@ namespace SmartClickCore.API.Controllers.PSP
                 var usuario = TraeUsuarioUAT(request?.UAT);
                 if (usuario == null)
                 {
+                    var estadoSinBilletera = _context.PSPAccountStatus.Where(s => s.Nombre == "Sin billetera").FirstOrDefault();
                     return BadRequest(new PSPStatusResponseDTO
                     {
                         Success = false,
-                        Estado = "error",
+                        Estado = estadoSinBilletera,
                         Mensaje = "Usuario no autenticado"
                     });
                 }
@@ -1248,7 +1303,8 @@ namespace SmartClickCore.API.Controllers.PSP
                     }
                     else
                     {
-                        return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = "error", Mensaje = "Error no se encontro la relación cliente psp" });
+                        var estadoSinBilletera = _context.PSPAccountStatus.Where(s => s.Nombre == "Sin billetera").FirstOrDefault();
+                        return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = estadoSinBilletera, Mensaje = "Error no se encontro la relación cliente psp" });
                     }
                 }
 
@@ -1261,35 +1317,7 @@ namespace SmartClickCore.API.Controllers.PSP
                 // Siempre usar el token obtenido por el servidor para que sea invisible al cliente
                 var userToken = userTokenTask.Result;
                 var systemToken = systemTokenTask.Result;
-
-                // Ejecutar C1 y C7 en paralelo cuando sea posible
-                Task<AccountsInfoResponseDTO> c1Task = null;
-                Task<EntityStatusResponseDTO> c7Task = null;
-
-                if (!string.IsNullOrEmpty(userToken))
-                {
-                    c1Task = _pspService.GetAccountDataAsync(userToken);
-                }
-                else
-                {
-                    // marcar como no disponible
-                    c1Task = Task.FromResult(new AccountsInfoResponseDTO { Success = false, Error = "NoUserToken" });
-                }
-
-                if (!string.IsNullOrEmpty(tributary) && userToken != null && !string.IsNullOrEmpty(userToken))
-                {
-                    c7Task = _pspService.GetEntityByTributaryIdAsync(tributary, userToken);
-                }
-                else
-                {
-                    c7Task = Task.FromResult(new EntityStatusResponseDTO { Success = false, Error = "NoSystemTokenOrTributary" });
-                }
-
-                await Task.WhenAll(c1Task, c7Task);
-
-                var c1 = c1Task.Result;
-                var c7 = c7Task.Result;
-
+                
                 // Buscar o crear PSPAccount para este usuario
                 var pspAccount = _context.Set<DAL.Models.PSPAccount>().Include(p => p.Usuario).FirstOrDefault(p => p.Usuario.Id == usuario.Id);
                 var created = false;
@@ -1306,185 +1334,25 @@ namespace SmartClickCore.API.Controllers.PSP
                     created = true;
                 }
 
-                // Guardar respuestas crudas para trazabilidad
-                try
-                {
-                    pspAccount.LastC1ResponseJson = JsonConvert.SerializeObject(c1);
-                }
-                catch { }
-                try
-                {
-                    pspAccount.LastC7ResponseJson = JsonConvert.SerializeObject(c7);
-                }
-                catch { }
                 pspAccount.LastStatusCheck = DateTime.UtcNow;
 
-                // Condicional: si C1 positivo -> persistir datos de cuenta
-                bool accountExists = c1 != null && c1.Success && c1.Accounts != null && c1.Accounts.Any();
-                if (accountExists)
-                {
-                    var account = c1.Accounts.First();
+                Console.WriteLine(pspAccount);
 
-                    // usar reflexión defensiva para obtener campos comunes
-                    object accountNumberObj = account?.GetType().GetProperty("accountNumber")?.GetValue(account) ?? account?.GetType().GetProperty("AccountNumber")?.GetValue(account);
-                    object cvuObj = account?.GetType().GetProperty("cvu")?.GetValue(account) ?? account?.GetType().GetProperty("Cvu")?.GetValue(account) ?? account?.GetType().GetProperty("cvU_CBU")?.GetValue(account);
-                    object accountTypeObj = account?.GetType().GetProperty("accountTypeId")?.GetValue(account) ?? account?.GetType().GetProperty("AccountTypeId")?.GetValue(account);
-                    object tributaryObj = account?.GetType().GetProperty("tributaryIdentifier")?.GetValue(account) ?? account?.GetType().GetProperty("TributaryIdentifier")?.GetValue(account);
-                    object pspUserIdObj = account?.GetType().GetProperty("personId")?.GetValue(account) ?? account?.GetType().GetProperty("personId")?.GetValue(account) ?? account?.GetType().GetProperty("userId")?.GetValue(account);
-
-                    // Campos adicionales defensivos
-                    object cvuAliasObj = account?.GetType().GetProperty("cvU_CBUAlias")?.GetValue(account)
-                        ?? account?.GetType().GetProperty("cvuAlias")?.GetValue(account)
-                        ?? account?.GetType().GetProperty("alias")?.GetValue(account)
-                        ?? account?.GetType().GetProperty("CBUAlias")?.GetValue(account);
-
-                    object entityIdObj = account?.GetType().GetProperty("entityId")?.GetValue(account) ?? account?.GetType().GetProperty("EntityId")?.GetValue(account);
-                    object identifierObj = account?.GetType().GetProperty("identifier")?.GetValue(account) ?? account?.GetType().GetProperty("Identifier")?.GetValue(account);
-
-                    object currencyTypeIdObj = account?.GetType().GetProperty("currencyTypeId")?.GetValue(account) ?? account?.GetType().GetProperty("CurrencyTypeId")?.GetValue(account);
-                    object currencyNameObj = account?.GetType().GetProperty("currencyTypeName")?.GetValue(account) ?? account?.GetType().GetProperty("CurrencyName")?.GetValue(account);
-                    object currencyDescObj = account?.GetType().GetProperty("currencyTypeDescription")?.GetValue(account) ?? account?.GetType().GetProperty("currencyDescription")?.GetValue(account);
-
-                    object accountTypeDescObj = account?.GetType().GetProperty("accountTypeDescription")?.GetValue(account) ?? account?.GetType().GetProperty("accountType")?.GetValue(account);
-                    object displayNameObj = account?.GetType().GetProperty("displayName")?.GetValue(account) ?? account?.GetType().GetProperty("name")?.GetValue(account);
-                    object virtualAccountObj = account?.GetType().GetProperty("virtualAccount")?.GetValue(account);
-                    object bankDescObj = account?.GetType().GetProperty("pspBankDescription")?.GetValue(account) ?? account?.GetType().GetProperty("bankDescription")?.GetValue(account);
-                    object deleteSolicitudeObj = account?.GetType().GetProperty("deleteAccountSolicitude")?.GetValue(account) ?? account?.GetType().GetProperty("deleteAccountSolicitud")?.GetValue(account);
-
-                    var accountNumber = accountNumberObj?.ToString();
-                    var cvu = cvuObj?.ToString();
-                    var cvuAlias = cvuAliasObj?.ToString();
-                    int? accountTypeId = null;
-                    if (accountTypeObj != null)
-                    {
-                        int tmp; if (int.TryParse(accountTypeObj.ToString(), out tmp)) accountTypeId = tmp;
-                    }
-                    var trib = tributaryObj?.ToString();
-
-                    var entityId = entityIdObj?.ToString();
-                    var identifier = identifierObj?.ToString();
-
-                    int? currencyTypeId = null;
-                    if (currencyTypeIdObj != null) { int tmp; if (int.TryParse(currencyTypeIdObj.ToString(), out tmp)) currencyTypeId = tmp; }
-                    var currencyName = currencyNameObj?.ToString();
-                    var currencyDesc = currencyDescObj?.ToString();
-
-                    var accountTypeDesc = accountTypeDescObj?.ToString();
-                    var displayName = displayNameObj?.ToString();
-                    bool? virtualAccount = null;
-                    if (virtualAccountObj != null) { bool tmpb; if (bool.TryParse(virtualAccountObj.ToString(), out tmpb)) virtualAccount = tmpb; }
-                    var bankDesc = bankDescObj?.ToString();
-                    bool? deleteSolicitude = null;
-                    if (deleteSolicitudeObj != null) { bool td; if (bool.TryParse(deleteSolicitudeObj.ToString(), out td)) deleteSolicitude = td; }
-
-                    if (!string.IsNullOrEmpty(accountNumber)) pspAccount.AccountNumber = accountNumber;
-                    // No sobreescribir CVU si ya existe salvo que esté vacío
-                    if (!string.IsNullOrEmpty(cvu) && string.IsNullOrEmpty(pspAccount.CVU)) pspAccount.CVU = cvu;
-                    // CVU alias/CBU alias
-                    if (!string.IsNullOrEmpty(cvuAlias) && string.IsNullOrEmpty(pspAccount.CVU_CBUAlias)) pspAccount.CVU_CBUAlias = cvuAlias;
-                    if (accountTypeId.HasValue) pspAccount.AccountTypeId = accountTypeId;
-                    if (!string.IsNullOrEmpty(trib)) pspAccount.TributaryIdentifier = trib;
-
-                    // entity / identifier
-                    if (!string.IsNullOrEmpty(entityId)) pspAccount.EntityId = entityId;
-                    if (!string.IsNullOrEmpty(identifier)) pspAccount.Identifier = identifier;
-
-                    // currency
-                    if (currencyTypeId.HasValue) pspAccount.CurrencyTypeId = currencyTypeId;
-                    if (!string.IsNullOrEmpty(currencyName)) pspAccount.CurrencyName = currencyName;
-                    if (!string.IsNullOrEmpty(currencyDesc)) pspAccount.CurrencyDescription = currencyDesc;
-
-                    // metadata / descriptions
-                    if (!string.IsNullOrEmpty(accountTypeDesc)) pspAccount.StatusDescription = accountTypeDesc;
-                    if (!string.IsNullOrEmpty(displayName)) pspAccount.StatusDescription = string.IsNullOrEmpty(pspAccount.StatusDescription) ? displayName : pspAccount.StatusDescription;
-                    if (!string.IsNullOrEmpty(bankDesc)) pspAccount.StatusDescription = string.IsNullOrEmpty(pspAccount.StatusDescription) ? bankDesc : pspAccount.StatusDescription;
-                    if (virtualAccount.HasValue && virtualAccount == true) { /* opcional: marcar flag o status */ }
-                    if (deleteSolicitude.HasValue) pspAccount.DeleteAccountSolicitude = deleteSolicitude;
-
-                    pspAccount.Status = "user_account_found";
-                }
-                // Si C7 positivo -> persistir datos de entidad
-                bool entityExists = c7 != null && c7.Success && c7.Data != null && c7.Data.Any();
-                if (entityExists)
-                {
-                    var entity = c7.Data.First();
-
-                    // persistir estado entidad
-                    pspAccount.EntityStatus = entity.EntityStatus;
-                    pspAccount.EntityStatusDescription = entity.EntityStatusDescription;
-
-                    // persistir cuentas de la entidad si existe
-                    if (entity.Accounts != null && entity.Accounts.Any())
-                    {
-                        var entAccount = entity.Accounts.First();
-                        // AccountNumber, Cvu, EntityId, Status, StatusDescription
-                        if (!string.IsNullOrEmpty(entAccount.AccountNumber)) pspAccount.AccountNumber = entAccount.AccountNumber;
-                        if (!string.IsNullOrEmpty(entAccount.Cvu)) pspAccount.CVU = entAccount.Cvu;
-                        // EntityId en PSC model is string
-                        try { pspAccount.EntityId = entAccount.EntityId.ToString(); } catch { }
-                        pspAccount.Status = "entity_found";
-                    }
-
-                    // also persist the tributary identifier (from request)
-                    if (!string.IsNullOrEmpty(tributary))
-                    {
-                        pspAccount.TributaryIdentifier = tributary;
-                    }
-                }
-
-                // Si ninguno existe -> marcar status
-                if (!accountExists && !entityExists)
-                {
-                    pspAccount.Status = "not_created";
-                }
-
-                pspAccount.UpdatedAt = DateTime.UtcNow;
-
-                // Guardar cambios (usar transacción cuando se crean o se actualizan múltiples campos)
-                try
-                {
-                    using (var tx = _context.Database.BeginTransaction())
-                    {
-                        await _context.SaveChangesAsync();
-                        tx.Commit();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error guardando PSPAccount desde SyncPspStatus");
-                    // no fallar la respuesta, pero reportar
-                }
-
-                // Construir mensaje global según reglas provistas
-                string overallMessage;
-                if (!accountExists && !entityExists)
-                {
-                    overallMessage = "NO SE CREÓ CUENTA NI ENTIDAD DE PSP DEL USUARIO";
-                }
-                else if (accountExists && !entityExists)
-                {
-                    overallMessage = "EN CURSO";
-                }
-                else // ambos positivos
-                {
-                    overallMessage = "SE ENCUENTRAN CREADAS LA CUENTA Y ENTIDAD DE PSP DEL USUARIO";
-                }
-
-                var resultDto = new PSPStatusResponseDTO
-                {
+                var resultDto = new PSPStatusResponseDTO{
                     Success = true,
-                    Estado = accountExists && entityExists ? "activa" : (accountExists ? "espera" : "crear_cuenta"),
-                    Mensaje = overallMessage,
+                    Estado = pspAccount.EstadoCuentaPSP,
+                    Mensaje = "Estado de cuenta consultado exitosamente",
                     EntityId = pspAccount.EntityId,
                     Cvu = pspAccount.CVU
                 };
-
+                
                 return Ok(resultDto);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error en SyncPspStatus");
-                return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = "error", Mensaje = "Error interno del servidor" });
+                var estadoSinBilletera = _context.PSPAccountStatus.Where(s => s.Nombre == "Sin billetera").FirstOrDefault();
+                return StatusCode(500, new PSPStatusResponseDTO { Success = false, Estado = estadoSinBilletera, Mensaje = "Error interno del servidor" });
             }
         }
 

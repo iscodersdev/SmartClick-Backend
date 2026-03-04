@@ -1,17 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Cors;
+﻿using Commons.Controllers;
+using Commons.Identity.Services;
 using DAL.Data;
 using DAL.Models;
-using System.Linq;
 using Microsoft.AspNetCore.Authorization;
-using System.Threading.Tasks;
-using Commons.Identity.Services;
-using Commons.Controllers;
-using SmartClickCore;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Win32;
+using SmartClickCore;
+using SmartClickCore.Interface;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using static SmartClickCore.common;
 
 namespace SmartClick.Controllers
 {
@@ -21,11 +23,14 @@ namespace SmartClick.Controllers
         private readonly UserService<Usuario> _userService;
         private readonly SignInManager<Usuario> _signInManager;
         public SmartClickContext _context;
-        public MUsuarioController(SmartClickContext context, UserService<Usuario> userService, SignInManager<Usuario> signInManager)
+        private readonly IMailService _mailService;
+
+        public MUsuarioController(SmartClickContext context, UserService<Usuario> userService, SignInManager<Usuario> signInManager, IMailService mailService)
         {
             _context = context;
             _userService = userService;
             _signInManager = signInManager;
+            _mailService=mailService;
         }
         [HttpPost]
         [Route("Login")]
@@ -417,6 +422,56 @@ namespace SmartClick.Controllers
             _context.SaveChanges();
             return uat;
         }
+        
+        
+        [HttpPost]
+        [Route("ActualizaPassword")]
+        [EnableCors("CorsPolicy")]
+        [AllowAnonymous]
+        public MActualizaPasswordDTO ActualizaPassword([FromBody] MActualizaPasswordDTO request)
+        {
+            var Uat = _context.UAT.FirstOrDefault(x => x.Token == request.UAT);
+            if (request == null)
+            {
+                request.Status = 500;
+                request.Mensaje = "UAT Invalida";
+                return request;
+            }
+            
+            if (request.Password1 != request.Password2)
+            {
+                request.Status = 400;
+                request.Mensaje = "Las claves deben Coincidir";
+                return request;
+            }
+
+            if (string.IsNullOrEmpty(request.Password1))
+            {
+                request.Status = 400;
+                request.Mensaje = "La clave no puede estar vacía";
+                return request;
+            }
+            
+            Usuario usuario = _context.UAT.Where(u => u.Token == request.UAT).Select(u => u.Cliente.Usuario).FirstOrDefault();
+
+            var response = _userService.ChangePasswordAsync(usuario, request.CurrentPassword, request.Password1);
+
+            request.Password1 = "";
+            request.Password2 = "";
+            request.CurrentPassword = "";
+            
+            if (response.Result.ToString() != "Succeeded")
+            {
+                request.Status = 400;
+                request.Mensaje = "No se pudo actualizar la clave";
+                return request;
+            } 
+            
+            request.Status = 200;
+            request.Mensaje = "Clave actualizada correctamente";
+            return request;
+        }
+        
         [HttpPost]
         [Route("ActualizaFoto")]
         [EnableCors("CorsPolicy")]
@@ -490,7 +545,11 @@ namespace SmartClick.Controllers
             }
             sHTML += $"Estimado: {cliente.Persona.Apellido},{cliente.Persona.Nombres}, para Poder Recuperar Su Contraseña <a href = 'https://portalsmartclick.com.ar/Identity/Account/ResetPassword?code=" + pass + "'> Haga Click Aqui</a>.";
             //common.EnviarMail("acevedoruben@hotmail.com", "SmartClick - Recuperacion de Contraseña", sHTML, "");
-            common.EnviarMail(cliente.Usuario.UserName, "SmartClick - Recuperacion de Contraseña", sHTML, "");
+            //common.EnviarMail(cliente.Usuario.UserName, "SmartClick - Recuperacion de Contraseña", sHTML, "");
+
+            var mail = new MailAPI { Mail = cliente.Usuario.UserName, Titulo ="SmartClick - Recuperacion de Contraseña", Html = sHTML };
+            _mailService.EnviarAsync(mail);
+
             uat.Status = 200;
             uat.Mensaje = "Para Recuperar su Contrasena Se Ha Enviado un Correo a la Casilla: " + cliente.Usuario.UserName.Substring(0, 2) + asteriscos.Substring(0, correoinicial[0].Length - 2) + "@" + correoinicial[1] + " En el Caso de No Verlo en Bandeja De Entrada, revise su Correo No Deseado o SPAM";
             return uat;
@@ -758,8 +817,27 @@ namespace SmartClick.Controllers
 
                 html = "<br/>Sr: " + datoscge.Nombres + " " + datoscge.Apellido + "<br/><br/>";
                 html += "Su Token de Registro es: " + token.ToString() + "<br/><br/>";
-                 common.EnviarMail(datoscge.Mail, "Token Registro SmartClick", html, "");
-               
+                 //common.EnviarMail(datoscge.Mail, "Token Registro SmartClick", html, "");
+
+                var mail = new MailAPI { Mail = datoscge.Mail, Titulo ="Token Registro SmartClick", Html = html };
+                _mailService.EnviarAsync(mail);
+
+                preregistro.OrganismoId = Registro.OrganismoId;
+
+                var tipopersonaEjercito = _context.TiposPersonas.Where(x => x.Organismo.Activo && x.Organismo.Id == Registro.OrganismoId).OrderBy(x => x.Organismo.Orden);
+                if (tipopersonaEjercito != null)
+                {
+                    List<MListaTipoPersonas> lista = new List<MListaTipoPersonas>();
+                    foreach (var tipopers in tipopersonaEjercito)
+                    {
+                        MListaTipoPersonas TipoPersona = new MListaTipoPersonas();
+                        TipoPersona.Id = tipopers.Id;
+                        TipoPersona.Descripcion = tipopers.nombre;
+                        lista.Add(TipoPersona);
+                    }
+                    preregistro.TipoPersonas = lista;
+                }
+
                 return preregistro;
 
             }
@@ -795,7 +873,11 @@ namespace SmartClick.Controllers
                 {
                     html = "<br/>Sr: " + Registro.eMail + "<br/><br/>";
                     html += "Su Token de Registro es: " + token.ToString() + "<br/><br/>";
-                    common.EnviarMail(Registro.eMail.Trim(), "Token Registro SmartClick", html, "");
+                    //common.EnviarMail(Registro.eMail.Trim(), "Token Registro SmartClick", html, "");
+
+                    var mail = new MailAPI { Mail = Registro.eMail.Trim(), Titulo ="Token Registro SmartClick", Html = html };
+                    _mailService.EnviarAsync(mail);
+
                     preregistro.Mensaje = "Usuario creado con Exito";
                 }
             }
@@ -808,7 +890,11 @@ namespace SmartClick.Controllers
                     _context.SaveChanges();
                     html = "<br/>Sr: " + Registro.eMail + "<br/><br/>";
                     html += "Su Token de Registro es: " + token.ToString() + "<br/><br/>";
-                    common.EnviarMail(Registro.eMail.Trim(), "Token Registro SmartClick", html, "");
+
+                    //common.EnviarMail(Registro.eMail.Trim(), "Token Registro SmartClick", html, "");
+                    var mail = new MailAPI { Mail = Registro.eMail.Trim(), Titulo ="Token Registro SmartClick", Html = html };
+                    _mailService.EnviarAsync(mail);
+
                     preregistro.Mensaje = "Envio email con Token !!";
                 }
                 else

@@ -59,6 +59,16 @@ namespace DAL.Models
         // --- Relaciones (Opcional pero recomendado) ---
         public virtual Clientes Cliente { get; set; }
         public virtual Usuario Usuario { get; set; }
+        public virtual PSPAccountStatus EstadoCuentaPSP { get; set; }
         public virtual ICollection<PSPAccountFile> PSPAccountFiles { get; set; } = new List<PSPAccountFile>();
     }
+
+    public class PSPAccountStatus
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; }
+        public string Codigo { get; set; }
+        public bool Aceptado { get; set; }
+    }
+    
 }

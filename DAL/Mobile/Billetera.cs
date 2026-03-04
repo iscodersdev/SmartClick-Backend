@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using DAL.Models.Core;
 
 namespace DAL.Mobile
 {
@@ -27,6 +28,8 @@ namespace DAL.Mobile
         public decimal Monto { get; set; }
         public string TipoMovimiento { get; set; }
         public DateTime Fecha { get; set; }
+        public string Nombre { get; set; }
+        public string CVU { get; set; }
     }
 
     public class ListaTarjetasDTO : RespuestaAPI
@@ -86,8 +89,10 @@ namespace DAL.Mobile
 
     public class EnvioBilleteraDTO : RespuestaAPI
     {
+        public int Id { get; set; }
         public string CVU { get; set; }
         public string Monto { get; set; }
+        public string Titular { get; set; }
     }
 
     public class ValidarBilleteraDTO : RespuestaAPI

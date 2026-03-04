@@ -1,6 +1,10 @@
-# ===== Build =====
+# ===== Build (SDK) =====
 FROM mcr.microsoft.com/dotnet/core/sdk:2.2 AS build
 WORKDIR /app
+
+# Copiar el script de entrada y darle permisos de ejecución
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
 
 # Copiar los paquetes locales y NuGet.config
 COPY packages/ /app/packages/
@@ -13,12 +17,20 @@ RUN dotnet restore BussinessCore/SmartClickCore.csproj --configfile /app/NuGet.c
 
 # Copiá el resto del código y publicá
 COPY . .
-RUN dotnet publish BussinessCore/SmartClickCore.csproj -c Release -o /app/out --configfile /app/NuGet.config
+# Eliminamos la línea RUN dotnet tool install --global dotnet-ef
+
+RUN dotnet publish BussinessCore/SmartClickCore.csproj -c Debug -o /app/out --configfile /app/NuGet.config
 
 # ===== Runtime (ASP.NET Core) =====
 FROM mcr.microsoft.com/dotnet/core/aspnet:2.2 AS runtime
 WORKDIR /app
-COPY --from=build /app/out ./
-# Por defecto, la imagen aspnet:2.2 escucha en el puerto 80
-ENTRYPOINT ["dotnet", "SmartClickCore.dll"]
 
+# 1. Copiar las librerías publicadas
+COPY --from=build /app/out ./
+
+# 2. Copiar el script de entrada y darle permisos
+COPY --from=build /app/entrypoint.sh ./
+RUN chmod +x entrypoint.sh
+
+# Ejecutar el script como punto de entrada
+ENTRYPOINT ["./entrypoint.sh"]

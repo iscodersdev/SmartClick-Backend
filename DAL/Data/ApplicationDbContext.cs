@@ -130,7 +130,12 @@ namespace DAL.Data
         // PSP integration tables
         public DbSet<DAL.Models.PSPAccount> PSPAccounts { get; set; }
         public DbSet<DAL.Models.PSPAccountFile> PSPAccountFiles { get; set; }
+        public DbSet<DAL.Models.PSPAccountStatus> PSPAccountStatus { get; set; }
         public DbSet<CuentasRecaudadoras> CuentasRecaudadoras { get; set; }
+
+        //MAIL
+        public DbSet<MailConfig> MailConfig { get; set; }
+
         public override List<IWorkSpace> GetIWorkSpaces()
         {
             return new List<IWorkSpace>();
