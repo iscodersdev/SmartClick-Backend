@@ -29,18 +29,6 @@ namespace SmartClickCore.Controllers
         }
         public IActionResult Index()
         {
-            var prestamo = _context.Prestamos.FirstOrDefault();
-            string html = "";
-            html = "<br/>Estimado: " + prestamo.Cliente.Empresa.RazonSocial + "<br/><br/>";
-            html += "Nos Agrada Comunicarle que ha recibido en su bandeja de Haberes 2.0 la siguiente solicitud de descuento por Decreto 14/12 segun detalle:<br/><br/>";
-            html += "<b>Persona:</b> " + prestamo.Cliente.Persona.Apellido.Trim() + ", " + prestamo.Cliente.Persona.Nombres.Trim() + " DNI: " + prestamo.Cliente.Persona.NroDocumento + "<br/>";
-            html += "<b>Importe Solicitado:</b> " + prestamo.Capital.ToString() + "<br/>";
-            html += "<b>Cantidad de Cuotas:</b> " + prestamo.CantidadCuotas.ToString() + "<br/>";
-            html += "<b>Monto de Cuota:</b> " + prestamo.MontoCuota.ToString() + "<br/><br/>";
-            html += "Sin Otro Particular Saludamos a Ud. Muy Atentamente<br/><br/>";
-            var mail = new MailAPI { Mail = "jorge.cutulli@iscoders.com.ar", Titulo = "Aprobación de Descuento Bot - Causante", Html = html };
-            _mailService.EnviarAsync(mail);
-
             //ViewBag.Breadcrumb = breadcumb;
             //ActualizaPersonaUser();
             ////var establecimiento = GetEstablecimiento();
